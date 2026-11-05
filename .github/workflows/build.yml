@@ -35,6 +35,11 @@ jobs:
       - name: Vérification des types
         run: npm run typecheck
 
+      - name: Rôles Supabase (créés une fois, avant les tests en parallèle)
+        run: |
+          psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -c "create role anon nologin" -c "create role authenticated nologin" -c "create role service_role nologin bypassrls"
+
       - name: Tests (logique et base de données)
         run: npx vitest run tests/unit tests/db
 

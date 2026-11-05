@@ -108,8 +108,10 @@ describe('Extraction des ventes', () => {
     expect(nouveaux.r).toEqual(['caisse.consulter', 'caisse.creer', 'catalogue.consulter', 'ventes.exporter']);
     const r = await extraire(carine, 'produits');
     expect(r.marges_visibles).toBe(false);
-    expect(r.lignes[0]).not.toHaveProperty('cout');
-    expect(r.lignes[0]).not.toHaveProperty('marge');
+    // Coût et marge ne sont jamais renvoyés (valeur vide) sans le droit.
+    expect(r.lignes[0]!.cout ?? null).toBeNull();
+    expect(r.lignes[0]!.marge ?? null).toBeNull();
+    expect(r.lignes[0]!.taux_marge ?? null).toBeNull();
     expect(r.totaux).not.toHaveProperty('marge');
   });
 });
