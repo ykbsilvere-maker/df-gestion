@@ -15,6 +15,7 @@ import { RapportCaisse, type RapportSession } from '../impression/RapportCaisse'
 import { useImpressionCaisse } from './impressionCaisse';
 import { Paiement } from './Paiement';
 import { Cloture } from './Cloture';
+import { identifiantAffiche } from '../lib/acces';
 import {
   catalogueLocal,
   chargerCatalogue,
@@ -205,7 +206,7 @@ function CaissePageInterne() {
       org={org}
       caisse={caisse}
       sessionCaisse={sessionCaisse}
-      caissier={session?.user.user_metadata?.nom_complet ?? session?.user.email ?? ''}
+      caissier={session?.user.user_metadata?.nom_complet ?? identifiantAffiche(session?.user.email)}
       autresCaisses={caisses.length > 1 ? caisses : []}
       onChoisirCaisse={choisirCaisse}
       onFermee={() => {
@@ -310,6 +311,12 @@ function PointDeVente({
   const [terme, setTerme] = useState('');
   const [indexActif, setIndexActif] = useState(0);
   const [message, setMessage] = useState<{ type: 'erreur' | 'succes' | 'info'; texte: string } | null>(null);
+  // Les messages s'affichent par-dessus le panier (l'écran ne saute pas) et s'effacent seuls.
+  useEffect(() => {
+    if (!message) return;
+    const t = window.setTimeout(() => setMessage(null), message.type === 'erreur' ? 8000 : 4000);
+    return () => window.clearTimeout(t);
+  }, [message]);
   const [enAttente, setEnAttente] = useState(0);
   const [rejetees, setRejetees] = useState<VenteLocale[]>([]);
   const [liste, setListe] = useState<LigneListe[]>([]);
@@ -695,8 +702,13 @@ function PointDeVente({
             )}
           </div>
 
-          {message && <Alerte type={message.type}>{message.texte}</Alerte>}
+          {message && (
+            <div className="message-caisse" role="status" onClick={() => setMessage(null)}>
+              <Alerte type={message.type}>{message.texte}</Alerte>
+            </div>
+          )}
 
+          <div className="panier-defilant">
           {panier.length === 0 ? (
             <div className="panier-vide">
               <p>Scannez un article pour commencer la vente.</p>
@@ -765,24 +777,32 @@ function PointDeVente({
               </tbody>
             </table>
           )}
+          </div>
         </section>
 
         <aside className="carte caisse-total">
-          <div className="total-libelle">
-            Total · {quantite(nbArticles)} article{nbArticles > 1 ? 's' : ''}
-          </div>
-          <div className="total-montant" aria-live="polite">
-            {montant(total)}
+          <div className="total-bloc">
+            <div className="total-libelle">
+              Total · {quantite(nbArticles)} article{nbArticles > 1 ? 's' : ''}
+            </div>
+            <div className="total-montant" aria-live="polite">
+              {montant(total)}
+            </div>
           </div>
           <button type="button" className="bouton bouton-principal bouton-plein bouton-encaisser" disabled={!panier.length} onClick={() => setFenetre('paiement')}>
             Encaisser <kbd>F9</kbd>
           </button>
           {panier.length > 0 && (
-            <button type="button" className="bouton-lien lien-danger" onClick={() => setPanier([])}>
+            <button
+              type="button"
+              className="bouton-lien lien-danger vider-panier"
+              onClick={() => window.confirm(`Vider le panier (${panier.length} ligne${panier.length > 1 ? 's' : ''}) ?`) && setPanier([])}
+            >
               Vider le panier
             </button>
           )}
-          <div className="caisse-options">
+          <details className="caisse-options">
+            <summary>⚙️ Options de la caisse</summary>
             <label className="case">
               <input
                 type="checkbox"
@@ -817,7 +837,7 @@ function PointDeVente({
                 ))}
               </select>
             )}
-          </div>
+          </details>
         </aside>
       </div>
 

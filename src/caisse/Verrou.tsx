@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { messageErreur } from '../lib/format';
+import { identifiantAffiche } from '../lib/acces';
 
 /**
  * Code personnel de caisse (4 à 6 chiffres).
@@ -95,7 +96,7 @@ export function VerrouCaisse({ children }: { children: ReactNode }) {
   const { organisation, session } = useSession();
   const org = organisation!.organisation_id;
   const uid = session?.user.id ?? '';
-  const nom = (session?.user.user_metadata?.nom_complet as string | undefined) ?? session?.user.email ?? '';
+  const nom = (session?.user.user_metadata?.nom_complet as string | undefined) ?? identifiantAffiche(session?.user.email);
   const [etat, setEtat] = useState<'chargement' | 'creer' | 'verrouille' | 'ouvert'>('chargement');
   const [code, setCode] = useState('');
   const [confirmation, setConfirmation] = useState<string | null>(null);

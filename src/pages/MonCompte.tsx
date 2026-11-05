@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { messageErreur, nomAppareil } from '../lib/format';
 import { Alerte, Champ, EnTetePage } from '../components/ui';
+import { estAccesEmploye, identifiantAffiche } from '../lib/acces';
 
 export function MonCompte() {
   const { session, organisations } = useSession();
@@ -50,7 +51,8 @@ export function MonCompte() {
     e.preventDefault();
     setErreur('');
     setInfo('');
-    if (mdp.length < 8) return setErreur('Le mot de passe doit contenir au moins 8 caractères.');
+    const minimum = estAccesEmploye(session?.user.email) ? 6 : 8;
+    if (mdp.length < minimum) return setErreur(`Au moins ${minimum} caractères.`);
     const { error } = await supabase.auth.updateUser({ password: mdp });
     if (error) return setErreur(messageErreur(error));
     setMdp('');
@@ -59,7 +61,7 @@ export function MonCompte() {
 
   return (
     <>
-      <EnTetePage icone="👤" titre="Mon compte" sousTitre={session?.user.email} />
+      <EnTetePage icone="👤" titre="Mon compte" sousTitre={identifiantAffiche(session?.user.email)} />
       <Alerte>{erreur}</Alerte>
       <Alerte type="succes">{info}</Alerte>
       <div className="grille-accueil">
@@ -79,7 +81,7 @@ export function MonCompte() {
 
         <form className="carte formulaire" onSubmit={changerMotDePasse}>
           <h2>Mot de passe</h2>
-          <Champ label="Nouveau mot de passe" aide="8 caractères minimum">
+          <Champ label={estAccesEmploye(session?.user.email) ? 'Nouveau code secret' : 'Nouveau mot de passe'} aide={estAccesEmploye(session?.user.email) ? '6 chiffres minimum' : '8 caractères minimum'}>
             <input type="password" value={mdp} onChange={(e) => setMdp(e.target.value)} autoComplete="new-password" />
           </Champ>
           <button className="bouton bouton-principal">Modifier</button>

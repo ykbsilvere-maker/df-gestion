@@ -6,6 +6,7 @@ import { ACTIONS, MODULES, type Caisse, type Invitation, type Magasin, type Memb
 import { Alerte, Champ, EnTetePage, Fenetre, Pastille, Vide } from '../components/ui';
 import { Identifiants } from '../components/Identifiants';
 import { genererMotDePasse, gererCompte, messageIdentifiants } from '../lib/comptes';
+import { estAccesEmploye, genererCodeProvisoire, identifiantAffiche, lireAccesEmploye, messageAccesEmploye, normaliserMatricule } from '../lib/acces';
 
 interface Donnees {
   membres: Membre[];
@@ -43,6 +44,11 @@ export function Utilisateurs() {
   const [info, setInfo] = useState('');
   const [fenetre, setFenetre] = useState<Fenetres>(null);
   const [afficherInactifs, setAfficherInactifs] = useState(false);
+  const [acces, setAcces] = useState<{ code_acces: string; matricule_suivant: string } | null>(null);
+  useEffect(() => {
+    if (!org) return;
+    void supabase.rpc('acces_employes', { p_org: org }).then(({ data }) => data && setAcces(data as { code_acces: string; matricule_suivant: string }));
+  }, [org, fenetre]);
 
   const charger = useCallback(async () => {
     if (!org) return;
@@ -139,13 +145,21 @@ export function Utilisateurs() {
         actions={
           peut('utilisateurs.creer') && (
             <button className="bouton bouton-principal" onClick={() => setFenetre({ type: 'inviter' })}>
-              Inviter un utilisateur
+              + Ajouter un employé
             </button>
           )
         }
       />
       <Alerte>{erreur}</Alerte>
       <Alerte type="succes">{info}</Alerte>
+
+      {acces && (
+        <div className="bandeau-code-acces">
+          <span>Code entreprise</span>
+          <strong className="code-acces">{acces.code_acces}</strong>
+          <span className="secondaire">Vos employés se connectent avec ce code, leur matricule et leur code secret. Seul le gérant principal utilise une adresse e-mail.</span>
+        </div>
+      )}
 
       <section className="carte">
         <div className="carte-entete">
@@ -178,7 +192,7 @@ export function Utilisateurs() {
                     <td>
                       <strong>{p?.nom_complet || '—'}</strong>
                       {soiMeme && <span className="mention"> (vous)</span>}
-                      <div className="secondaire">{p?.email}</div>
+                      <div className="secondaire">{identifiantAffiche(p?.email)}</div>
                     </td>
                     <td>
                       {libelleRole[m.role_code]}
@@ -266,7 +280,7 @@ export function Utilisateurs() {
           <table className="tableau">
             <thead>
               <tr>
-                <th>E-mail</th>
+                <th>Identifiant</th>
                 <th>Rôle prévu</th>
                 <th>Envoyée le</th>
                 {peutModifier && <th aria-label="Actions" />}
@@ -275,7 +289,7 @@ export function Utilisateurs() {
             <tbody>
               {d.invitations.map((i) => (
                 <tr key={i.id}>
-                  <td>{i.email}</td>
+                  <td>{identifiantAffiche(i.email)}</td>
                   <td>{libelleRole[i.role_code]}</td>
                   <td>{dateHeure(i.created_at)}</td>
                   {peutModifier && (
@@ -302,7 +316,7 @@ export function Utilisateurs() {
       <Fenetre
         titre={
           fenetre?.type === 'inviter'
-            ? 'Inviter un utilisateur'
+            ? 'Ajouter un employé'
             : fenetre?.type === 'modifier'
               ? 'Rôle et magasins'
               : fenetre?.type === 'desactiver'
@@ -323,7 +337,38 @@ export function Utilisateurs() {
             estProprietaire={estProprietaire}
             appelantTousMagasins={organisation.tous_magasins}
             avecEmail
+            matriculeSuivant={acces?.matricule_suivant}
             onValider={async (v) => {
+              if (v.typeAcces === 'matricule') {
+                setErreur('');
+                setInfo('');
+                const inv = await supabase.rpc('inviter_employe', {
+                  p_org: org,
+                  p_matricule: v.matricule,
+                  p_role: v.role,
+                  p_tous_magasins: v.tousMagasins,
+                  p_magasins: v.magasins,
+                  p_caisses: v.caisses,
+                });
+                if (inv.error) return setErreur(messageErreur(inv.error));
+                const r = await gererCompte('creer', inv.data as string, v.motDePasse, v.nom);
+                await charger();
+                if (!r.ok) {
+                  setErreur(`Employé enregistré, mais son accès n’a pas pu être créé : ${r.message}`);
+                  return setFenetre(null);
+                }
+                setInfo(`Accès créé pour le matricule ${v.matricule.toUpperCase()}.`);
+                return setFenetre({
+                  type: 'identifiants',
+                  texte: messageAccesEmploye({
+                    nom: v.nom,
+                    entreprise: organisation.nom,
+                    code: acces?.code_acces ?? '',
+                    matricule: v.matricule.toUpperCase(),
+                    codeProvisoire: v.motDePasse,
+                  }),
+                });
+              }
               const ok = await appeler(
                 'inviter_membre',
                 {
@@ -408,6 +453,20 @@ export function Utilisateurs() {
               const r = await gererCompte('reinitialiser', email, motDePasse);
               if (!r.ok) return r.message;
               setInfo('Mot de passe réinitialisé.');
+              const a = lireAccesEmploye(email);
+              if (a) {
+                setFenetre({
+                  type: 'identifiants',
+                  texte: messageAccesEmploye({
+                    nom: d.profils[fenetre.membre.user_id]?.nom_complet ?? undefined,
+                    entreprise: organisation.nom,
+                    code: a.code,
+                    matricule: a.matricule,
+                    codeProvisoire: motDePasse,
+                  }),
+                });
+                return null;
+              }
               setFenetre({
                 type: 'identifiants',
                 texte: messageIdentifiants({
@@ -461,6 +520,8 @@ export function Utilisateurs() {
 }
 
 interface ValeursRole {
+  typeAcces: 'matricule' | 'email';
+  matricule: string;
   email: string;
   nom: string;
   creerAcces: boolean;
@@ -476,6 +537,7 @@ function FormulaireRole({
   estProprietaire,
   appelantTousMagasins,
   avecEmail,
+  matriculeSuivant,
   initial,
   onValider,
 }: {
@@ -483,21 +545,28 @@ function FormulaireRole({
   estProprietaire: boolean;
   appelantTousMagasins: boolean;
   avecEmail?: boolean;
-  initial?: Omit<ValeursRole, 'email' | 'nom' | 'creerAcces' | 'motDePasse'>;
+  matriculeSuivant?: string;
+  initial?: Omit<ValeursRole, 'email' | 'nom' | 'creerAcces' | 'motDePasse' | 'typeAcces' | 'matricule'>;
   onValider: (v: ValeursRole) => Promise<void>;
 }) {
   const [v, setV] = useState<ValeursRole>({
+    typeAcces: 'matricule',
+    matricule: matriculeSuivant ?? '',
     email: '',
     nom: '',
     creerAcces: true,
-    motDePasse: genererMotDePasse(),
+    motDePasse: genererCodeProvisoire(),
     role: initial?.role ?? 'caissier',
     tousMagasins: initial?.tousMagasins ?? false,
     magasins: initial?.magasins ?? [],
     caisses: initial?.caisses ?? [],
   });
   const [envoi, setEnvoi] = useState(false);
-  const roles = d.roles.filter((r) => r.code !== 'proprietaire' || estProprietaire);
+  useEffect(() => {
+    if (matriculeSuivant) setV((x) => (x.matricule ? x : { ...x, matricule: matriculeSuivant }));
+  }, [matriculeSuivant]);
+  const parMatricule = avecEmail && v.typeAcces === 'matricule';
+  const roles = d.roles.filter((r) => (r.code !== 'proprietaire' || estProprietaire) && !(parMatricule && r.code === 'proprietaire'));
   const magasinsActifs = d.magasins.filter((m) => m.actif);
 
   function basculer(liste: 'magasins' | 'caisses', id: string) {
@@ -524,12 +593,57 @@ function FormulaireRole({
   return (
     <form className="formulaire" onSubmit={soumettre}>
       {avecEmail && (
+        <div className="choix-type-acces" role="radiogroup" aria-label="Type d’accès">
+          <label className={v.typeAcces === 'matricule' ? 'actif' : ''}>
+            <input type="radio" checked={v.typeAcces === 'matricule'} onChange={() => setV({ ...v, typeAcces: 'matricule', motDePasse: genererCodeProvisoire() })} />
+            <span>
+              <strong>Par matricule</strong>
+              Recommandé pour les employés : code entreprise + matricule + code secret.
+            </span>
+          </label>
+          <label className={v.typeAcces === 'email' ? 'actif' : ''}>
+            <input type="radio" checked={v.typeAcces === 'email'} onChange={() => setV({ ...v, typeAcces: 'email', motDePasse: genererMotDePasse() })} />
+            <span>
+              <strong>Par e-mail</strong>
+              Pour un gérant ou un associé qui a une adresse.
+            </span>
+          </label>
+        </div>
+      )}
+      {parMatricule && (
+        <>
+          <div className="grille-2">
+            <Champ label="Nom et prénoms">
+              <input value={v.nom} onChange={(e) => setV({ ...v, nom: e.target.value })} required autoComplete="off" />
+            </Champ>
+            <Champ label="Matricule" aide="Celui de votre registre du personnel, ou le numéro proposé.">
+              <input
+                className="champ-code"
+                value={v.matricule}
+                onChange={(e) => setV({ ...v, matricule: normaliserMatricule(e.target.value).toUpperCase() })}
+                required
+                maxLength={12}
+                autoComplete="off"
+              />
+            </Champ>
+          </div>
+          <Champ label="Code provisoire (6 chiffres)" aide="À lui transmettre ; il choisira son propre code secret à la première connexion.">
+            <div className="champ-avec-bouton">
+              <input className="champ-code" value={v.motDePasse} onChange={(e) => setV({ ...v, motDePasse: e.target.value.replace(/\D/g, '').slice(0, 12) })} minLength={6} required inputMode="numeric" autoComplete="off" />
+              <button type="button" className="bouton bouton-discret" onClick={() => setV({ ...v, motDePasse: genererCodeProvisoire() })}>
+                Générer
+              </button>
+            </div>
+          </Champ>
+        </>
+      )}
+      {avecEmail && !parMatricule && (
         <>
           <Champ label="Nom et prénoms">
             <input value={v.nom} onChange={(e) => setV({ ...v, nom: e.target.value })} autoComplete="off" />
           </Champ>
           <Champ label="Adresse e-mail de la personne (identifiant)">
-            <input type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} required autoComplete="off" />
+            <input type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} required={!parMatricule} autoComplete="off" />
           </Champ>
           <label className="case">
             <input type="checkbox" checked={v.creerAcces} onChange={(e) => setV({ ...v, creerAcces: e.target.checked })} />
@@ -603,7 +717,7 @@ function FormulaireRole({
         </fieldset>
       )}
       <button className="bouton bouton-principal" disabled={envoi}>
-        {avecEmail ? (v.creerAcces ? 'Créer l’accès' : 'Inviter') : 'Enregistrer'}
+        {parMatricule ? 'Créer l’accès de l’employé' : avecEmail ? (v.creerAcces ? 'Créer l’accès' : 'Inviter') : 'Enregistrer'}
       </button>
     </form>
   );
@@ -618,7 +732,9 @@ function FormulaireMotDePasse({
   onProvisoire: (email: string, motDePasse: string) => Promise<string | null>;
   onLien: (email: string) => Promise<void>;
 }) {
-  const [motDePasse, setMotDePasse] = useState(genererMotDePasse());
+  const employe = estAccesEmploye(email);
+  const generer = employe ? genererCodeProvisoire : genererMotDePasse;
+  const [motDePasse, setMotDePasse] = useState(generer);
   const [erreur, setErreur] = useState('');
   const [envoi, setEnvoi] = useState(false);
   async function soumettre(e: FormEvent) {
@@ -630,13 +746,14 @@ function FormulaireMotDePasse({
   return (
     <form className="formulaire" onSubmit={soumettre}>
       <p>
-        Nouveau mot de passe provisoire pour <strong>{email}</strong> : la personne en choisira un autre à sa prochaine connexion.
+        Nouveau {employe ? 'code' : 'mot de passe'} provisoire pour <strong>{identifiantAffiche(email)}</strong> : la personne en choisira un
+        autre à sa prochaine connexion.
       </p>
       <Alerte>{erreur}</Alerte>
       <Champ label="Mot de passe provisoire">
         <div className="champ-avec-bouton">
-          <input value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} minLength={8} required />
-          <button type="button" className="bouton bouton-discret" onClick={() => setMotDePasse(genererMotDePasse())}>
+          <input value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} minLength={employe ? 6 : 8} required inputMode={employe ? 'numeric' : undefined} />
+          <button type="button" className="bouton bouton-discret" onClick={() => setMotDePasse(generer())}>
             Générer
           </button>
         </div>
@@ -644,11 +761,13 @@ function FormulaireMotDePasse({
       <button className="bouton bouton-principal bouton-plein" disabled={envoi}>
         {envoi ? 'Réinitialisation…' : 'Réinitialiser le mot de passe'}
       </button>
-      <div className="liens-formulaire">
-        <button type="button" className="bouton-lien" onClick={() => void onLien(email)}>
-          Envoyer plutôt un lien par e-mail
-        </button>
-      </div>
+      {!employe && (
+        <div className="liens-formulaire">
+          <button type="button" className="bouton-lien" onClick={() => void onLien(email)}>
+            Envoyer plutôt un lien par e-mail
+          </button>
+        </div>
+      )}
     </form>
   );
 }

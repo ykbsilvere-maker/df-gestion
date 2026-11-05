@@ -3,7 +3,15 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 1.1.** **Comptabilité SYSCOHADA** générée automatiquement à partir des opérations : ventes du jour
+**Version 1.2.** **Connexion des employés par matricule** : chaque entreprise a un **code entreprise** fixe (ex. BOUT78) ;
+un employé se connecte avec ce code (retenu sur l'appareil), son **matricule** et son **code secret** (6 chiffres au moins,
+choisi à la première connexion) ; seul le gérant principal garde son adresse e-mail. Le gérant crée l'accès dans
+Utilisateurs (matricule proposé, code provisoire de 6 chiffres, message prêt pour WhatsApp) et redonne un code oublié.
+**Caisse en écran fixe** : la page ne défile plus ; recherche en haut, panier qui défile seul, total et « Encaisser »
+toujours visibles (barre compacte sur téléphone), messages par-dessus le panier sans décaler l'écran, « Vider le panier »
+confirmé. Stabilité générale : en-têtes de page fixes sur PC, molette sans effet sur les quantités, fond bloqué sous les fenêtres.
+
+Version 1.1 : **Comptabilité SYSCOHADA** générée automatiquement à partir des opérations : ventes du jour
 par magasin (TVA séparée pour les régimes RSI et RNI), achats et frais (601, 6015, 401), règlements fournisseurs,
 dépenses du budget au compte de leur poste, virements internes (585) et frais bancaires (631), créances et encaissements
 clients, écarts de rapprochement, variation de stock (31 / 6031), à-nouveaux. Écrans : **journal** (filtre par journal

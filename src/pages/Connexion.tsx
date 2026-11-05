@@ -7,6 +7,15 @@ import { useSession } from '../lib/session';
 import { messageErreur } from '../lib/format';
 import { Alerte, Champ } from '../components/ui';
 import { MarqueDecodeur } from '../components/Marque';
+import {
+  codeEntrepriseMemorise,
+  emailEmploye,
+  identifiantAffiche,
+  lireAccesEmploye,
+  memoriserCodeEntreprise,
+  normaliserCode,
+  normaliserMatricule,
+} from '../lib/acces';
 
 type Mode = 'connexion' | 'inscription' | 'oubli';
 
@@ -38,7 +47,14 @@ function oublier(email: string) {
 export function Connexion() {
   const [mode, setMode] = useState<Mode>('connexion');
   const [recents, setRecents] = useState<string[]>(lireRecents);
-  const [email, setEmail] = useState(() => lireRecents()[0] ?? '');
+  const [email, setEmail] = useState(() => (lireAccesEmploye(lireRecents()[0]) ? '' : (lireRecents()[0] ?? '')));
+  // Employés : code entreprise + matricule + code secret ; gérant principal : adresse e-mail.
+  const [type, setType] = useState<'employe' | 'email'>(() => {
+    const dernier = lireRecents()[0];
+    return dernier ? (lireAccesEmploye(dernier) ? 'employe' : 'email') : 'employe';
+  });
+  const [codeEntreprise, setCodeEntreprise] = useState(() => lireAccesEmploye(lireRecents()[0])?.code ?? codeEntrepriseMemorise());
+  const [matricule, setMatricule] = useState(() => lireAccesEmploye(lireRecents()[0])?.matricule ?? '');
   const [voirMotDePasse, setVoirMotDePasse] = useState(false);
   const [motDePasse, setMotDePasse] = useState('');
   const [nom, setNom] = useState('');
@@ -51,8 +67,12 @@ export function Connexion() {
   const premiere = plateforme?.admin_existe === false;
   const fermee = !!plateforme && plateforme.admin_existe && !plateforme.inscription_libre;
   useEffect(() => {
-    if (premiere) setMode('inscription');
+    if (premiere) {
+      setMode('inscription');
+      setType('email');
+    }
   }, [premiere]);
+  const parMatricule = mode === 'connexion' && type === 'employe';
 
   async function soumettre(e: FormEvent) {
     e.preventDefault();
@@ -62,9 +82,15 @@ export function Connexion() {
     setEnvoi(true);
     try {
       if (mode === 'connexion') {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: motDePasse });
-        if (error) throw error;
-        memoriser(email.trim().toLowerCase());
+        const identifiant = parMatricule ? emailEmploye(codeEntreprise, matricule) : email.trim();
+        const { error } = await supabase.auth.signInWithPassword({ email: identifiant, password: motDePasse });
+        if (error) {
+          if (parMatricule && /invalid login|credentials/i.test(error.message))
+            throw new Error('Code entreprise, matricule ou code secret incorrect.');
+          throw error;
+        }
+        memoriser(identifiant.toLowerCase());
+        if (parMatricule) memoriserCodeEntreprise(codeEntreprise);
         await apresConnexion();
         naviguer('/');
       } else if (mode === 'inscription') {
@@ -144,14 +170,30 @@ export function Connexion() {
             <div className="comptes-recents" aria-label="Comptes récents sur cet appareil">
               {recents.map((r) => (
                 <span key={r} className={`compte-recent ${r === email ? 'actif' : ''}`}>
-                  <button type="button" onClick={() => setEmail(r)} title={r}>
-                    <span className="compte-recent-initiale">{r.charAt(0).toUpperCase()}</span>
-                    <span className="compte-recent-email">{r}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const a = lireAccesEmploye(r);
+                      if (a) {
+                        setType('employe');
+                        setCodeEntreprise(a.code);
+                        setMatricule(a.matricule);
+                      } else {
+                        setType('email');
+                        setEmail(r);
+                      }
+                    }}
+                    title={identifiantAffiche(r)}
+                  >
+                    <span className="compte-recent-initiale">{lireAccesEmploye(r) ? '#' : r.charAt(0).toUpperCase()}</span>
+                    <span className="compte-recent-email">
+                      {lireAccesEmploye(r) ? `${identifiantAffiche(r)} · ${lireAccesEmploye(r)!.code}` : r}
+                    </span>
                   </button>
                   <button
                     type="button"
                     className="compte-recent-retirer"
-                    aria-label={`Oublier ${r} sur cet appareil`}
+                    aria-label={`Oublier ${identifiantAffiche(r)} sur cet appareil`}
                     onClick={() => {
                       oublier(r);
                       setRecents(lireRecents());
@@ -173,23 +215,63 @@ export function Connexion() {
           <Alerte>{erreur}</Alerte>
           <Alerte type="succes">{info}</Alerte>
 
+          {mode === 'connexion' && !premiere && (
+            <div className="onglets-connexion" role="tablist" aria-label="Type d’accès">
+              <button type="button" role="tab" aria-selected={type === 'employe'} className={type === 'employe' ? 'actif' : ''} onClick={() => setType('employe')}>
+                👤 Employé (matricule)
+              </button>
+              <button type="button" role="tab" aria-selected={type === 'email'} className={type === 'email' ? 'actif' : ''} onClick={() => setType('email')}>
+                ✉️ Gérant (e-mail)
+              </button>
+            </div>
+          )}
           {mode === 'inscription' && (
             <Champ label="Nom et prénoms">
               <input value={nom} onChange={(e) => setNom(e.target.value)} required autoComplete="name" />
             </Champ>
           )}
-          <Champ label="Adresse e-mail">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              inputMode="email"
-            />
-          </Champ>
+          {parMatricule ? (
+            <div className="grille-acces">
+              <Champ label="Code entreprise" aide="Donné par votre gérant ; retenu sur cet appareil.">
+                <input
+                  value={codeEntreprise}
+                  onChange={(e) => setCodeEntreprise(normaliserCode(e.target.value))}
+                  required
+                  minLength={4}
+                  maxLength={10}
+                  autoCapitalize="characters"
+                  autoComplete="organization"
+                  placeholder="ex. BOUT78"
+                  className="champ-code"
+                />
+              </Champ>
+              <Champ label="Matricule">
+                <input
+                  value={matricule}
+                  onChange={(e) => setMatricule(normaliserMatricule(e.target.value).toUpperCase())}
+                  required
+                  maxLength={12}
+                  autoComplete="username"
+                  placeholder="ex. 0012"
+                  className="champ-code"
+                  autoFocus={!!codeEntreprise && !matricule}
+                />
+              </Champ>
+            </div>
+          ) : (
+            <Champ label="Adresse e-mail">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                inputMode="email"
+              />
+            </Champ>
+          )}
           {mode !== 'oubli' && (
-            <Champ label="Mot de passe" aide={mode === 'inscription' ? '8 caractères minimum' : undefined}>
+            <Champ label={parMatricule ? 'Code secret' : 'Mot de passe'} aide={mode === 'inscription' ? '8 caractères minimum' : undefined}>
               <div className="champ-mot-de-passe">
                 <input
                   type={voirMotDePasse ? 'text' : 'password'}
@@ -198,7 +280,8 @@ export function Connexion() {
                   required
                   minLength={mode === 'inscription' ? 8 : undefined}
                   autoComplete={mode === 'inscription' ? 'new-password' : 'current-password'}
-                  autoFocus={mode === 'connexion' && !!email}
+                  autoFocus={mode === 'connexion' && (parMatricule ? !!matricule : !!email)}
+                  inputMode={parMatricule ? 'numeric' : undefined}
                 />
                 <button
                   type="button"
@@ -228,16 +311,17 @@ export function Connexion() {
                 J’ai déjà un compte
               </button>
             )}
-            {mode !== 'inscription' && (
+            {mode !== 'inscription' && !parMatricule && (
               <button type="button" className="bouton-lien" onClick={() => setMode('inscription')}>
                 {fermee ? 'J’ai été invité : créer mon compte' : 'Créer un compte'}
               </button>
             )}
-            {mode === 'connexion' && (
+            {mode === 'connexion' && !parMatricule && (
               <button type="button" className="bouton-lien" onClick={() => setMode('oubli')}>
                 Mot de passe oublié
               </button>
             )}
+            {parMatricule && <span className="secondaire">Code secret oublié ? Votre gérant vous en donne un nouveau.</span>}
           </div>
         </form>
         <p className="note-publique">

@@ -7,6 +7,7 @@ import { REGIMES, type RegimeFiscal } from '../lib/types';
 import { ChoixDevise } from '../components/ChoixDevise';
 import { Alerte, Champ } from '../components/ui';
 import { ChoixModules } from '../components/ChoixModules';
+import { identifiantAffiche } from '../lib/acces';
 
 export function CreerEntreprise() {
   const { rechargerOrganisations, choisirOrganisation, deconnecter, organisations, plateforme, rechargerPlateforme, session, adminGeneral } =
@@ -66,7 +67,7 @@ export function CreerEntreprise() {
           <div className="carte formulaire">
             <h1>Aucune entreprise active</h1>
             <p>
-              Votre compte ({session?.user.email}) n’est rattaché à aucune entreprise active. Votre accès est créé par le gérant de
+              Votre compte ({identifiantAffiche(session?.user.email)}) n’est rattaché à aucune entreprise active. Votre accès est créé par le gérant de
               votre entreprise ou par l’administrateur : vérifiez avec lui l’adresse e-mail qu’il a utilisée, ou si l’entreprise
               est suspendue.
             </p>

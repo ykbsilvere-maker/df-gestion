@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useSession } from '../lib/session';
 import { useIdentite } from '../lib/identite';
+import { identifiantAffiche } from '../lib/acces';
 
 type Groupe = 'vendre' | 'stock' | 'pilotage' | 'reglages';
 const GROUPES: Record<Groupe, string> = { vendre: 'Vendre', stock: 'Stock et achats', pilotage: 'Pilotage', reglages: 'Réglages' };
@@ -46,9 +47,11 @@ export function Coquille() {
   const principaux = liens.length > MAX_MOBILE + 1 ? liens.slice(0, MAX_MOBILE) : liens;
   const autres = liens.length > MAX_MOBILE + 1 ? liens.slice(MAX_MOBILE) : [];
   const logo = identite?.logoUrl;
+  // La caisse occupe tout l'écran, sans défilement de page : seul le panier défile.
+  const pleinEcran = emplacement.pathname === '/caisse';
 
   return (
-    <div className="coquille">
+    <div className={`coquille ${pleinEcran ? 'coquille-plein' : ''}`}>
       <aside className="barre-laterale">
         <div className="marque marque-client">
           {logo ? (
@@ -94,7 +97,7 @@ export function Coquille() {
         </nav>
 
         <div className="pied-barre">
-          <span className="email-courant">{session?.user.email}</span>
+          <span className="email-courant">{identifiantAffiche(session?.user.email)}</span>
           <button type="button" className="bouton-lien" onClick={() => void deconnecter()}>
             Se déconnecter
           </button>
@@ -105,7 +108,7 @@ export function Coquille() {
         </div>
       </aside>
 
-      <main className="contenu">
+      <main className={`contenu ${pleinEcran ? 'contenu-plein' : ''}`}>
         <Outlet />
       </main>
 

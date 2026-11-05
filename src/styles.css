@@ -1047,3 +1047,75 @@ input:disabled, select:disabled { background: var(--surface-2); color: var(--enc
 .touche-pin-valider:not(.pret) { background: var(--surface-2); color: var(--encre-2, #999); border-color: var(--trait); }
 .touche-pin-valider.pret { box-shadow: 0 6px 16px rgba(200, 22, 27, .3); }
 .touche-pin:disabled { opacity: .55; cursor: default; }
+
+/* =====================================================================
+   1.2 — Stabilité : caisse en écran fixe, pas de sauts pendant la saisie
+   ===================================================================== */
+html { scrollbar-gutter: stable; }
+body:has(dialog[open]) { overflow: hidden; }
+input, select, textarea { scroll-margin: 90px; }
+
+/* Sur PC, le titre et les onglets restent en haut pendant qu'on fait défiler une page longue. */
+@media (min-width: 861px) {
+  .contenu:not(.contenu-plein) > .entete-page { position: sticky; top: 0; z-index: 6; background: var(--fond); padding-top: 10px; margin-top: -10px; }
+}
+
+/* Caisse : l'écran ne défile pas. Recherche en haut, panier qui défile seul, total toujours visible. */
+.coquille-plein { height: 100vh; height: 100dvh; overflow: hidden; }
+.contenu-plein { max-width: none; height: 100vh; height: 100dvh; overflow-y: auto; padding: 12px 16px; }
+.contenu-plein .ecran-verrou { min-height: 100%; }
+.contenu-plein .caisse { height: 100%; gap: 10px; }
+.contenu-plein .caisse > .alerte { margin: 0; padding: 6px 12px; font-size: 0.85rem; }
+.contenu-plein .caisse-barre { padding: 8px 12px; flex-wrap: nowrap; }
+.contenu-plein .caisse-actions { flex-wrap: nowrap; }
+.contenu-plein .caisse-grille { flex: 1; min-height: 0; align-items: stretch; grid-template-columns: minmax(0, 1fr) 340px; }
+.contenu-plein .caisse-panier { min-height: 0; display: flex; flex-direction: column; overflow: hidden; position: relative; padding-bottom: 0; }
+.contenu-plein .caisse-recherche { flex: none; position: relative; z-index: 4; }
+.panier-defilant { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 10px -4px 0; padding: 0 4px 10px; }
+.panier-defilant .tableau-panier thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.contenu-plein .caisse-total { position: static; overflow-y: auto; }
+.message-caisse { position: absolute; left: 14px; right: 14px; top: 76px; z-index: 5; cursor: pointer; animation: message-entree .18s ease-out; }
+.message-caisse .alerte { margin: 0; box-shadow: 0 10px 24px rgba(0,0,0,.14); }
+@keyframes message-entree { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.caisse-options summary { cursor: pointer; font-weight: 600; color: var(--encre-douce); list-style: none; }
+.caisse-options summary::-webkit-details-marker { display: none; }
+.caisse-options[open] summary { margin-bottom: 4px; }
+.total-montant { white-space: nowrap; }
+
+@media (max-width: 860px) {
+  .coquille-plein { padding-bottom: 0; grid-template-rows: auto minmax(0, 1fr); }
+  .coquille-plein .barre-laterale { padding: 8px 12px; }
+  .contenu-plein { height: auto; min-height: 0; padding: 8px 8px calc(72px + env(safe-area-inset-bottom)); }
+  .contenu-plein .caisse { height: 100%; gap: 8px; }
+  .contenu-plein .caisse-barre { gap: 8px; padding: 6px 8px; }
+  .contenu-plein .caisse-titre .secondaire { display: none; }
+  .contenu-plein .caisse-actions { overflow-x: auto; scrollbar-width: none; margin-left: auto; }
+  .contenu-plein .caisse-actions .bouton { padding: 6px 9px; font-size: 0.82rem; white-space: nowrap; }
+  .contenu-plein .caisse-grille { display: flex; flex-direction: column; gap: 8px; }
+  .contenu-plein .caisse-panier { flex: 1; padding: 10px; }
+  .message-caisse { top: 64px; left: 10px; right: 10px; }
+  /* Total + Encaisser en une barre compacte juste au-dessus du menu du bas. */
+  .contenu-plein .caisse-total {
+    flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 12px;
+    padding: 10px 12px; overflow: visible;
+  }
+  .contenu-plein .total-montant { font-size: 1.9rem; }
+  .contenu-plein .bouton-encaisser { width: auto; min-height: 52px; padding: 0 22px; }
+  .contenu-plein .bouton-encaisser kbd { display: none; }
+  .contenu-plein .vider-panier, .contenu-plein .caisse-options { grid-column: 1 / -1; }
+  .contenu-plein .caisse-options { border-top: 0; padding-top: 0; }
+}
+
+/* Connexion par matricule */
+.onglets-connexion { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 12px; }
+.onglets-connexion button { border: 0; background: none; padding: 9px 6px; border-radius: 9px; font-weight: 600; font-size: 0.88rem; cursor: pointer; color: var(--encre-douce); }
+.onglets-connexion button.actif { background: var(--surface); color: var(--encre); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+.grille-acces { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.champ-code { font-size: 1.1rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+.bandeau-code-acces { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 14px; border-radius: 12px; background: var(--accent-clair); margin-bottom: 14px; }
+.bandeau-code-acces strong.code-acces { font-size: 1.25rem; letter-spacing: .08em; }
+.choix-type-acces { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.choix-type-acces label { display: flex; gap: 8px; align-items: flex-start; border: 1px solid var(--trait); border-radius: 10px; padding: 10px; cursor: pointer; }
+.choix-type-acces label.actif { border-color: var(--accent); background: var(--accent-clair); }
+.choix-type-acces span { display: flex; flex-direction: column; font-size: 0.85rem; }
+@media (max-width: 480px) { .grille-acces, .choix-type-acces { grid-template-columns: 1fr; } }

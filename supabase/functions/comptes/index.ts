@@ -67,7 +67,11 @@ Deno.serve(async (req) => {
   const email = String(corps.email ?? '').trim().toLowerCase();
   const motDePasse = String(corps.mot_de_passe ?? '');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return reponse({ ok: false, erreur: 'Adresse e-mail invalide' });
-  if (motDePasse.length < 8) return reponse({ ok: false, erreur: 'Le mot de passe provisoire doit contenir au moins 8 caractères' });
+  // Employés connectés par matricule : code secret de 6 chiffres au moins ; autres comptes : 8 caractères.
+  const employe = email.endsWith('@acces.dfgestion.app');
+  const minimum = employe ? 6 : 8;
+  if (motDePasse.length < minimum)
+    return reponse({ ok: false, erreur: `Le ${employe ? 'code provisoire' : 'mot de passe provisoire'} doit contenir au moins ${minimum} caractères` });
 
   const appelant = createClient(url, publique, {
     global: { headers: { Authorization: autorisation } },
