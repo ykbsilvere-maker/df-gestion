@@ -290,8 +290,9 @@ describe('Garanties du registre', () => {
     const vus = await enTantQue(pool, carine, (q) => q<{ magasin_id: string }>(`select magasin_id from stocks`));
     expect(vus.length).toBeGreaterThan(0);
     expect(vus.every((s) => s.magasin_id === mag1)).toBe(true);
+    // v0.9 : la caissière n'a plus l'écran Stock (mouvements, coûts) ; elle garde le stock disponible par le catalogue.
     const mvts = await enTantQue(pool, carine, (q) => q<{ magasin_id: string }>(`select distinct magasin_id from mouvements_stock`));
-    expect(mvts.map((m) => m.magasin_id)).toEqual([mag1]);
+    expect(mvts).toEqual([]);
   });
 });
 
