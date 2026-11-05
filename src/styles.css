@@ -1323,3 +1323,75 @@ body { background: var(--fond); }
 .filet-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 6px; }
 .filet-detail { font-size: 0.78rem; margin-top: 8px; text-align: left; width: 100%; }
 .filet-detail code { display: block; white-space: pre-wrap; word-break: break-word; background: var(--surface-2); padding: 8px; border-radius: 8px; margin: 6px 0; }
+
+/* =====================================================================
+   1.4 — Caisse : « Ouvrir une caisse », liste d'articles, quantités − / +
+   ===================================================================== */
+.ouvrir-caisse { display: flex; flex-direction: column; gap: 14px; max-width: 900px; margin: 0 auto; height: 100%; overflow-y: auto; padding-bottom: 12px; }
+.ouvrir-entete h1 { margin: 0; font-size: 1.4rem; }
+.ouvrir-entete p { margin: 4px 0 0; }
+.grille-caisses { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.carte-caisse { display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 2px solid var(--trait); border-radius: 18px; padding: 8px; }
+.carte-caisse.choisie { border-color: var(--accent); box-shadow: 0 8px 22px rgba(200, 22, 27, .14); }
+.carte-caisse.interdite { opacity: .55; }
+.carte-caisse-corps { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; background: none; border: 0; padding: 8px; cursor: pointer; font: inherit; color: inherit; border-radius: 12px; }
+.carte-caisse-corps:disabled { cursor: default; }
+.carte-caisse-corps:not(:disabled):hover { background: var(--surface-2); }
+.carte-caisse-icone { font-size: 1.6rem; }
+.carte-caisse-corps strong { font-size: 1.05rem; }
+.aucune-caisse h2 { margin-top: 0; }
+.champ-fond { font-size: 1.6rem !important; font-weight: 800; text-align: center; }
+.fonds-rapides { display: flex; flex-wrap: wrap; gap: 6px; }
+.puce-montant { border: 1px solid var(--trait); background: var(--surface-2); border-radius: 999px; padding: 7px 14px; font: inherit; font-weight: 700; cursor: pointer; }
+.puce-montant.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.bouton-ouvrir { min-height: 54px; font-size: 1.05rem; }
+
+/* Écran de vente : articles | panier + total */
+.contenu-plein .caisse-grille {
+  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr); grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: 'articles panier' 'articles total'; gap: 10px;
+}
+.contenu-plein .caisse-articles { grid-area: articles; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 12px; }
+.contenu-plein .caisse-panier { grid-area: panier; }
+.contenu-plein .caisse-total { grid-area: total; }
+.articles-entete { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--encre-douce); margin: 8px 2px 4px; }
+.liste-articles { list-style: none; margin: 0; padding: 0 2px 6px; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 4px; }
+.article-caisse {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+  padding: 6px 6px 6px 4px; border-radius: 12px; border: 1px solid transparent; background: var(--surface-2);
+}
+.article-caisse.dans-panier { background: var(--accent-clair); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.article-caisse.actif { border-color: var(--accent); }
+.article-corps { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; background: none; border: 0; padding: 4px 6px; text-align: left; font: inherit; color: inherit; cursor: pointer; min-width: 0; }
+.article-nom { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.article-corps .secondaire { font-size: 0.75rem; }
+.article-prix { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.articles-vide { padding: 14px; text-align: center; color: var(--encre-douce); }
+.panier-titre { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+
+.choix-quantite { display: inline-flex; align-items: center; border: 1px solid var(--trait); border-radius: 12px; background: var(--surface); overflow: hidden; flex: none; }
+.choix-quantite button { width: 36px; height: 38px; border: 0; background: none; font-size: 1.25rem; font-weight: 700; cursor: pointer; color: var(--encre); }
+.choix-quantite button:active { background: var(--accent-clair); }
+.choix-quantite button:disabled { opacity: .3; }
+.choix-quantite input {
+  width: 48px; height: 38px; border: 0; border-left: 1px solid var(--trait); border-right: 1px solid var(--trait);
+  text-align: center; font-weight: 800; font-size: 1rem; padding: 0; background: none; font-variant-numeric: tabular-nums;
+}
+.choix-quantite.rempli { border-color: var(--accent); }
+.choix-quantite.rempli input { color: var(--accent); }
+.tableau-panier .choix-quantite button { width: 32px; height: 34px; }
+.tableau-panier .choix-quantite input { width: 44px; height: 34px; }
+
+@media (max-width: 860px) {
+  .contenu-plein .caisse-grille { display: flex; flex-direction: column; gap: 6px; }
+  .contenu-plein .caisse-articles { flex: 1.25 1 0; padding: 8px; }
+  .contenu-plein .caisse-panier { flex: 1 1 0; padding: 8px; }
+  .article-caisse { gap: 6px; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'corps qte' 'prix qte'; padding: 4px; }
+  .article-corps { grid-area: corps; padding: 2px 4px; }
+  .article-prix { grid-area: prix; padding-left: 4px; font-size: 0.85rem; }
+  .article-caisse .choix-quantite { grid-area: qte; }
+  .choix-quantite button { width: 40px; height: 42px; }
+  .choix-quantite input { width: 46px; height: 42px; }
+  .contenu-plein .tableau-panier thead { display: none; }
+  .grille-caisses { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

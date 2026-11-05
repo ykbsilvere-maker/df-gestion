@@ -14,7 +14,7 @@ const salutation = () => {
 
 /** Actions en un geste : chaque tuile ouvre directement le formulaire de création. */
 const ACTIONS: { vers: string; icone: string; libelle: string; droit: string | string[] }[] = [
-  { vers: '/caisse', icone: '🛒', libelle: 'Vendre', droit: 'caisse.creer' },
+  { vers: '/caisse', icone: '🔓', libelle: 'Ouvrir / Vendre', droit: 'caisse.creer' },
   { vers: '/catalogue?nouveau=1', icone: '🛍️', libelle: '+ Produit', droit: 'catalogue.creer' },
   { vers: '/stock/receptions?nouveau=1', icone: '📥', libelle: '+ Arrivage', droit: ['stock.creer', 'achats.creer'] },
   { vers: '/budget?nouveau=1', icone: '💸', libelle: '+ Dépense', droit: 'budget.creer' },

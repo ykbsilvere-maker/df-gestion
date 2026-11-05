@@ -3,7 +3,14 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 1.3.1.** Correctif des **pages blanches** à l'ouverture d'un module : la remise en haut de page renvoyait une
+**Version 1.4.** **Caisse pensée pour l'application** : écran « 🔓 Ouvrir une caisse » (on touche sa caisse, on choisit
+le fond avec des montants rapides, on ouvre) qui ne propose que les caisses que la personne peut réellement ouvrir, indique
+celles déjà ouvertes (par qui, depuis quand) et explique quoi faire si aucune caisse n'est attribuée. Écran de vente :
+**liste des articles toujours visible**, filtrée en direct pendant la frappe (nom, code, code-barres), avec pour chaque
+article un sélecteur **− quantité +** (saisie directe possible) ; panier avec le même sélecteur ; total et « Encaisser »
+toujours visibles. Sur téléphone, Caisse et Stock sont en premier dans les onglets.
+
+Version 1.3.1 : Correctif des **pages blanches** à l'ouverture d'un module : la remise en haut de page renvoyait une
 promesse (navigateurs récents) qu'un effet React prenait pour son nettoyage, ce qui faisait planter l'affichage. Ajout
 d'un **filet de sécurité** : une erreur dans un module n'efface plus l'application (le menu reste, message « Réessayer /
 Accueil / Recharger ») et elle est **signalée automatiquement** au serveur (page, version, appareil ; aucune donnée de

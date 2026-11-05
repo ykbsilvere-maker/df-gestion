@@ -31,6 +31,11 @@ const LIENS: { vers: string; libelle: string; permission?: string | string[]; ad
 
 /** Sur téléphone : 4 raccourcis en bas d'écran, le reste dans « Plus ». */
 const MAX_MOBILE = 4;
+const PRIORITE_MOBILE = ['/caisse', '/stock', '/', '/catalogue'];
+const rangMobile = (vers: string) => {
+  const i = PRIORITE_MOBILE.indexOf(vers);
+  return i < 0 ? PRIORITE_MOBILE.length : i;
+};
 
 export function Coquille() {
   const { organisation, organisations, choisirOrganisation, peut, deconnecter, session, adminGeneral } = useSession();
@@ -57,8 +62,10 @@ export function Coquille() {
     if (cadre.current) cadre.current.scrollTop = 0;
   }, [emplacement.pathname]);
 
-  const principaux = liens.length > MAX_MOBILE + 1 ? liens.slice(0, MAX_MOBILE) : liens;
-  const autres = liens.length > MAX_MOBILE + 1 ? liens.slice(MAX_MOBILE) : [];
+  // Sur téléphone (et dans l'APK), la caisse et le stock passent devant : c'est l'usage principal.
+  const ordreMobile = [...liens].sort((a, b) => rangMobile(a.vers) - rangMobile(b.vers));
+  const principaux = ordreMobile.length > MAX_MOBILE + 1 ? ordreMobile.slice(0, MAX_MOBILE) : ordreMobile;
+  const autres = ordreMobile.length > MAX_MOBILE + 1 ? ordreMobile.slice(MAX_MOBILE) : [];
   const logo = identite?.logoUrl;
   const page = [...liens].reverse().find((l) => (l.vers === '/' ? emplacement.pathname === '/' : emplacement.pathname.startsWith(l.vers)));
   const nomUtilisateur = (session?.user.user_metadata?.nom_complet as string | undefined) || identifiantAffiche(session?.user.email);

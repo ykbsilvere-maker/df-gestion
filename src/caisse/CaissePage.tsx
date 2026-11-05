@@ -5,9 +5,9 @@ import { useSession } from '../lib/session';
 import { useIdentite } from '../lib/identite';
 import { clavierMontant, deviseCourante, lireMontant, montant, saisieMontant } from '../lib/argent';
 import { messageErreur } from '../lib/format';
-import { nouvelleCle, quantite, useMagasins } from '../lib/stock';
+import { nouvelleCle, quantite } from '../lib/stock';
 import type { Caisse } from '../lib/types';
-import { Alerte, Champ, EnTetePage, Fenetre, Ico, Pastille, Vide } from '../components/ui';
+import { Alerte, Champ, Fenetre, Ico, Pastille, Vide } from '../components/ui';
 import { Scanner } from '../components/Scanner';
 import { ChoixCase, Recu, type VenteRecu } from '../impression/Recu';
 import { RapportCaisse, type RapportSession } from '../impression/RapportCaisse';
@@ -109,40 +109,44 @@ export function CaissePage() {
 }
 
 function CaissePageInterne() {
-  const { organisation, session } = useSession();
+  const { organisation, session, peut } = useSession();
   const org = organisation!.organisation_id;
-  const magasins = useMagasins(org);
-  const [caisses, setCaisses] = useState<CaisseInfo[]>(() => lireCache<CaisseInfo[]>(`dfg_caisses_${org}`) ?? []);
+  // Liste des caisses avec, pour chacune : peut-on l'ouvrir, et la session en cours (par qui).
+  const [etat, setEtat] = useState<EtatCaisses | null>(() => lireCache<EtatCaisses>(`dfg_mes_caisses_${org}`));
   const [caisseId, setCaisseId] = useState<string>(() => lireCache<string>(`dfg_caisse_${org}`) ?? '');
   const [sessionCaisse, setSessionCaisse] = useState<SessionCaisse | null | undefined>(undefined);
   const [horsLigne, setHorsLigne] = useState(false);
+  // Caisse ouverte par un collègue : on n'y vend qu'après l'avoir explicitement reprise.
+  const [reprises, setReprises] = useState<string[]>([]);
 
+  const chargerCaisses = useCallback(async () => {
+    const { data, error } = await supabase.rpc('mes_caisses', { p_org: org });
+    if (error || !data) return setHorsLigne(true);
+    const e = data as EtatCaisses;
+    setEtat(e);
+    ecrireCache(`dfg_mes_caisses_${org}`, e);
+  }, [org]);
   useEffect(() => {
-    if (!magasins.length) return;
-    void supabase
-      .from('caisses')
-      .select('*')
-      .eq('organisation_id', org)
-      .eq('actif', true)
-      .order('code')
-      .then(({ data, error }) => {
-        if (error || !data) return;
-        const liste = (data as Caisse[])
-          .filter((c) => magasins.some((m) => m.id === c.magasin_id))
-          .map((c) => ({ ...c, magasin_nom: magasins.find((m) => m.id === c.magasin_id)!.nom }));
-        setCaisses(liste);
-        ecrireCache(`dfg_caisses_${org}`, liste);
-      });
-  }, [org, magasins]);
+    void chargerCaisses();
+  }, [chargerCaisses]);
 
+  const toutes = etat?.caisses ?? [];
+  const caisses: CaisseInfo[] = toutes.filter((c) => c.accessible) as unknown as CaisseInfo[];
+  const choisie = toutes.find((c) => c.id === caisseId && c.accessible);
+
+  // Par défaut : la caisse que j'ai déjà ouverte, sinon rien (la personne choisit).
   useEffect(() => {
-    if (caisses.length && !caisses.some((c) => c.id === caisseId)) setCaisseId(caisses[0]!.id);
-  }, [caisses, caisseId]);
+    if (!etat) return;
+    const mienne = etat.caisses.find((c) => c.accessible && c.session?.mienne);
+    if (mienne && caisseId !== mienne.id && !choisie?.session) setCaisseId(mienne.id);
+    else if (caisseId && !etat.caisses.some((c) => c.id === caisseId && c.accessible)) setCaisseId('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etat]);
 
   const caisse = caisses.find((c) => c.id === caisseId);
 
   const chargerSession = useCallback(async () => {
-    if (!caisseId) return;
+    if (!caisseId) return setSessionCaisse(null);
     const cle = `dfg_session_${caisseId}`;
     const { data, error } = await supabase
       .from('sessions_caisse')
@@ -172,25 +176,31 @@ function CaissePageInterne() {
     ecrireCache(`dfg_caisse_${org}`, id);
   }
 
-  if (!caisses.length) {
-    return (
-      <>
-        <EnTetePage titre="Caisse" />
-        <Vide>Aucune caisse active accessible. Un responsable peut en créer une dans « Magasins ».</Vide>
-      </>
-    );
-  }
-  if (!caisse || sessionCaisse === undefined) return <div className="chargement">Chargement de la caisse…</div>;
+  if (!etat) return <div className="chargement">Chargement des caisses…</div>;
 
-  if (!sessionCaisse) {
+  const vendable =
+    !!caisse &&
+    !!sessionCaisse &&
+    (sessionCaisse.ouverte_par === session?.user.id || reprises.includes(caisse.id) || horsLigne);
+
+  if (!vendable) {
     return (
-      <Ouverture
+      <OuvrirCaisse
         org={org}
-        caisses={caisses}
-        caisse={caisse}
+        etat={etat}
+        choisie={caisseId}
         onChoisir={choisirCaisse}
         horsLigne={horsLigne}
-        onOuverte={() => void chargerSession()}
+        peutReprendre={peut('caisse.cloturer') || peut('caisse.valider')}
+        onReprendre={(id) => {
+          setReprises((r) => [...r, id]);
+          choisirCaisse(id);
+        }}
+        onOuverte={(id) => {
+          choisirCaisse(id);
+          void chargerCaisses();
+          void chargerSession();
+        }}
       />
     );
   }
@@ -202,68 +212,200 @@ function CaissePageInterne() {
       caisse={caisse}
       sessionCaisse={sessionCaisse}
       caissier={session?.user.user_metadata?.nom_complet ?? identifiantAffiche(session?.user.email)}
-      autresCaisses={caisses.length > 1 ? caisses : []}
+      autresCaisses={[]}
       onChoisirCaisse={choisirCaisse}
       onFermee={() => {
         ecrireCache(`dfg_session_${caisse.id}`, null);
         setSessionCaisse(null);
+        setCaisseId('');
+        void chargerCaisses();
       }}
     />
   );
 }
 
-function Ouverture({
+interface EtatCaisses {
+  peut_ouvrir: boolean;
+  caisses: {
+    id: string;
+    code: string;
+    nom: string;
+    magasin_id: string;
+    magasin_nom: string;
+    accessible: boolean;
+    raison: 'droit' | 'magasin' | 'caisse' | null;
+    session: { id: string; ouverte_le: string; mienne: boolean; par: string } | null;
+  }[];
+}
+
+const FONDS_RAPIDES = [0, 5000, 10000, 20000, 50000];
+
+/** Écran « Ouvrir une caisse » : on touche sa caisse, on indique le fond, on ouvre. */
+function OuvrirCaisse({
   org,
-  caisses,
-  caisse,
+  etat,
+  choisie,
   onChoisir,
   horsLigne,
+  peutReprendre,
+  onReprendre,
   onOuverte,
 }: {
   org: string;
-  caisses: CaisseInfo[];
-  caisse: CaisseInfo;
+  etat: EtatCaisses;
+  choisie: string;
   onChoisir: (id: string) => void;
   horsLigne: boolean;
-  onOuverte: () => void;
+  peutReprendre: boolean;
+  onReprendre: (id: string) => void;
+  onOuverte: (id: string) => void;
 }) {
   const [fond, setFond] = useState('');
   const [erreur, setErreur] = useState('');
   const [enCours, setEnCours] = useState(false);
+  const accessibles = etat.caisses.filter((c) => c.accessible);
+  const selection = accessibles.find((c) => c.id === choisie && !c.session) ?? (accessibles.filter((c) => !c.session).length === 1 ? accessibles.find((c) => !c.session) : undefined);
 
   async function ouvrir(e: React.FormEvent) {
     e.preventDefault();
+    if (!selection) return;
     setEnCours(true);
     setErreur('');
-    const { error } = await supabase.rpc('ouvrir_session', { p_org: org, p_caisse: caisse.id, p_fond: lireMontant(fond) ?? 0 });
+    const { error } = await supabase.rpc('ouvrir_session', { p_org: org, p_caisse: selection.id, p_fond: lireMontant(fond) ?? 0 });
     setEnCours(false);
     if (error) return setErreur(messageErreur(error));
-    onOuverte();
+    onOuverte(selection.id);
   }
 
+  const heure = (d: string) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Abidjan' });
+
   return (
-    <>
-      <EnTetePage icone="🛒" titre="Caisse" sousTitre="Ouvrez la caisse en indiquant le fond de caisse (espèces présentes dans le tiroir)." />
-      <form className="carte formulaire ouverture-caisse" onSubmit={(e) => void ouvrir(e)}>
-        {horsLigne && <Alerte>Pas de connexion : l’ouverture d’une caisse doit être enregistrée sur le serveur. Réessayez une fois connecté.</Alerte>}
-        <Alerte>{erreur}</Alerte>
-        <Champ label="Caisse">
-          <select value={caisse.id} onChange={(e) => onChoisir(e.target.value)}>
-            {caisses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nom} ({c.code}) — {c.magasin_nom}
-              </option>
-            ))}
-          </select>
-        </Champ>
-        <Champ label={`Fond de caisse (${deviseCourante().symbole})`} aide="Monnaie laissée dans le tiroir au début de la journée.">
-          <input inputMode={clavierMontant()} value={fond} onChange={(e) => setFond(e.target.value)} placeholder="0" autoFocus />
-        </Champ>
-        <button type="submit" className="bouton bouton-principal bouton-plein" disabled={enCours || horsLigne}>
-          {enCours ? 'Ouverture…' : 'Ouvrir la caisse'}
-        </button>
-      </form>
-    </>
+    <div className="ouvrir-caisse">
+      <div className="ouvrir-entete">
+        <h1>🔓 Ouvrir une caisse</h1>
+        <p className="secondaire">Touchez votre caisse, indiquez la monnaie présente dans le tiroir, puis ouvrez.</p>
+      </div>
+      {horsLigne && <Alerte>Pas de connexion : l’ouverture d’une caisse doit être enregistrée sur le serveur. Réessayez une fois connecté.</Alerte>}
+      <Alerte>{erreur}</Alerte>
+
+      {!etat.peut_ouvrir ? (
+        <Alerte type="info">Votre rôle ne permet pas d’ouvrir une caisse. Demandez à votre gérant le droit « Caisse ».</Alerte>
+      ) : accessibles.length === 0 ? (
+        <div className="carte aucune-caisse">
+          <h2>Aucune caisse ne vous est attribuée</h2>
+          <p>
+            Votre gérant doit vous donner un magasin et une caisse : <strong>Utilisateurs → votre nom → Modifier → Magasins et caisses</strong>.
+            Ensuite, revenez ici : votre caisse apparaîtra.
+          </p>
+          {etat.caisses.length > 0 && (
+            <p className="secondaire">Caisses de l’établissement : {etat.caisses.map((c) => `${c.nom} (${c.code})`).join(', ')}.</p>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="grille-caisses">
+            {etat.caisses.map((c) => {
+              const libre = c.accessible && !c.session;
+              const actif = selection?.id === c.id;
+              return (
+                <div key={c.id} className={`carte-caisse ${actif ? 'choisie' : ''} ${!c.accessible ? 'interdite' : ''}`}>
+                  <button type="button" className="carte-caisse-corps" disabled={!libre} onClick={() => onChoisir(c.id)}>
+                    <span className="carte-caisse-icone" aria-hidden>
+                      🧾
+                    </span>
+                    <strong>{c.nom}</strong>
+                    <span className="secondaire">
+                      {c.code} · {c.magasin_nom}
+                    </span>
+                    {!c.accessible ? (
+                      <Pastille ton="gris">Non attribuée</Pastille>
+                    ) : c.session?.mienne ? (
+                      <Pastille ton="vert">Ouverte par vous · {heure(c.session.ouverte_le)}</Pastille>
+                    ) : c.session ? (
+                      <Pastille ton="or">
+                        Ouverte par {c.session.par} · {heure(c.session.ouverte_le)}
+                      </Pastille>
+                    ) : (
+                      <Pastille ton="vert">Libre</Pastille>
+                    )}
+                  </button>
+                  {c.accessible && c.session && (c.session.mienne || peutReprendre) && (
+                    <button type="button" className="bouton bouton-principal bouton-plein" onClick={() => onReprendre(c.id)}>
+                      {c.session.mienne ? 'Reprendre ma caisse' : 'Reprendre cette caisse'}
+                    </button>
+                  )}
+                  {c.accessible && c.session && !c.session.mienne && !peutReprendre && (
+                    <p className="secondaire petit">{c.session.par} doit la clôturer avant que vous puissiez l’ouvrir.</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {selection && (
+            <form className="carte formulaire ouverture-caisse" onSubmit={(e) => void ouvrir(e)}>
+              <h2>
+                {selection.nom} <span className="secondaire">({selection.code})</span>
+              </h2>
+              <Champ label={`Fond de caisse (${deviseCourante().symbole})`} aide="Monnaie laissée dans le tiroir au début de la journée.">
+                <input className="champ-fond" inputMode={clavierMontant()} value={fond} onChange={(e) => setFond(e.target.value)} placeholder="0" />
+              </Champ>
+              <div className="fonds-rapides">
+                {FONDS_RAPIDES.map((f) => (
+                  <button key={f} type="button" className={`puce-montant ${(lireMontant(fond) ?? 0) === f && fond !== '' ? 'active' : ''}`} onClick={() => setFond(f ? montant(f, '') : '0')}>
+                    {f ? montant(f, '') : 'Vide'}
+                  </button>
+                ))}
+              </div>
+              <button type="submit" className="bouton bouton-principal bouton-plein bouton-ouvrir" disabled={enCours || horsLigne}>
+                {enCours ? 'Ouverture…' : `Ouvrir ${selection.nom}`}
+              </button>
+            </form>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Quantité : − / + ou saisie directe (décimales permises pour les articles au poids). */
+function ChoixQuantite({ valeur, unite, libelle, onChange }: { valeur: number; unite: string; libelle: string; onChange: (v: number) => void }) {
+  const [texte, setTexte] = useState(valeur ? String(valeur).replace('.', ',') : '');
+  const [edition, setEdition] = useState(false);
+  useEffect(() => {
+    if (!edition) setTexte(valeur ? String(valeur).replace('.', ',') : '');
+  }, [valeur, edition]);
+  const pas = 1;
+  return (
+    <div className={`choix-quantite ${valeur > 0 ? 'rempli' : ''}`} onClick={(e) => e.stopPropagation()}>
+      <button type="button" aria-label={`Diminuer ${libelle}`} disabled={valeur <= 0} onClick={() => onChange(Math.max(0, valeur - pas))}>
+        −
+      </button>
+      <input
+        inputMode="decimal"
+        value={texte}
+        placeholder="0"
+        aria-label={`Quantité ${libelle} (${unite})`}
+        onFocus={(e) => {
+          setEdition(true);
+          e.target.select();
+        }}
+        onChange={(e) => {
+          const t = e.target.value.replace(/[^\d.,]/g, '');
+          setTexte(t);
+          const v = Number(t.replace(',', '.'));
+          if (t !== '' && Number.isFinite(v)) onChange(v);
+        }}
+        onBlur={() => {
+          setEdition(false);
+          if (texte === '') onChange(0);
+        }}
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+      />
+      <button type="button" aria-label={`Augmenter ${libelle}`} onClick={() => onChange(valeur + pas)}>
+        +
+      </button>
+    </div>
   );
 }
 
@@ -404,8 +546,15 @@ function PointDeVente({
   const recherche = useMemo(() => {
     const m = terme.match(/^(\d+(?:[.,]\d+)?)\s*[*xX]\s*(.*)$/);
     const multiplicateur = m ? Number(m[1]!.replace(',', '.')) : 1;
-    return { multiplicateur, ...chercherLocal(produits, m ? m[2]! : terme) };
+    return { multiplicateur, ...chercherLocal(produits, m ? m[2]! : terme, 300) };
   }, [terme, produits]);
+  // Liste des articles toujours visible : tout le catalogue, filtré en direct pendant la frappe.
+  const TAILLE_LISTE = 300;
+  const liste = useMemo(() => {
+    if (!terme.trim()) return [...produits].sort((a, b) => a.designation.localeCompare(b.designation, 'fr')).slice(0, TAILLE_LISTE);
+    return recherche.resultats;
+  }, [terme, produits, recherche]);
+  const pointeurFin = typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches;
 
   // Devis ou proforma repris en caisse (« Transformer en vente ») : ses lignes remplissent le panier.
   const devisImporte = useRef<string | null>(null);
@@ -430,22 +579,40 @@ function PointDeVente({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articlesPrets]);
 
-  function ajouter(p: ProduitCaisse, qte = 1) {
+  const ligneDe = (ls: LigneVente[], p: ProduitCaisse) => ls.findIndex((l) => l.produit_id === p.id && l.prix_unitaire === p.prix_vente && !l.remise);
+  const qteDansPanier = (p: ProduitCaisse) => panier.filter((l) => l.produit_id === p.id).reduce((t, l) => t + l.quantite, 0);
+
+  /** Fixe la quantité d'un article depuis la liste (0 = retiré du panier). */
+  function fixerQuantite(p: ProduitCaisse, q: number) {
+    const qte = Math.max(0, +q.toFixed(3));
     setPanier((ls) => {
-      const i = ls.findIndex((l) => l.produit_id === p.id && l.prix_unitaire === p.prix_vente && !l.remise);
+      const i = ligneDe(ls, p);
+      if (qte === 0) return i >= 0 ? ls.filter((_, j) => j !== i) : ls;
+      if (i >= 0) return ls.map((l, j) => (j === i ? { ...l, quantite: qte } : l));
+      return [...ls, { produit_id: p.id, designation: p.designation, unite: p.unite, quantite: qte, prix_unitaire: p.prix_vente, remise: 0 }];
+    });
+    if (qte > p.quantite_stock)
+      setMessage({ type: 'info', texte: `⚠️ ${p.designation} : stock insuffisant (${quantite(p.quantite_stock)} en stock). La vente reste possible.` });
+  }
+
+  function ajouter(p: ProduitCaisse, qte = 1, garderRecherche = false) {
+    setPanier((ls) => {
+      const i = ligneDe(ls, p);
       if (i >= 0) return ls.map((l, j) => (j === i ? { ...l, quantite: +(l.quantite + qte).toFixed(3) } : l));
       return [...ls, { produit_id: p.id, designation: p.designation, unite: p.unite, quantite: qte, prix_unitaire: p.prix_vente, remise: 0 }];
     });
-    setTerme('');
+    if (!garderRecherche) setTerme('');
     setIndexActif(0);
     // Stock insuffisant : simple alerte, la vente passe (le stock sera régularisé).
     setMessage(p.quantite_stock - qte < 0 ? { type: 'info', texte: `⚠️ ${p.designation} : stock insuffisant (${quantite(p.quantite_stock)} en stock). La vente reste possible ; pensez à régulariser le stock.` } : null);
-    champ.current?.focus();
+    // Sur ordinateur (lecteur de codes-barres), le curseur revient dans la recherche ; sur téléphone,
+    // on n'ouvre pas le clavier à chaque article.
+    if (pointeurFin || !garderRecherche) champ.current?.focus();
   }
 
   function valeurSaisie() {
     const { exact, resultats, multiplicateur } = recherche;
-    const choisi = exact ?? resultats[indexActif] ?? (resultats.length === 1 ? resultats[0] : undefined);
+    const choisi = exact ?? (terme.trim() ? (resultats[indexActif] ?? (resultats.length === 1 ? resultats[0] : undefined)) : undefined);
     if (choisi) ajouter(choisi, multiplicateur);
     else if (!articlesPrets) setMessage({ type: 'info', texte: 'Chargement des articles en cours… rescannez dans un instant.' });
     else if (terme.trim()) setMessage({ type: 'erreur', texte: `Aucun article pour « ${terme.trim()} ».` });
@@ -648,7 +815,7 @@ function PointDeVente({
       )}
 
       <div className="caisse-grille">
-        <section className="carte caisse-panier">
+        <section className="carte caisse-articles">
           <div className="caisse-recherche recherche-produit">
             <div className="champ-avec-bouton">
               <input
@@ -665,13 +832,13 @@ function PointDeVente({
                     valeurSaisie();
                   } else if (e.key === 'ArrowDown') {
                     e.preventDefault();
-                    setIndexActif((i) => Math.min(i + 1, recherche.resultats.length - 1));
+                    setIndexActif((i) => Math.min(i + 1, liste.length - 1));
                   } else if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     setIndexActif((i) => Math.max(i - 1, 0));
                   } else if (e.key === 'Escape') setTerme('');
                 }}
-                placeholder={articlesPrets ? 'Scanner un code-barres ou chercher un article (3*code pour 3 unités)' : 'Chargement des articles…'}
+                placeholder={articlesPrets ? 'Scanner ou taper le nom / le code d’un article' : 'Chargement des articles…'}
                 aria-label="Article à ajouter"
                 autoComplete="off"
               />
@@ -680,23 +847,47 @@ function PointDeVente({
                 Caméra
               </button>
             </div>
-            {terme.trim() && !recherche.exact && recherche.resultats.length > 0 && (
-              <ul className="recherche-resultats">
-                {recherche.resultats.map((p, i) => (
-                  <li key={p.id}>
-                    <button type="button" className={i === indexActif ? 'actif' : ''} onMouseDown={(e) => e.preventDefault()} onClick={() => ajouter(p, recherche.multiplicateur)}>
-                      <span>
-                        {p.designation}
-                        <span className="secondaire"> · {p.code} · stock {quantite(p.quantite_stock)}</span>
-                      </span>
-                      <strong>{montant(p.prix_vente)}</strong>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+          </div>
+          <div className="articles-entete">
+            <span>
+              {terme.trim()
+                ? `${liste.length}${liste.length >= TAILLE_LISTE ? '+' : ''} article${liste.length > 1 ? 's' : ''} pour « ${terme.trim()} »`
+                : `${produits.length} article${produits.length > 1 ? 's' : ''}`}
+            </span>
+            {terme && (
+              <button type="button" className="bouton-lien" onClick={() => setTerme('')}>
+                Effacer
+              </button>
             )}
           </div>
+          <ul className="liste-articles" role="listbox" aria-label="Articles">
+            {liste.map((p, i) => {
+              const q = qteDansPanier(p);
+              return (
+                <li key={p.id} className={`article-caisse ${q > 0 ? 'dans-panier' : ''} ${terme.trim() && i === indexActif ? 'actif' : ''}`}>
+                  <button type="button" className="article-corps" onMouseDown={(e) => e.preventDefault()} onClick={() => ajouter(p, recherche.multiplicateur, true)}>
+                    <span className="article-nom">{p.designation}</span>
+                    <span className="secondaire">
+                      {p.code} · stock <span className={p.quantite_stock <= 0 ? 'texte-negatif' : ''}>{quantite(p.quantite_stock)}</span>
+                    </span>
+                  </button>
+                  <strong className="article-prix">{montant(p.prix_vente)}</strong>
+                  <ChoixQuantite valeur={q} unite={p.unite} onChange={(v) => fixerQuantite(p, v)} libelle={p.designation} />
+                </li>
+              );
+            })}
+            {articlesPrets && liste.length === 0 && <li className="articles-vide">Aucun article pour « {terme.trim()} ».</li>}
+            {liste.length >= TAILLE_LISTE && <li className="articles-vide">Tapez quelques lettres pour affiner la liste.</li>}
+          </ul>
+        </section>
 
+        <section className="carte caisse-panier">
+          <div className="panier-titre">
+            <strong>🧺 Panier</strong>
+            <span className="secondaire">
+              {panier.length} ligne{panier.length > 1 ? 's' : ''}
+            </span>
+          </div>
           {message && (
             <div className="message-caisse" role="status" onClick={() => setMessage(null)}>
               <Alerte type={message.type}>{message.texte}</Alerte>
@@ -706,7 +897,7 @@ function PointDeVente({
           <div className="panier-defilant">
           {panier.length === 0 ? (
             <div className="panier-vide">
-              <p>Scannez un article pour commencer la vente.</p>
+              <p>Touchez un article dans la liste, ou scannez-le, pour commencer la vente.</p>
               {derniere && (
                 <div className="derniere-vente">
                   <div>
@@ -751,15 +942,12 @@ function PointDeVente({
                       </div>
                     </td>
                     <td className="nombre">
-                      <div className="quantite-panier">
-                        <button type="button" aria-label={`Diminuer ${l.designation}`} onClick={() => (l.quantite > 1 ? modifierLigne(i, { quantite: +(l.quantite - 1).toFixed(3) }) : retirerLigne(i))}>
-                          −
-                        </button>
-                        <span>{quantite(l.quantite)}</span>
-                        <button type="button" aria-label={`Augmenter ${l.designation}`} onClick={() => modifierLigne(i, { quantite: +(l.quantite + 1).toFixed(3) })}>
-                          +
-                        </button>
-                      </div>
+                      <ChoixQuantite
+                        valeur={l.quantite}
+                        unite={l.unite}
+                        libelle={l.designation}
+                        onChange={(v) => (v <= 0 ? retirerLigne(i) : modifierLigne(i, { quantite: +v.toFixed(3) }))}
+                      />
                     </td>
                     <td className="nombre">{montant(Math.round(l.quantite * l.prix_unitaire) - l.remise)}</td>
                     <td>
@@ -823,14 +1011,14 @@ function PointDeVente({
             <button type="button" className="bouton-lien" onClick={() => void chargerArticles()} disabled={!enLigne}>
               Actualiser les articles et les prix
             </button>
-            {autresCaisses.length > 0 && (
-              <select className="select-compact" value={caisse.id} onChange={(e) => onChoisirCaisse(e.target.value)} aria-label="Changer de caisse">
-                {autresCaisses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nom} — {c.magasin_nom}
-                  </option>
-                ))}
-              </select>
+            {autresCaisses.length === 0 && (
+              <button
+                type="button"
+                className="bouton-lien"
+                onClick={() => (panier.length === 0 || window.confirm('Le panier en cours sera vidé. Changer de caisse ?')) && onChoisirCaisse('')}
+              >
+                ↔ Changer de caisse (la caisse reste ouverte)
+              </button>
             )}
           </details>
         </aside>
