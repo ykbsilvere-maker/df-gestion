@@ -1015,3 +1015,35 @@ input:disabled, select:disabled { background: var(--surface-2); color: var(--enc
 .legende-histo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .legende-histo .puce { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
 .module-choix.bloque { opacity: .45; cursor: not-allowed; }
+
+/* Menu latéral : défile lui-même (le bas ne déborde plus sur la page), rangé par sections */
+.barre-laterale { height: 100vh; height: 100dvh; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--foret-2) transparent; }
+.navigation { gap: 1px; }
+.navigation a { padding: 7px 10px; }
+.titre-groupe { margin: 12px 10px 3px; font-size: 0.68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8faea3; }
+.pied-barre { padding-top: 12px; border-top: 1px solid var(--foret-2); }
+.pied-barre .email-courant { color: #c9d6d0; opacity: 1; }
+.pied-barre .propulse { color: #9fb8ae; }
+
+/* Écran du code de caisse */
+.ecran-verrou { min-height: calc(100dvh - 120px); }
+.carte-verrou { width: min(360px, 100%); padding: 22px 18px; }
+.etapes-pin { display: flex; justify-content: center; gap: 6px; margin: 12px 0 2px; }
+.etapes-pin span { font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--encre-2, #777); }
+.etapes-pin span.actif { background: var(--accent); color: #fff; }
+.etapes-pin span.fait { background: var(--vert-clair, #e3f3e8); color: var(--vert); }
+.conseil-pin { font-size: 0.8rem; background: var(--or-clair, #fdf4dc); border-radius: 10px; padding: 6px 10px; margin: 8px 0 0; }
+.points-pin { gap: 10px; }
+.points-pin span { width: 22px; height: 22px; display: grid; place-items: center; font-weight: 800; font-size: 0.95rem; }
+.points-pin span.facultatif:not(.plein) { border-style: dashed; opacity: .6; }
+.points-pin span.chiffre.plein { background: var(--accent-clair); color: var(--accent); }
+.aide-pin { font-size: 0.8rem; color: var(--encre-2, #777); margin: 4px 0 0; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; }
+.voir-pin { font-size: 0.8rem; }
+.clavier-pin { gap: 8px; margin-top: 10px; }
+.touche-pin { height: clamp(48px, 8.5vh, 60px); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+.touche-pin small { font-size: 0.68rem; font-weight: 600; margin-top: 3px; }
+.touche-pin-effacer { background: var(--surface); font-size: 1.15rem; }
+.touche-pin-valider { font-size: 1.2rem; }
+.touche-pin-valider:not(.pret) { background: var(--surface-2); color: var(--encre-2, #999); border-color: var(--trait); }
+.touche-pin-valider.pret { box-shadow: 0 6px 16px rgba(200, 22, 27, .3); }
+.touche-pin:disabled { opacity: .55; cursor: default; }

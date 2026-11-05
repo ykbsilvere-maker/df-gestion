@@ -44,14 +44,15 @@ function ecrireLocal(org: string, uid: string, v: { defini: boolean; empreinte?:
 
 function Clavier({ valeur, onChange, onValider, longueurMax = 6 }: { valeur: string; onChange: (v: string) => void; onValider: () => void; longueurMax?: number }) {
   const touches = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', '✓'];
+  const pret = valeur.length >= 4;
   return (
     <div className="clavier-pin">
       {touches.map((t) => (
         <button
           key={t}
           type="button"
-          className={`touche-pin ${t === '✓' ? 'touche-pin-valider' : ''}`}
-          disabled={t === '✓' && valeur.length < 4}
+          className={`touche-pin ${t === '✓' ? 'touche-pin-valider' : ''} ${t === '⌫' ? 'touche-pin-effacer' : ''} ${t === '✓' && pret ? 'pret' : ''}`}
+          disabled={(t === '✓' && !pret) || (t === '⌫' && !valeur)}
           onClick={() => {
             if (t === '⌫') onChange(valeur.slice(0, -1));
             else if (t === '✓') onValider();
@@ -59,18 +60,32 @@ function Clavier({ valeur, onChange, onValider, longueurMax = 6 }: { valeur: str
           }}
           aria-label={t === '⌫' ? 'Effacer' : t === '✓' ? 'Valider' : t}
         >
-          {t}
+          {t === '⌫' ? (
+            <>
+              <span aria-hidden>⌫</span>
+              <small>Effacer</small>
+            </>
+          ) : t === '✓' ? (
+            <>
+              <span aria-hidden>✓</span>
+              <small>Valider</small>
+            </>
+          ) : (
+            t
+          )}
         </button>
       ))}
     </div>
   );
 }
 
-function Points({ n }: { n: number }) {
+function Points({ code, visible }: { code: string; visible: boolean }) {
   return (
     <div className="points-pin" aria-hidden>
-      {Array.from({ length: Math.max(4, n) }).map((_, i) => (
-        <span key={i} className={i < n ? 'plein' : ''} />
+      {Array.from({ length: 6 }).map((_, i) => (
+        <span key={i} className={`${i < code.length ? 'plein' : ''} ${i >= 4 ? 'facultatif' : ''} ${visible ? 'chiffre' : ''}`}>
+          {visible && i < code.length ? code[i] : ''}
+        </span>
       ))}
     </div>
   );
@@ -86,6 +101,7 @@ export function VerrouCaisse({ children }: { children: ReactNode }) {
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [erreur, setErreur] = useState('');
   const [occupe, setOccupe] = useState(false);
+  const [voir, setVoir] = useState(false);
   const derniereActivite = useRef(Date.now());
 
   useEffect(() => {
@@ -205,6 +221,19 @@ export function VerrouCaisse({ children }: { children: ReactNode }) {
     setEtat('ouvert');
   }
 
+  // Clavier du PC : chiffres, Retour arrière et Entrée fonctionnent sans cliquer dans un champ.
+  useEffect(() => {
+    if (etat !== 'creer' && etat !== 'verrouille') return;
+    const touche = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement | null)?.classList?.contains('pin-cache')) return;
+      if (/^[0-9]$/.test(e.key)) setCode((c) => (c.length < 6 ? c + e.key : c));
+      else if (e.key === 'Backspace') setCode((c) => c.slice(0, -1));
+      else if (e.key === 'Enter') document.getElementById('valider-pin')?.click();
+    };
+    window.addEventListener('keydown', touche);
+    return () => window.removeEventListener('keydown', touche);
+  }, [etat]);
+
   if (etat === 'ouvert') {
     return (
       <>
@@ -224,21 +253,36 @@ export function VerrouCaisse({ children }: { children: ReactNode }) {
         <div className="verrou-avatar" aria-hidden>
           {nom.trim().charAt(0).toUpperCase() || '🔒'}
         </div>
-        <h1>{creation ? (confirmation === null ? 'Créez votre code de caisse' : 'Confirmez votre code') : 'Caisse verrouillée'}</h1>
+        {creation && (
+          <div className="etapes-pin" aria-label={`Étape ${confirmation === null ? 1 : 2} sur 2`}>
+            <span className={confirmation === null ? 'actif' : 'fait'}>1 · Choisir</span>
+            <span className={confirmation === null ? '' : 'actif'}>2 · Confirmer</span>
+          </div>
+        )}
+        <h1>{creation ? (confirmation === null ? 'Choisissez votre code de caisse' : 'Retapez le même code') : 'Caisse verrouillée'}</h1>
         <p className="secondaire">
           {creation
             ? confirmation === null
-              ? '4 à 6 chiffres, personnels. Il vous sera demandé à chaque ouverture de la caisse.'
-              : 'Tapez le même code une seconde fois.'
-            : `${nom} — tapez votre code personnel.`}
+              ? 'Inventez 4 à 6 chiffres, rien qu’à vous. Ce code vous sera demandé pour ouvrir la caisse et après 5 minutes sans activité.'
+              : 'Pour être sûr qu’il n’y a pas d’erreur, tapez exactement le même code.'
+            : `${nom} — tapez votre code personnel de caisse.`}
         </p>
+        {creation && confirmation === null && (
+          <p className="conseil-pin">N’utilisez ni votre code Mobile Money, ni celui de votre carte, ni votre date de naissance.</p>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             void (creation ? creer() : deverrouiller());
           }}
         >
-          <Points n={code.length} />
+          <Points code={code} visible={voir} />
+          <p className="aide-pin">
+            {code.length < 4 ? `Encore ${4 - code.length} chiffre${4 - code.length > 1 ? 's' : ''} au minimum` : code.length < 6 ? 'Vous pouvez valider (ou ajouter jusqu’à 6 chiffres)' : 'Code complet : validez'}
+            <button type="button" className="bouton-lien voir-pin" onClick={() => setVoir(!voir)}>
+              {voir ? '🙈 Masquer' : '👁 Voir'}
+            </button>
+          </p>
           <input
             className="pin-cache"
             inputMode="numeric"
@@ -251,8 +295,14 @@ export function VerrouCaisse({ children }: { children: ReactNode }) {
           />
           {erreur && <p className="texte-negatif" role="alert">{erreur}</p>}
           <Clavier valeur={code} onChange={setCode} onValider={() => void (creation ? creer() : deverrouiller())} />
+          <button id="valider-pin" type="submit" hidden aria-hidden tabIndex={-1} />
         </form>
-        {!creation && <p className="secondaire petit">Code oublié ? Un responsable peut le réinitialiser dans Utilisateurs.</p>}
+        {creation && confirmation !== null && (
+          <button type="button" className="bouton-lien petit" onClick={() => { setConfirmation(null); setCode(''); setErreur(''); }}>
+            ← Changer de code
+          </button>
+        )}
+        {!creation && <p className="secondaire petit">Code oublié ? Votre gérant le réinitialise dans Utilisateurs → votre fiche → « Code caisse ».</p>}
       </div>
     </div>
   );

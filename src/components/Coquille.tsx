@@ -1,27 +1,29 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useSession } from '../lib/session';
 import { useIdentite } from '../lib/identite';
 
-const LIENS: { vers: string; libelle: string; permission?: string | string[]; admin?: boolean; icone: string }[] = [
+type Groupe = 'vendre' | 'stock' | 'pilotage' | 'reglages';
+const GROUPES: Record<Groupe, string> = { vendre: 'Vendre', stock: 'Stock et achats', pilotage: 'Pilotage', reglages: 'Réglages' };
+const LIENS: { vers: string; libelle: string; permission?: string | string[]; admin?: boolean; icone: string; groupe?: Groupe }[] = [
   { vers: '/administration', libelle: 'Administration', admin: true, icone: '🛡️' },
   { vers: '/', libelle: 'Accueil', icone: '🏠' },
-  { vers: '/caisse', libelle: 'Caisse', permission: 'caisse.creer', icone: '🛒' },
-  { vers: '/catalogue', libelle: 'Catalogue', permission: 'catalogue.consulter', icone: '🛍️' },
-  { vers: '/stock', libelle: 'Stock', permission: 'stock.consulter', icone: '📦' },
-  { vers: '/fournisseurs', libelle: 'Fournisseurs', permission: ['fournisseurs.consulter', 'achats.consulter'], icone: '🚚' },
-  { vers: '/devis', libelle: 'Devis', permission: 'ventes.valider', icone: '📄' },
-  { vers: '/rapports/ventes', libelle: 'Ventes', permission: ['ventes.exporter', 'rapports.consulter'], icone: '📊' },
-  { vers: '/budget', libelle: 'Budget', permission: 'budget.consulter', icone: '📒' },
-  { vers: '/tresorerie', libelle: 'Trésorerie', permission: 'tresorerie.consulter', icone: '💰' },
-  { vers: '/rentabilite', libelle: 'Rentabilité', permission: 'rentabilite.consulter', icone: '📈' },
-  { vers: '/comptabilite', libelle: 'Comptabilité', permission: 'comptabilite.consulter', icone: '📚' },
-  { vers: '/soldes', libelle: 'Soldes', permission: 'promotions.consulter', icone: '🏷️' },
-  { vers: '/magasins', libelle: 'Magasins', permission: 'magasins.consulter', icone: '🏪' },
-  { vers: '/utilisateurs', libelle: 'Utilisateurs', permission: 'utilisateurs.consulter', icone: '👥' },
-  { vers: '/journal', libelle: 'Journal', permission: 'audit.consulter', icone: '📜' },
-  { vers: '/personnalisation', libelle: 'Personnalisation', permission: 'administration.consulter', icone: '🎨' },
-  { vers: '/compte', libelle: 'Mon compte', icone: '👤' },
+  { vers: '/caisse', libelle: 'Caisse', permission: 'caisse.creer', icone: '🛒', groupe: 'vendre' },
+  { vers: '/catalogue', libelle: 'Catalogue', permission: 'catalogue.consulter', icone: '🛍️', groupe: 'vendre' },
+  { vers: '/devis', libelle: 'Devis', permission: 'ventes.valider', icone: '📄', groupe: 'vendre' },
+  { vers: '/rapports/ventes', libelle: 'Ventes', permission: ['ventes.exporter', 'rapports.consulter'], icone: '📊', groupe: 'vendre' },
+  { vers: '/stock', libelle: 'Stock', permission: 'stock.consulter', icone: '📦', groupe: 'stock' },
+  { vers: '/fournisseurs', libelle: 'Fournisseurs', permission: ['fournisseurs.consulter', 'achats.consulter'], icone: '🚚', groupe: 'stock' },
+  { vers: '/budget', libelle: 'Budget', permission: 'budget.consulter', icone: '📒', groupe: 'pilotage' },
+  { vers: '/tresorerie', libelle: 'Trésorerie', permission: 'tresorerie.consulter', icone: '💰', groupe: 'pilotage' },
+  { vers: '/rentabilite', libelle: 'Rentabilité', permission: 'rentabilite.consulter', icone: '📈', groupe: 'pilotage' },
+  { vers: '/comptabilite', libelle: 'Comptabilité', permission: 'comptabilite.consulter', icone: '📚', groupe: 'pilotage' },
+  { vers: '/soldes', libelle: 'Soldes', permission: 'promotions.consulter', icone: '🏷️', groupe: 'pilotage' },
+  { vers: '/magasins', libelle: 'Magasins', permission: 'magasins.consulter', icone: '🏪', groupe: 'reglages' },
+  { vers: '/utilisateurs', libelle: 'Utilisateurs', permission: 'utilisateurs.consulter', icone: '👥', groupe: 'reglages' },
+  { vers: '/journal', libelle: 'Journal', permission: 'audit.consulter', icone: '📜', groupe: 'reglages' },
+  { vers: '/personnalisation', libelle: 'Personnalisation', permission: 'administration.consulter', icone: '🎨', groupe: 'reglages' },
+  { vers: '/compte', libelle: 'Mon compte', icone: '👤', groupe: 'reglages' },
 ];
 
 /** Sur téléphone : 4 raccourcis en bas d'écran, le reste dans « Plus ». */
@@ -78,13 +80,16 @@ export function Coquille() {
         )}
 
         <nav className="navigation">
-          {liens.map((l) => (
-            <NavLink key={l.vers} to={l.vers} end={l.vers === '/'}>
-              <span className="nav-icone" aria-hidden>
-                {l.icone}
-              </span>
-              {l.libelle}
-            </NavLink>
+          {liens.map((l, i) => (
+            <Fragment key={l.vers}>
+              {l.groupe && l.groupe !== liens[i - 1]?.groupe && <span className="titre-groupe">{GROUPES[l.groupe]}</span>}
+              <NavLink to={l.vers} end={l.vers === '/'}>
+                <span className="nav-icone" aria-hidden>
+                  {l.icone}
+                </span>
+                {l.libelle}
+              </NavLink>
+            </Fragment>
           ))}
         </nav>
 
