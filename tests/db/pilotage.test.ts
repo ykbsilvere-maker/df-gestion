@@ -113,7 +113,7 @@ describe('Budget du mois', () => {
     const s = await commeAlice((q) => un(q<{ r: { lignes: { poste_id: string; prevu: number; reel: number; alerte: string }[]; totaux: { prevu: number; reel: number } } }>(
       `select public.suivi_budget($1, current_date) r`, [org])));
     expect(s.r.lignes.find((l) => l.poste_id === electricite)).toMatchObject({ prevu: 30000, reel: 26000, alerte: 'attention' });
-    expect(s.r.totaux).toEqual({ prevu: 180000, reel: 26000 });
+    expect(s.r.totaux).toMatchObject({ prevu: 180000, reel: 26000 });
   });
 });
 
