@@ -62,11 +62,14 @@ describe('Arrivage annoncé puis compté', () => {
       const id = (await un(q<{ id: string }>(`insert into receptions (organisation_id, magasin_id) values ($1, $2) returning id`, [org, mag]))).id;
       await q(`insert into receptions_lignes (organisation_id, reception_id, produit_id, quantite, prix_unitaire) values ($1, $2, $3, 20, 15000), ($1, $2, $4, 10, 5000)`, [org, id, riz, huile]);
       await q(`select public.annoncer_reception($1)`, [id]);
-      await expect(q(`select public.valider_reception($1)`, [id])).rejects.toThrow(/Comptage incomplet/);
+      return id;
+    });
+    await expect(commeAlice((q) => q(`select public.valider_reception($1)`, [r]))).rejects.toThrow(/Comptage incomplet/);
+    await commeAlice(async (q) => {
+      const id = r;
       await q(`update receptions_lignes set quantite_comptee = 18 where reception_id = $1 and produit_id = $2`, [id, riz]);
       await q(`update receptions_lignes set quantite_comptee = 0 where reception_id = $1 and produit_id = $2`, [id, huile]);
       await q(`select public.valider_reception($1)`, [id]);
-      return id;
     });
     const { rows } = await pool.query(`select ecarts_controle from receptions where id = $1`, [r]);
     expect(rows[0].ecarts_controle).toHaveLength(2);
@@ -107,9 +110,9 @@ describe('Créances clients', () => {
       await q(`select public.enregistrer_creance($1, $2, 100000, current_date - 75, current_date - 45, 'Facture 12', 'F-12')`, [org, c]);
       await q(`select public.enregistrer_creance($1, $2, 50000, current_date - 10, current_date + 20, 'Facture 30', 'F-30')`, [org, c]);
       await q(`select public.encaisser_creance($1, $2, null, 30000, $3, current_date, 'W123')`, [org, c, wave]);
-      await expect(q(`select public.encaisser_creance($1, $2, null, 500000, $3)`, [org, c, wave])).rejects.toThrow(/ne doit que/);
       return c;
     });
+    await expect(commeAlice((q) => q(`select public.encaisser_creance($1, $2, null, 500000, $3)`, [org, cl, wave]))).rejects.toThrow(/ne doit que/);
     const b = await commeAlice((q) => un(q<{ r: { clients: Record<string, number>[] } }>(`select public.balance_agee($1) r`, [org])));
     expect(b.r.clients[0]).toMatchObject({ total: 120000, non_echu: 50000, j60: 70000 });
     const rel = await commeAlice((q) => un(q<{ r: { montant_echu: number } }>(`select public.enregistrer_relance($1, 1::smallint) r`, [cl])));
@@ -123,9 +126,9 @@ describe('Devis', () => {
     const d = await commeAlice(async (q) => {
       const id = (await un(q<{ id: string }>(`insert into devis (organisation_id, magasin_id, client_nom) values ($1, $2, 'Mairie') returning id`, [org, mag]))).id;
       await q(`insert into devis_lignes (organisation_id, devis_id, produit_id, designation, quantite, prix_unitaire, remise) values ($1, $2, $3, 'Riz 25 kg', 10, 18000, 5000)`, [org, id, riz]);
-      await expect(q(`update devis set total = 1 where id = $1`, [id])).rejects.toThrow(/permission/);
       return id;
     });
+    await expect(commeAlice((q) => q(`update devis set total = 1 where id = $1`, [d]))).rejects.toThrow(/permission/);
     const { rows } = await pool.query(`select numero, total, total_remises from devis where id = $1`, [d]);
     expect(rows[0]).toMatchObject({ numero: 'D-000001' });
     expect(Number(rows[0].total)).toBe(175000);
