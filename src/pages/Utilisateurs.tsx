@@ -988,7 +988,7 @@ function GrilleModules({
             </tr>
           </thead>
           <tbody>
-            {GRILLE.map((m) => {
+            {GRILLE.filter((m) => universDe(m).some((c) => mesDroits.has(c))).map((m) => {
               const actuel = niveauDe(effectifs, m);
               return (
                 <tr key={m.code}>

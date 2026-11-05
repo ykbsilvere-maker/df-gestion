@@ -10,6 +10,7 @@ import { ChoixCase, FeuilleA4Six, Recu, venteExemple } from '../impression/Recu'
 import { caseSuivante, memoriserCaseSuivante, useImpression } from '../impression/impression';
 import { MoyensReglement } from '../caisse/MoyensReglement';
 import { ChoixDevise } from '../components/ChoixDevise';
+import { ModulesEntreprise } from '../components/ChoixModules';
 
 const FORMATS: { code: FormatRecu; libelle: string; aide: string }[] = [
   { code: 'a4_6', libelle: 'A4 divisé en 6', aide: 'Imprimante de bureau. 6 reçus de 105 × 99 mm par feuille.' },
@@ -363,6 +364,10 @@ export function Personnalisation() {
             </button>
           </section>
         </aside>
+      </div>
+
+      <div className="section-moyens">
+        <ModulesEntreprise />
       </div>
 
       {identite && (

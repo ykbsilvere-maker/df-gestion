@@ -15,6 +15,7 @@ const LIENS: { vers: string; libelle: string; permission?: string | string[]; ad
   { vers: '/budget', libelle: 'Budget', permission: 'budget.consulter', icone: '📒' },
   { vers: '/tresorerie', libelle: 'Trésorerie', permission: 'tresorerie.consulter', icone: '💰' },
   { vers: '/rentabilite', libelle: 'Rentabilité', permission: 'rentabilite.consulter', icone: '📈' },
+  { vers: '/comptabilite', libelle: 'Comptabilité', permission: 'comptabilite.consulter', icone: '📚' },
   { vers: '/soldes', libelle: 'Soldes', permission: 'promotions.consulter', icone: '🏷️' },
   { vers: '/magasins', libelle: 'Magasins', permission: 'magasins.consulter', icone: '🏪' },
   { vers: '/utilisateurs', libelle: 'Utilisateurs', permission: 'utilisateurs.consulter', icone: '👥' },

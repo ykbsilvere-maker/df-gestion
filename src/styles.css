@@ -972,3 +972,46 @@ input:disabled, select:disabled { background: var(--surface-2); color: var(--enc
 .sig .sig-detail td { font-size: 0.84rem; color: var(--encre-douce); padding-left: 22px; }
 .petit-texte { font-size: 0.85rem; }
 .texte-positif { color: var(--vert); font-weight: 700; }
+
+/* Comptabilité */
+.journal .ecriture-tete td { background: var(--surface-2); border-top: 2px solid var(--bordure); }
+.journal .ecriture-ligne td { border-top: none; }
+.journal .ecriture-ligne td.code { padding-left: 18px; }
+.compte-gl { margin-bottom: 22px; }
+.compte-gl h3 { margin: 0 0 6px; font-size: 1rem; }
+.bilan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.bilan h3 { margin-top: 0; }
+.bilan-note { grid-column: 1 / -1; }
+@media (max-width: 760px) { .bilan { grid-template-columns: 1fr; } }
+
+/* Choix des modules */
+.libelle-champ { font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; }
+.choix-modules { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin: 6px 0 14px; }
+.module-choix, .module-fixe {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--bordure);
+  border-radius: 12px; cursor: pointer; background: var(--surface); transition: border-color .15s, background .15s;
+}
+.module-choix > span, .module-fixe > span { font-size: 1.3rem; }
+.module-choix div, .module-fixe div { display: flex; flex-direction: column; line-height: 1.25; }
+.module-choix .secondaire, .module-fixe .secondaire { font-size: 0.78rem; }
+.module-choix.actif { border-color: var(--accent); background: var(--accent-clair); }
+.module-choix:not(.actif) { opacity: .7; }
+.module-fixe { background: var(--surface-2); cursor: default; }
+.module-choix input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
+
+/* Budget prévu / réalisé */
+.resume-realisation { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 14px; }
+.champ-date-compact { width: auto; min-width: 135px; padding: 6px 8px; }
+.ligne-detail > td { background: var(--surface-2); padding: 6px 14px 10px 28px; }
+.histo-budget { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; align-items: end; height: 180px; margin: 10px 0 4px; }
+.histo-mois { display: flex; flex-direction: column; align-items: stretch; height: 100%; background: none; border: 0; padding: 0; cursor: pointer; }
+.histo-barres { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 3px; }
+.histo-barres span { width: 42%; min-height: 1px; border-radius: 4px 4px 0 0; }
+.barre-prevu { background: var(--bordure); }
+.barre-reel { background: var(--vert); }
+.barre-reel.depasse { background: var(--rouge); }
+.histo-libelle { font-size: 0.72rem; text-align: center; margin-top: 4px; color: var(--texte-secondaire, #666); }
+.histo-mois:hover .histo-barres { background: var(--surface-2); border-radius: 6px; }
+.legende-histo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.legende-histo .puce { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.module-choix.bloque { opacity: .45; cursor: not-allowed; }

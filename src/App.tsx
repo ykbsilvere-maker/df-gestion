@@ -35,6 +35,7 @@ import { Creances, FicheClient, TresorerieModule } from './pages/pilotage/Creanc
 import { Approvisionnement } from './pages/pilotage/Approvisionnement';
 import { FicheDevis, ListeDevis } from './pages/Devis';
 import { Rentabilite } from './pages/pilotage/Rentabilite';
+import { Comptabilite } from './pages/pilotage/Comptabilite';
 import { Soldes } from './pages/pilotage/Soldes';
 import { Administration } from './pages/Administration';
 import { Configuration } from './pages/Configuration';
@@ -151,6 +152,7 @@ function Routes_() {
           <Route path="approvisionnement" element={<Approvisionnement />} />
         </Route>
         <Route path="rentabilite" element={<AvecDroit permission="rentabilite.consulter"><Rentabilite /></AvecDroit>} />
+        <Route path="comptabilite" element={<AvecDroit permission="comptabilite.consulter"><Comptabilite /></AvecDroit>} />
         <Route path="soldes" element={<AvecDroit permission="promotions.consulter"><Soldes /></AvecDroit>} />
         <Route path="devis" element={<AvecDroit permission="ventes.valider"><ListeDevis /></AvecDroit>} />
         <Route path="devis/:id" element={<AvecDroit permission="ventes.valider"><FicheDevis /></AvecDroit>} />

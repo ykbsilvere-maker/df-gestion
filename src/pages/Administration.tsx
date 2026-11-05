@@ -9,6 +9,7 @@ import { encoderCode, lireConfiguration } from '../lib/config';
 import { genererMotDePasse, gererCompte, messageIdentifiants } from '../lib/comptes';
 import { REGIMES, type RegimeFiscal } from '../lib/types';
 import { Alerte, Champ, EnTetePage, Fenetre, Ico, MontantFort, Pastille, Vide } from '../components/ui';
+import { ChoixModules } from '../components/ChoixModules';
 import { Identifiants } from '../components/Identifiants';
 
 interface LigneEntreprise {
@@ -36,6 +37,7 @@ type Fenetres =
   | { type: 'gerant'; e: LigneEntreprise }
   | { type: 'motdepasse'; e: LigneEntreprise }
   | { type: 'suspendre'; e: LigneEntreprise }
+  | { type: 'modules'; e: LigneEntreprise }
   | { type: 'identifiants'; texte: string; titre: string }
   | null;
 
@@ -211,6 +213,9 @@ export function Administration() {
                   <button type="button" className="bouton-lien" onClick={() => setFenetre({ type: 'gerant', e })}>
                     Ajouter un gérant
                   </button>
+                  <button type="button" className="bouton-lien" onClick={() => setFenetre({ type: 'modules', e })}>
+                    Modules souscrits
+                  </button>
                   {e.gerants.length > 0 && (
                     <button type="button" className="bouton-lien" onClick={() => setFenetre({ type: 'motdepasse', e })}>
                       Mot de passe du gérant
@@ -278,6 +283,8 @@ export function Administration() {
                 ? `Mot de passe du gérant — ${fenetre.e.nom}`
                 : fenetre?.type === 'suspendre'
                   ? `Suspendre ${fenetre.e.nom}`
+                  : fenetre?.type === 'modules'
+                    ? `Modules souscrits — ${fenetre.e.nom}`
                   : fenetre?.type === 'identifiants'
                     ? fenetre.titre
                     : ''
@@ -308,6 +315,15 @@ export function Administration() {
             onFini={async (texte) => {
               await apres('Mot de passe réinitialisé.');
               setFenetre({ type: 'identifiants', titre: 'Nouveaux identifiants à transmettre', texte });
+            }}
+          />
+        )}
+        {fenetre?.type === 'modules' && (
+          <SouscriptionModules
+            entreprise={fenetre.e}
+            onFini={async () => {
+              setFenetre(null);
+              await apres(`Modules de ${fenetre.e.nom} mis à jour.`);
             }}
           />
         )}
@@ -367,6 +383,7 @@ function ChampsAcces({
 }
 
 function FormulaireEntreprise({ onFini }: { onFini: (r: { message: string; texte?: string }) => Promise<void> }) {
+  const [desactives, setDesactives] = useState<string[]>([]);
   const [v, setV] = useState({
     nom: '',
     ville: 'Abidjan',
@@ -390,7 +407,7 @@ function FormulaireEntreprise({ onFini }: { onFini: (r: { message: string; texte
     setEnvoi(true);
     setErreur('');
     const email = v.gerantEmail.trim().toLowerCase();
-    const { error } = await supabase.rpc('admin_creer_entreprise', {
+    const { data: orgId, error } = await supabase.rpc('admin_creer_entreprise', {
       p_nom: v.nom,
       p_gerant_email: email,
       p_ncc: v.ncc || null,
@@ -405,6 +422,8 @@ function FormulaireEntreprise({ onFini }: { onFini: (r: { message: string; texte
       setEnvoi(false);
       return setErreur(messageErreur(error));
     }
+    // Modules décochés = non souscrits : le propriétaire ne pourra pas les activer lui-même.
+    if (desactives.length) await supabase.rpc('definir_modules', { p_org: orgId as string, p_desactives: desactives, p_bloques: desactives });
     const r = await creerAcces(email, v.gerantNom.trim(), v.motDePasse, v.nom.trim());
     setEnvoi(false);
     await onFini({ message: `Entreprise « ${v.nom.trim()} » créée. ${r.message}`, texte: r.texte });
@@ -442,11 +461,50 @@ function FormulaireEntreprise({ onFini }: { onFini: (r: { message: string; texte
       <Champ label="Nom du premier magasin" aide="Une première caisse y est créée ; le gérant ajoute les autres.">
         <input value={v.magasin} onChange={(e) => maj('magasin', e.target.value)} required minLength={2} />
       </Champ>
+      <fieldset className="sans-bordure">
+        <legend className="libelle-champ">Modules souscrits</legend>
+        <ChoixModules desactives={desactives} onChange={setDesactives} />
+      </fieldset>
       <ChampsAcces v={v} maj={maj} />
       <button className="bouton bouton-principal bouton-plein" disabled={envoi}>
         {envoi ? 'Création…' : 'Créer l’entreprise et l’accès du gérant'}
       </button>
     </form>
+  );
+}
+
+/** L'administrateur général choisit les modules souscrits ; le propriétaire active ensuite ceux qu'il veut parmi eux. */
+function SouscriptionModules({ entreprise, onFini }: { entreprise: LigneEntreprise; onFini: () => Promise<void> }) {
+  const [bloques, setBloques] = useState<string[] | null>(null);
+  const [erreur, setErreur] = useState('');
+  const [envoi, setEnvoi] = useState(false);
+  useEffect(() => {
+    void supabase.rpc('modules_organisation', { p_org: entreprise.organisation_id }).then(({ data, error }) => {
+      if (error) setErreur(messageErreur(error));
+      else setBloques((data as { bloques: string[] }).bloques ?? []);
+    });
+  }, [entreprise.organisation_id]);
+
+  async function enregistrer() {
+    setEnvoi(true);
+    const { error } = await supabase.rpc('definir_modules', { p_org: entreprise.organisation_id, p_desactives: null, p_bloques: bloques });
+    setEnvoi(false);
+    if (error) return setErreur(messageErreur(error));
+    await onFini();
+  }
+
+  return (
+    <div className="formulaire">
+      <Alerte>{erreur}</Alerte>
+      <p className="secondaire">
+        Cochez les modules souscrits par l’entreprise. Un module décoché disparaît pour tous ses utilisateurs ; ses données sont
+        conservées. Le propriétaire peut retirer lui-même un module souscrit, mais pas en ajouter un non souscrit.
+      </p>
+      {bloques === null ? <Vide>Chargement…</Vide> : <ChoixModules desactives={bloques} onChange={setBloques} />}
+      <button type="button" className="bouton bouton-principal bouton-plein" disabled={envoi || bloques === null} onClick={() => void enregistrer()}>
+        {envoi ? 'Enregistrement…' : 'Enregistrer la souscription'}
+      </button>
+    </div>
   );
 }
 

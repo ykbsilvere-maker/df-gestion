@@ -3,7 +3,23 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 1.0.** **Rentabilité** : compte d'exploitation du mois (chiffre d'affaires, coût d'achat des ventes, marge,
+**Version 1.1.** **Comptabilité SYSCOHADA** générée automatiquement à partir des opérations : ventes du jour
+par magasin (TVA séparée pour les régimes RSI et RNI), achats et frais (601, 6015, 401), règlements fournisseurs,
+dépenses du budget au compte de leur poste, virements internes (585) et frais bancaires (631), créances et encaissements
+clients, écarts de rapprochement, variation de stock (31 / 6031), à-nouveaux. Écrans : **journal** (filtre par journal
+VT, AC, TR, OD, AN), **grand livre**, **balance**, **bilan simplifié** (actif = passif vérifié), **clôture mensuelle**
+(un mois clôturé est figé ; une correction passe par une **extourne**), **écritures manuelles** équilibrées avec pièce
+justificative, **plan comptable** ajustable ; exports Excel du journal, du grand livre et de la balance.
+**Modules au choix** : à la création, l'entreprise coche les modules qu'elle utilise (stock, fournisseurs, budget,
+trésorerie, rentabilité, soldes, comptabilité ; caisse, catalogue, ventes, devis et clients toujours inclus) ;
+l'**administrateur général** fixe les modules **souscrits** de chaque entreprise, le propriétaire choisit parmi eux
+(Personnalisation). Un module retiré disparaît des menus et des droits de tous, données conservées.
+**Budget prévu / réalisé** : date de réalisation prévue par poste, dépenses réelles rattachées, statut par poste
+(réalisé, dépassé avec montant et %, en cours, en retard, non réalisé, à venir), date effective et décalage en jours,
+détail des dépenses, **bilan de l'année** (histogramme prévu / réalisé par mois, dépassements cumulés, mois réalisés,
+dépassés ou non réalisés par poste).
+
+Version 1.0 : **Rentabilité** : compte d'exploitation du mois (chiffre d'affaires, coût d'achat des ventes, marge,
 charges réelles ou à défaut budget validé, résultat net), seuil de rentabilité, point mort et vente à faire par jour,
 évolution sur 12 mois avec les causes d'un mauvais mois, soldes intermédiaires de gestion SYSCOHADA XA à XI, export Excel.
 **Surstock et soldes** : couverture, âge moyen du stock, jours sans vente, péremption proche, coût de stockage mensuel,
@@ -54,7 +70,7 @@ billetage, rapports X et Z, **vente hors connexion** avec synchronisation sans d
 | Magasins et caisses | Ajout, modification, désactivation (rien n'est supprimé) |
 | Utilisateurs | Invitation par e-mail avec rôle, magasins et caisses ; modification ; désactivation avec motif obligatoire ; réactivation ; lien de réinitialisation du mot de passe |
 | Rôles | Propriétaire, gérant de magasin, responsable de caisse, caissier, vendeur, gestionnaire de stock, responsable des achats, comptable, auditeur |
-| Droits individuels | 13 modules × 9 actions ; ajout ou retrait par personne par rapport à son rôle |
+| Droits individuels | 17 modules × 9 actions ; ajout ou retrait par personne par rapport à son rôle |
 | Journal d'audit | Connexions, déconnexions, toute création ou modification d'entreprise, magasin, caisse, utilisateur, périmètre, droit, invitation — avec valeurs avant/après et motif |
 | Personnalisation | Logo (réduit automatiquement), nom, NCC, RCCM, régime, téléphone, e-mail, adresse ; couleur de l'application parmi 7 (noir « Décodeur » par défaut, aux couleurs de la marque) ; logo et nom du client dans l'application |
 | Modèle de reçu | Format A4 divisé en 6 (105 × 99 mm, choix de la case, case suivante retenue, réglage du décalage), ticket 80 mm, ticket 58 mm ; logo, phrase d'accroche, message de bas, mention, NCC et caissier affichables ; aperçu en direct et impression test |

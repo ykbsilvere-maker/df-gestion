@@ -6,6 +6,7 @@ import { messageErreur } from '../lib/format';
 import { REGIMES, type RegimeFiscal } from '../lib/types';
 import { ChoixDevise } from '../components/ChoixDevise';
 import { Alerte, Champ } from '../components/ui';
+import { ChoixModules } from '../components/ChoixModules';
 
 export function CreerEntreprise() {
   const { rechargerOrganisations, choisirOrganisation, deconnecter, organisations, plateforme, rechargerPlateforme, session, adminGeneral } =
@@ -21,6 +22,7 @@ export function CreerEntreprise() {
     magasin: 'Magasin principal',
     devise: 'XOF',
   });
+  const [desactives, setDesactives] = useState<string[]>([]);
   const [erreur, setErreur] = useState('');
   const [envoi, setEnvoi] = useState(false);
   const maj = (cle: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [cle]: e.target.value });
@@ -102,6 +104,10 @@ export function CreerEntreprise() {
       setEnvoi(false);
       return setErreur(messageErreur(error));
     }
+    if (desactives.length) {
+      const r = await supabase.rpc('definir_modules', { p_org: data as string, p_desactives: desactives });
+      if (r.error) setErreur(`Entreprise créée, mais les modules n’ont pas été enregistrés : ${messageErreur(r.error)}`);
+    }
     await rechargerOrganisations();
     choisirOrganisation(data as string);
     naviguer('/');
@@ -161,6 +167,11 @@ export function CreerEntreprise() {
           <Champ label="Nom du premier magasin">
             <input value={f.magasin} onChange={maj('magasin')} required minLength={2} />
           </Champ>
+          <fieldset className="sans-bordure">
+            <legend className="libelle-champ">Modules à utiliser</legend>
+            <p className="secondaire">Décochez ce dont vous n’avez pas besoin ; vous pourrez les activer plus tard dans Personnalisation.</p>
+            <ChoixModules desactives={desactives} onChange={setDesactives} />
+          </fieldset>
           <button className="bouton bouton-principal bouton-plein" disabled={envoi}>
             {envoi ? 'Création…' : 'Créer l’entreprise'}
           </button>
