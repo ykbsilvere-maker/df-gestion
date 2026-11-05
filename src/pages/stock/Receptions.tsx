@@ -9,6 +9,7 @@ import type { Produit } from '../../lib/types';
 import { Alerte, Champ, EnTetePage, Pastille, Vide } from '../../components/ui';
 import { RechercheProduit, type ProduitTrouve } from '../../components/RechercheProduit';
 import { useFournisseurs } from './Fournisseurs';
+import { useComptes } from '../../lib/tresorerie';
 
 interface Reception {
   id: string;
@@ -22,7 +23,27 @@ interface Reception {
   statut: 'brouillon' | 'validee' | 'annulee';
   valide_le: string | null;
   created_at: string;
+  repartition: 'valeur' | 'quantite' | 'poids';
+  reglement: 'comptant' | 'credit';
+  echeance: string | null;
+  compte_paiement_id: string | null;
 }
+
+interface FraisReception {
+  id: string;
+  nature: 'transport' | 'manutention' | 'douane' | 'taxes' | 'autres';
+  libelle: string | null;
+  montant: number | string;
+  compte_id: string | null;
+}
+
+const NATURES_FRAIS: Record<FraisReception['nature'], string> = {
+  transport: 'Transport',
+  manutention: 'Manutention',
+  douane: 'Douane',
+  taxes: 'Taxes non récupérables',
+  autres: 'Autres frais',
+};
 
 interface LigneReception {
   id: string;
@@ -32,6 +53,7 @@ interface LigneReception {
   numero_lot: string | null;
   date_peremption: string | null;
   cout_unitaire: number | string | null;
+  poids: number | string | null;
   created_at: string;
 }
 
@@ -144,6 +166,8 @@ export function FicheReception() {
   const naviguer = useNavigate();
   const magasins = useMagasins(org);
   const { fournisseurs, creer: creerFournisseur } = useFournisseurs(org);
+  const { comptes } = useComptes(org);
+  const [frais, setFrais] = useState<FraisReception[]>([]);
   const [r, setR] = useState<Reception | null>(null);
   const [lignes, setLignes] = useState<LigneReception[]>([]);
   const [produits, setProduits] = useState<Record<string, Produit>>({});
@@ -152,12 +176,14 @@ export function FicheReception() {
   const [envoi, setEnvoi] = useState(false);
 
   const charger = useCallback(async () => {
-    const [a, b] = await Promise.all([
+    const [a, b, c] = await Promise.all([
       supabase.from('receptions').select('*').eq('id', id!).single(),
       supabase.from('receptions_lignes').select('*').eq('reception_id', id!).order('created_at'),
+      supabase.from('receptions_frais').select('*').eq('reception_id', id!).order('created_at'),
     ]);
     if (a.error) return setErreur(messageErreur(a.error));
     setR(a.data as Reception);
+    setFrais((c.data ?? []) as FraisReception[]);
     const ls = (b.data ?? []) as LigneReception[];
     setLignes(ls);
     const manquants = ls.map((l) => l.produit_id).filter((pid) => !produits[pid]);
@@ -178,6 +204,56 @@ export function FicheReception() {
     () => lignes.reduce((s, l) => s + Number(l.quantite) * Number(l.prix_unitaire), 0),
     [lignes],
   );
+  const totalFrais = Number(r?.frais_approche ?? 0);
+
+  /** Coût de revient unitaire estimé, même calcul que la validation (répartition des frais au choix). */
+  const coutEstime = useCallback(
+    (l: LigneReception): number | null => {
+      if (!r) return null;
+      const q = Number(l.quantite);
+      const pu = Number(l.prix_unitaire);
+      if (!totalFrais) return pu;
+      const totalQ = lignes.reduce((t, x) => t + Number(x.quantite), 0);
+      if (r.repartition === 'quantite') return pu + totalFrais / totalQ;
+      if (r.repartition === 'poids') {
+        const totalP = lignes.reduce((t, x) => t + Number(x.poids ?? 0), 0);
+        if (!totalP || !Number(l.poids)) return null;
+        return pu + (totalFrais * Number(l.poids)) / totalP / q;
+      }
+      return totalMarchandises > 0 ? pu + (totalFrais * pu) / totalMarchandises : pu + totalFrais / totalQ;
+    },
+    [r, lignes, totalFrais, totalMarchandises],
+  );
+
+  async function ajouterFrais() {
+    if (!r) return;
+    const nature = frais.some((f) => f.nature === 'transport') ? 'manutention' : 'transport';
+    const saisie = window.prompt(`Montant des frais (${NATURES_FRAIS[nature]}) — vous pourrez changer la nature ensuite`);
+    const v = saisie ? lireMontant(saisie) : null;
+    if (!v || v <= 0) return;
+    const { error } = await supabase.from('receptions_frais').insert({
+      organisation_id: org,
+      reception_id: r.id,
+      nature,
+      montant: v,
+      compte_id: comptes[0]?.id ?? null,
+    });
+    if (error) return setErreur(messageErreur(error));
+    await charger();
+  }
+
+  async function majFrais(f: FraisReception, champs: Partial<FraisReception>) {
+    setFrais((fs) => fs.map((x) => (x.id === f.id ? { ...x, ...champs } : x)));
+    const { error } = await supabase.from('receptions_frais').update(champs).eq('id', f.id);
+    if (error) setErreur(messageErreur(error));
+    await charger();
+  }
+
+  async function supprimerFrais(f: FraisReception) {
+    const { error } = await supabase.from('receptions_frais').delete().eq('id', f.id);
+    if (error) return setErreur(messageErreur(error));
+    await charger();
+  }
 
   async function majEntete(champs: Partial<Reception>) {
     if (!r) return;
@@ -308,6 +384,35 @@ export function FicheReception() {
             <Champ label="N° BL / facture fournisseur">
               <input defaultValue={r.reference ?? ''} onBlur={(e) => void majEntete({ reference: e.target.value.trim() || null })} />
             </Champ>
+            <Champ label="Règlement du fournisseur">
+              <select value={r.reglement} onChange={(e) => void majEntete({ reglement: e.target.value as Reception['reglement'] })}>
+                <option value="comptant">Payé comptant</option>
+                <option value="credit">À crédit (dette fournisseur)</option>
+              </select>
+            </Champ>
+            {r.reglement === 'comptant' ? (
+              <Champ label="Payé depuis" aide="Le montant des marchandises sort de ce compte">
+                <select value={r.compte_paiement_id ?? ''} onChange={(e) => void majEntete({ compte_paiement_id: e.target.value || null })}>
+                  <option value="">Non précisé</option>
+                  {comptes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nom}
+                    </option>
+                  ))}
+                </select>
+              </Champ>
+            ) : (
+              <Champ label="Échéance de paiement">
+                <input type="date" value={r.echeance ?? ''} onChange={(e) => void majEntete({ echeance: e.target.value || null })} />
+              </Champ>
+            )}
+            <Champ label="Répartition des frais">
+              <select value={r.repartition} onChange={(e) => void majEntete({ repartition: e.target.value as Reception['repartition'] })}>
+                <option value="valeur">Selon la valeur (par défaut)</option>
+                <option value="quantite">Selon la quantité</option>
+                <option value="poids">Selon le poids</option>
+              </select>
+            </Champ>
           </div>
         </fieldset>
       </section>
@@ -325,8 +430,9 @@ export function FicheReception() {
                   <th className="nombre">Quantité</th>
                   <th className="nombre">Prix d’achat unitaire</th>
                   <th>Lot / péremption</th>
+                  {r.repartition === 'poids' && <th className="nombre">Poids total (kg)</th>}
                   <th className="nombre">Montant</th>
-                  {r.statut === 'validee' && <th className="nombre">Coût de revient</th>}
+                  <th className="nombre">{r.statut === 'validee' ? 'Coût de revient' : 'Coût de revient estimé'}</th>
                   {modifiable && <th aria-label="Actions" />}
                 </tr>
               </thead>
@@ -400,8 +506,32 @@ export function FicheReception() {
                           <span className="secondaire">—</span>
                         )}
                       </td>
+                      {r.repartition === 'poids' && (
+                        <td className="nombre">
+                          {modifiable ? (
+                            <input
+                              className="champ-nombre"
+                              inputMode="decimal"
+                              defaultValue={l.poids === null ? '' : quantite(l.poids)}
+                              key={`w-${l.id}-${l.poids}`}
+                              onBlur={(e) => {
+                                const v = Number(e.target.value.replace(/\s/g, '').replace(',', '.'));
+                                if (v >= 0 && v !== Number(l.poids)) void majLigne(l, { poids: v });
+                              }}
+                              aria-label={`Poids ${p?.designation ?? ''}`}
+                            />
+                          ) : l.poids === null ? '—' : quantite(l.poids)}
+                        </td>
+                      )}
                       <td className="nombre">{montant(Number(l.quantite) * Number(l.prix_unitaire))}</td>
-                      {r.statut === 'validee' && <td className="nombre">{montant(l.cout_unitaire ?? 0)}</td>}
+                      <td className="nombre">
+                        {r.statut === 'validee'
+                          ? montant(Math.round(Number(l.cout_unitaire ?? 0)))
+                          : (() => {
+                              const c = coutEstime(l);
+                              return c === null ? <span className="secondaire">poids ?</span> : montant(Math.round(c));
+                            })()}
+                      </td>
                       {modifiable && (
                         <td>
                           <button className="bouton-lien lien-danger" onClick={() => void supprimerLigne(l)} aria-label="Retirer la ligne">
@@ -422,26 +552,65 @@ export function FicheReception() {
             <span>Marchandises</span>
             <strong>{montant(totalMarchandises)}</strong>
           </div>
-          <div>
-            <span>Frais d’approche (transport, manutention…)</span>
-            {modifiable ? (
-              <input
-                className="champ-nombre champ-prix"
-                inputMode={clavierMontant()}
-                defaultValue={montant(r.frais_approche, '')}
-                onBlur={(e) => void majEntete({ frais_approche: lireMontant(e.target.value) ?? 0 })}
-                aria-label="Frais d'approche"
-              />
-            ) : (
-              <strong>{montant(r.frais_approche)}</strong>
+          <div className="frais-detail">
+            <span>Frais d’approche (transport, manutention, douane…)</span>
+            {frais.length === 0 && totalFrais > 0 && <strong>{montant(totalFrais)}</strong>}
+            {frais.map((f) => (
+              <div key={f.id} className="frais-ligne">
+                {modifiable ? (
+                  <>
+                    <select value={f.nature} onChange={(e) => void majFrais(f, { nature: e.target.value as FraisReception['nature'] })} aria-label="Nature des frais">
+                      {Object.entries(NATURES_FRAIS).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      className="champ-nombre champ-prix"
+                      inputMode={clavierMontant()}
+                      defaultValue={montant(f.montant, '')}
+                      key={`f-${f.id}-${f.montant}`}
+                      onBlur={(e) => {
+                        const v = lireMontant(e.target.value) ?? 0;
+                        if (v > 0 && v !== Number(f.montant)) void majFrais(f, { montant: v });
+                      }}
+                      aria-label="Montant des frais"
+                    />
+                    <select value={f.compte_id ?? ''} onChange={(e) => void majFrais(f, { compte_id: e.target.value || null })} aria-label="Payé depuis">
+                      <option value="">Payé depuis…</option>
+                      {comptes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nom}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" className="bouton-lien lien-danger" onClick={() => void supprimerFrais(f)}>
+                      Retirer
+                    </button>
+                  </>
+                ) : (
+                  <span>
+                    {NATURES_FRAIS[f.nature]} · <strong>{montant(f.montant)}</strong>
+                    {f.compte_id && <span className="secondaire"> · {comptes.find((c) => c.id === f.compte_id)?.nom}</span>}
+                  </span>
+                )}
+              </div>
+            ))}
+            {modifiable && (
+              <button type="button" className="bouton bouton-discret" onClick={() => void ajouterFrais()}>
+                + Ajouter des frais
+              </button>
             )}
+            {frais.length > 0 && <strong>Total frais : {montant(totalFrais)}</strong>}
           </div>
           <div className="total-piece">
             <span>Coût total de la réception</span>
-            <strong>{montant(totalMarchandises + Number(r.frais_approche))}</strong>
+            <strong>{montant(totalMarchandises + totalFrais)}</strong>
           </div>
           <p className="secondaire">
-            Les frais d’approche sont répartis sur les articles au prorata de leur valeur et intégrés au coût moyen.
+            Les frais sont répartis sur les articles {r.repartition === 'valeur' ? 'selon leur valeur' : r.repartition === 'quantite' ? 'selon la quantité' : 'selon le poids'} et
+            intégrés au coût de revient, puis au coût moyen du stock. {r.reglement === 'credit' ? 'À la validation, le montant des marchandises devient une dette envers le fournisseur.' : ''}
           </p>
         </div>
 

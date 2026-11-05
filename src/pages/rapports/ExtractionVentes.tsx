@@ -167,8 +167,9 @@ function totauxColonnes(cols: Colonne[], lignes: Ligne[]): (number | null)[] {
 }
 
 export function ExtractionVentes() {
-  const { organisation } = useSession();
+  const { organisation, peut } = useSession();
   const { identite } = useIdentite();
+  const peutExporter = peut('ventes.exporter') || peut('rapports.exporter');
   const { imprimer } = useImpression();
   const org = organisation!.organisation_id;
   const magasins = useMagasins(org);
@@ -355,12 +356,16 @@ export function ExtractionVentes() {
         sousTitre="Choisissez une période et une présentation, puis exportez en Excel ou en PDF."
         actions={
           <>
-            <button className="bouton bouton-discret" onClick={() => void exporterPdf()} disabled={!lignes.length}>
-              PDF
-            </button>
-            <button className="bouton" onClick={() => void exporterExcel()} disabled={!resultat || exportEnCours}>
-              {exportEnCours ? 'Préparation…' : 'Excel'}
-            </button>
+            {peutExporter && (
+              <>
+                <button className="bouton bouton-discret" onClick={() => void exporterPdf()} disabled={!lignes.length}>
+                  PDF
+                </button>
+                <button className="bouton" onClick={() => void exporterExcel()} disabled={!resultat || exportEnCours}>
+                  {exportEnCours ? 'Préparation…' : 'Excel'}
+                </button>
+              </>
+            )}
           </>
         }
       />
@@ -509,7 +514,7 @@ export function ExtractionVentes() {
           </div>
         )}
         {!marges && resultat && (
-          <p className="secondaire">Le coût d’achat et la marge ne s’affichent qu’aux personnes ayant le droit « Comptabilité — consulter ».</p>
+          <p className="secondaire">Le coût d’achat et la marge ne s’affichent qu’au niveau « Valider » du module Extraction des ventes.</p>
         )}
       </section>
     </>

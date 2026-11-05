@@ -170,6 +170,10 @@ export const MODULES: { code: string; libelle: string }[] = [
   { code: 'fournisseurs', libelle: 'Fournisseurs' },
   { code: 'rapports', libelle: 'Rapports' },
   { code: 'comptabilite', libelle: 'Comptabilité' },
+  { code: 'budget', libelle: 'Budget' },
+  { code: 'tresorerie', libelle: 'Trésorerie' },
+  { code: 'rentabilite', libelle: 'Rentabilité' },
+  { code: 'promotions', libelle: 'Surstock et soldes' },
 ];
 
 export const ACTIONS: { code: string; libelle: string }[] = [

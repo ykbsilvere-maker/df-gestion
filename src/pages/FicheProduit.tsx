@@ -24,8 +24,10 @@ export function FicheProduit({ produit, codeInitial, categories, onCategorieCree
   const org = organisation!.organisation_id;
   const nouveau = !produit;
   const modifiable = nouveau ? peut('catalogue.creer') : peut('catalogue.modifier');
-  // Le prix d'achat n'est pas montré aux postes de caisse en lecture seule.
-  const voitCouts = modifiable || peut('stock.consulter') || peut('comptabilite.consulter');
+  // Le prix d'achat n'est jamais montré au caissier (catalogue en lecture seule).
+  const voitCouts = peut('catalogue.modifier') || peut('fournisseurs.consulter') || peut('stock.valider') || peut('rapports.valider');
+  // Changer le prix de vente d'un produit existant : niveau « Valider » du catalogue.
+  const prixModifiable = nouveau || peut('catalogue.valider');
   const [courant, setCourant] = useState<Produit | undefined>(produit);
   const [f, setF] = useState({
     designation: produit?.designation ?? '',
@@ -173,7 +175,8 @@ export function FicheProduit({ produit, codeInitial, categories, onCategorieCree
           </Champ>
           <div className="grille-2">
             <Champ label={`Prix de vente (${deviseCourante().symbole})`}>
-              <input value={f.prix_vente} onChange={maj('prix_vente')} inputMode={clavierMontant()} required placeholder="0" />
+              <input value={f.prix_vente} onChange={maj('prix_vente')} inputMode={clavierMontant()} required placeholder="0"
+                disabled={!prixModifiable} title={prixModifiable ? undefined : 'Changer un prix demande le niveau « Valider » du catalogue'} />
             </Champ>
             {voitCouts && (
               <Champ label={`Prix d’achat de référence (${deviseCourante().symbole})`} aide="Facultatif">

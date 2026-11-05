@@ -14,9 +14,9 @@ export function useImpressionCaisse() {
   const org = identite?.organisation.id ?? '';
   const { peut } = useSession();
   const formatEntreprise = identite?.parametres.format ?? 'thermique_80';
-  // Reçu A4 réservé au gérant principal (droit « administration.modifier ») ;
+  // Reçu A4 réservé au gérant principal (droit « Personnalisation — Reçu A4 », administration.valider) ;
   // les autres postes impriment toujours sur rouleau (TPE, imprimante thermique).
-  const format = formatEntreprise === 'a4_6' && !peut('administration.modifier') ? 'thermique_80' : formatEntreprise;
+  const format = formatEntreprise === 'a4_6' && !peut('administration.valider') ? 'thermique_80' : formatEntreprise;
   const [caseA4, setCaseA4] = useState(() => (org ? caseSuivante(org) : 1));
   useEffect(() => {
     if (org) setCaseA4(caseSuivante(org));

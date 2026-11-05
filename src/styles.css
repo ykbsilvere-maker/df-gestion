@@ -765,3 +765,42 @@ input:disabled, select:disabled { background: var(--surface-2); color: var(--enc
 .profils-rapides { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
 .reglage-fin { margin-top: 16px; }
 .reglage-fin summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }
+.niveau-vide { border-style: dashed; color: var(--encre-douce); cursor: default; background: transparent; min-width: 54px; text-align: center; }
+.niveau-aide { font-size: 0.78rem; color: var(--encre-douce); margin-top: 4px; }
+.grille-droits thead th { text-align: left; font-size: 0.78rem; text-transform: uppercase; color: var(--encre-douce); }
+.frais-detail { display: flex; flex-direction: column; gap: 8px; }
+.frais-ligne { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.frais-ligne select { max-width: 200px; }
+.texte-alerte { color: #b26a00; font-weight: 700; }
+.tuile-alerte { border-color: #e2b04a; background: #fbf3e2; }
+
+/* Montants : toujours d'un seul bloc ; la taille s'adapte à la largeur de la tuile. */
+.montant-bloc, .nombre, td.nombre, th.nombre, .carte-compte-solde { white-space: nowrap; }
+.tuile { container-type: inline-size; min-width: 0; }
+.tuile-valeur { white-space: nowrap; overflow: hidden; text-overflow: clip; font-size: clamp(1.05rem, 11cqi, 2rem); line-height: 1.15; }
+.tuile-fixe .tuile-valeur { font-size: clamp(1.05rem, 10cqi, 1.6rem); }
+
+/* Trésorerie */
+.grille-comptes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.carte-compte {
+  container-type: inline-size; text-align: left; font: inherit; color: var(--encre); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--trait); border-radius: var(--rayon); box-shadow: var(--ombre);
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.carte-compte:hover, .carte-compte-active { border-color: var(--accent); }
+.carte-compte-active { box-shadow: 0 0 0 2px var(--accent-clair), var(--ombre); }
+.carte-compte-inactive { opacity: 0.55; }
+.carte-compte-tete { display: flex; gap: 8px; align-items: center; }
+.carte-compte-solde { font-size: clamp(1rem, 10cqi, 1.45rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+.entete-section { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.entete-section h2 { margin: 0; }
+.actions-ligne { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Budget */
+.etat-budget { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.jauge-ligne { display: flex; gap: 8px; align-items: center; min-width: 170px; }
+.jauge { flex: 1; height: 8px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--trait); overflow: hidden; }
+.jauge span { display: block; height: 100%; background: var(--vert); border-radius: 99px; }
+.jauge-attention span { background: var(--or); }
+.jauge-depasse span, .jauge-hors_budget span { background: var(--rouge); }
+.ligne-inactive td { opacity: 0.55; }

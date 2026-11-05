@@ -3,7 +3,15 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 0.8.** **Extraction des ventes** (période libre, par ticket, par produit, par jour / semaine / mois,
+**Version 0.9.** **Fournisseurs et coût de revient** (frais détaillés par achat — transport, manutention, douane, taxes —,
+répartition selon la valeur, la quantité ou le poids, achat comptant ou à crédit avec échéance, paiements partiels et reste dû,
+historique des prix, prix de vente conseillé pour une marge visée), **budget du mois** (11 postes SYSCOHADA proposés,
+reprise du mois précédent, validation puis révision avec motif, dépenses rattachées à un poste et à un compte, alertes 80 % / 100 %),
+**trésorerie** (caisse, Mobile Money, banque alimentés automatiquement par les ventes, dépenses, frais et paiements ;
+virements avec frais ; rapprochement avec justification d'écart ; liquidité disponible), **grille des droits identique au cahier
+des charges** (12 modules, profils Caissier, Gestionnaire de stock, Comptable, Gérant de magasin), changement de prix réservé
+au niveau « Valider » du catalogue, montants jamais coupés sur deux lignes.
+Version 0.8 : **Extraction des ventes** (période libre, par ticket, par produit, par jour / semaine / mois,
 par moyen de paiement ; export **Excel .xlsx** et **PDF** ; coût et marge réservés au droit « Comptabilité — consulter »),
 **droits par module** (Aucun / Voir / Saisir / Valider, profils Caissier TPE, Gestionnaire de stock, Comptable, Gérant)
 appliqués sur l'appareil de la personne **en moins de 30 secondes**, **reçu A4 réservé au gérant principal**

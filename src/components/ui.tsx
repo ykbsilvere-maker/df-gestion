@@ -83,11 +83,12 @@ export function EnTetePage({ titre, sousTitre, actions, icone }: { titre: string
 /** Montant en grand (tuiles) : le chiffre en avant, la monnaie en plus petit. */
 export function MontantFort({ v, code }: { v: number | string | null | undefined; code?: string | null }) {
   const d = code ? devise(code) : deviseCourante();
+  // Un montant reste toujours d'un seul bloc (jamais coupé sur deux lignes).
   return (
-    <>
+    <span className="montant-bloc">
       {nombreMonnaie(v, d)}
       <span className="montant-devise"> {d.symbole}</span>
-    </>
+    </span>
   );
 }
 

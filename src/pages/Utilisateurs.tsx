@@ -758,58 +758,140 @@ function MatriceDroits({
 }
 
 // ---------------------------------------------------------------------
-// Grille par module : Aucun / Voir / Saisir / Valider
+// Grille par module (cahier des charges, module 2) : Aucun / Voir / Saisir / Valider
+// Chaque niveau correspond à un ensemble de droits techniques, cumulatif.
 // ---------------------------------------------------------------------
 
 type Niveau = 'aucun' | 'voir' | 'saisir' | 'valider';
 
-/** Actions réglées par la grille. « supprimer » et « administrer » restent au réglage fin. */
-const ACTIONS_NIVEAU: Record<Niveau, string[]> = {
-  aucun: [],
-  voir: ['consulter', 'exporter'],
-  saisir: ['consulter', 'exporter', 'creer', 'modifier'],
-  valider: ['consulter', 'exporter', 'creer', 'modifier', 'valider', 'annuler', 'cloturer'],
-};
-const ACTIONS_GRILLE = ACTIONS_NIVEAU.valider;
-const NIVEAUX: { code: Niveau; libelle: string }[] = [
-  { code: 'aucun', libelle: 'Aucun' },
-  { code: 'voir', libelle: 'Voir' },
-  { code: 'saisir', libelle: 'Saisir' },
-  { code: 'valider', libelle: 'Valider' },
+interface ModuleGrille {
+  code: string;
+  libelle: string;
+  /** Ce que donne chaque niveau (affiché sous le bouton). Absent : niveau sans objet pour ce module. */
+  aide: Partial<Record<Exclude<Niveau, 'aucun'>, string>>;
+  /** Droits ajoutés à chaque niveau (cumulatifs : Saisir comprend Voir, Valider comprend Saisir). */
+  droits: Partial<Record<Exclude<Niveau, 'aucun'>, string[]>>;
+}
+
+const GRILLE: ModuleGrille[] = [
+  {
+    code: 'caisse', libelle: 'Caisse (vendre, imprimer sur rouleau)',
+    aide: { voir: 'Rapport X', saisir: 'Vendre, ouvrir la caisse', valider: 'Clôturer, annuler une vente' },
+    droits: {
+      voir: ['caisse.consulter'],
+      saisir: ['caisse.creer', 'ventes.consulter', 'ventes.creer', 'clients.consulter', 'clients.creer'],
+      valider: ['caisse.cloturer', 'caisse.annuler', 'ventes.annuler', 'ventes.valider', 'ventes.modifier'],
+    },
+  },
+  {
+    code: 'catalogue', libelle: 'Catalogue',
+    aide: { voir: 'Lire produits et prix de vente', saisir: 'Créer, modifier', valider: 'Changer les prix' },
+    droits: { voir: ['catalogue.consulter'], saisir: ['catalogue.creer', 'catalogue.modifier'], valider: ['catalogue.valider'] },
+  },
+  {
+    code: 'stock', libelle: 'Stock et approvisionnement',
+    aide: { voir: 'État du stock', saisir: 'Réceptions, transferts, sorties', valider: 'Valider réceptions et inventaires' },
+    droits: {
+      voir: ['stock.consulter'],
+      saisir: ['stock.creer', 'stock.modifier', 'achats.consulter', 'achats.creer', 'achats.modifier'],
+      valider: ['stock.valider', 'achats.valider'],
+    },
+  },
+  {
+    code: 'fournisseurs', libelle: 'Fournisseurs et coût de revient',
+    aide: { voir: 'Fiches, historiques', saisir: 'Créer, modifier, payer' },
+    droits: { voir: ['fournisseurs.consulter'], saisir: ['fournisseurs.creer', 'fournisseurs.modifier'] },
+  },
+  {
+    code: 'extraction', libelle: 'Extraction des ventes',
+    aide: { voir: 'Ventes sans marges', saisir: 'Exports PDF et Excel', valider: 'Voir coûts et marges' },
+    droits: { voir: ['rapports.consulter'], saisir: ['ventes.exporter', 'rapports.exporter'], valider: ['rapports.valider'] },
+  },
+  {
+    code: 'budget', libelle: 'Budget du mois',
+    aide: { voir: 'Lire', saisir: 'Saisir budget et dépenses', valider: 'Valider le budget' },
+    droits: { voir: ['budget.consulter'], saisir: ['budget.creer', 'budget.modifier'], valider: ['budget.valider'] },
+  },
+  {
+    code: 'rentabilite', libelle: 'Rentabilité (exploitation, résultat)',
+    aide: { voir: 'Lire' },
+    droits: { voir: ['rentabilite.consulter'] },
+  },
+  {
+    code: 'promotions', libelle: 'Surstock et soldes',
+    aide: { voir: 'Lire', saisir: 'Créer une promotion', valider: 'Appliquer un nouveau prix' },
+    droits: { voir: ['promotions.consulter'], saisir: ['promotions.creer'], valider: ['promotions.valider'] },
+  },
+  {
+    code: 'tresorerie', libelle: 'Trésorerie',
+    aide: { voir: 'Soldes', saisir: 'Saisir un virement', valider: 'Valider, rapprocher, gérer les comptes' },
+    droits: { voir: ['tresorerie.consulter'], saisir: ['tresorerie.creer'], valider: ['tresorerie.valider', 'tresorerie.modifier'] },
+  },
+  {
+    code: 'comptabilite', libelle: 'Comptabilité et bilan',
+    aide: { voir: 'Lire', saisir: 'Écritures manuelles', valider: 'Clôturer un mois' },
+    droits: { voir: ['comptabilite.consulter'], saisir: ['comptabilite.creer'], valider: ['comptabilite.cloturer'] },
+  },
+  {
+    code: 'utilisateurs', libelle: 'Utilisateurs et habilitations',
+    aide: { voir: 'Liste', saisir: 'Inviter', valider: 'Modifier les droits, journal' },
+    droits: { voir: ['utilisateurs.consulter'], saisir: ['utilisateurs.creer'], valider: ['utilisateurs.modifier', 'audit.consulter'] },
+  },
+  {
+    code: 'personnalisation', libelle: 'Personnalisation et reçus',
+    aide: { saisir: 'Modifier', valider: 'Reçu A4' },
+    droits: { saisir: ['administration.consulter', 'administration.modifier'], valider: ['administration.valider'] },
+  },
 ];
 
-/** Profils prêts à l'emploi : niveau par module, les autres modules à « Aucun ». */
+const ORDRE_NIVEAUX: Niveau[] = ['aucun', 'voir', 'saisir', 'valider'];
+const LIBELLES_NIVEAUX: Record<Niveau, string> = { aucun: 'Aucun', voir: 'Voir', saisir: 'Saisir', valider: 'Valider' };
+
+/** Droits complets d'un niveau (cumul des niveaux inférieurs). */
+function droitsDuNiveau(m: ModuleGrille, n: Niveau): string[] {
+  const r: string[] = [];
+  for (const x of ORDRE_NIVEAUX.slice(1, ORDRE_NIVEAUX.indexOf(n) + 1)) r.push(...(m.droits[x as Exclude<Niveau, 'aucun'>] ?? []));
+  return r;
+}
+const niveauPossible = (m: ModuleGrille, n: Niveau) => n === 'aucun' || !!m.droits[n as Exclude<Niveau, 'aucun'>];
+const universDe = (m: ModuleGrille) => droitsDuNiveau(m, 'valider');
+
+/** Profils prêts à l'emploi (cahier des charges) : niveau par module, les autres à « Aucun ». */
 const PROFILS: { libelle: string; aide: string; niveaux: Partial<Record<string, Niveau>> }[] = [
   {
-    libelle: 'Caissier (TPE)',
-    aide: 'Caisse et encaissement, catalogue en lecture seule.',
-    niveaux: { caisse: 'saisir', catalogue: 'voir', clients: 'saisir' },
+    libelle: 'Caissier',
+    aide: 'Caisse et catalogue en lecture ; jamais de prix d’achat, de marge, de comptes ni de budget.',
+    niveaux: { caisse: 'saisir', catalogue: 'voir' },
   },
   {
     libelle: 'Gestionnaire de stock',
-    aide: 'Catalogue, stock, réceptions et fournisseurs, sans la caisse.',
-    niveaux: { catalogue: 'valider', stock: 'valider', achats: 'saisir', fournisseurs: 'saisir' },
+    aide: 'Catalogue, réceptions, inventaires, fournisseurs ; sans la caisse, les comptes ni le budget.',
+    niveaux: { catalogue: 'valider', stock: 'valider', fournisseurs: 'saisir' },
   },
   {
     libelle: 'Comptable',
-    aide: 'Ventes, rapports et comptabilité, sans saisie en caisse.',
-    niveaux: { ventes: 'voir', rapports: 'valider', comptabilite: 'valider', caisse: 'voir', stock: 'voir', achats: 'voir', fournisseurs: 'voir' },
+    aide: 'Ventes avec marges, budget, rentabilité, trésorerie et comptabilité ; sans vendre.',
+    niveaux: {
+      caisse: 'voir', stock: 'voir', fournisseurs: 'voir', extraction: 'valider', budget: 'saisir',
+      rentabilite: 'voir', tresorerie: 'saisir', comptabilite: 'valider',
+    },
   },
   {
-    libelle: 'Gérant',
-    aide: 'Tout le magasin au quotidien, sans l’administration de l’entreprise.',
+    libelle: 'Gérant de magasin',
+    aide: 'Tout le magasin au quotidien ; sans budget, rentabilité, trésorerie ni comptabilité.',
     niveaux: {
-      magasins: 'voir', utilisateurs: 'saisir', audit: 'voir', catalogue: 'valider', stock: 'valider', achats: 'valider',
-      caisse: 'valider', ventes: 'valider', clients: 'valider', fournisseurs: 'valider', rapports: 'voir',
+      caisse: 'valider', catalogue: 'valider', stock: 'valider', fournisseurs: 'saisir', extraction: 'saisir',
+      promotions: 'saisir', utilisateurs: 'saisir',
     },
   },
 ];
 
-function niveauDe(effectifs: Set<string>, module: string): Niveau | null {
-  const actifs = ACTIONS_GRILLE.filter((a) => effectifs.has(`${module}.${a}`));
-  for (const n of ['aucun', 'voir', 'saisir', 'valider'] as Niveau[]) {
-    const attendu = ACTIONS_NIVEAU[n];
-    if (attendu.length === actifs.length && attendu.every((a) => actifs.includes(a))) return n;
+function niveauDe(effectifs: Set<string>, m: ModuleGrille): Niveau | null {
+  const actifs = universDe(m).filter((c) => effectifs.has(c));
+  for (const n of ORDRE_NIVEAUX) {
+    if (!niveauPossible(m, n)) continue;
+    const attendu = droitsDuNiveau(m, n);
+    if (attendu.length === actifs.length && attendu.every((c) => actifs.includes(c))) return n;
   }
   return null; // réglage personnalisé
 }
@@ -842,16 +924,19 @@ function GrilleModules({
     return <p className="secondaire">Un propriétaire a toujours accès à tous les modules.</p>;
   }
 
-  /** Remplace les actions de la grille pour les modules donnés ; les droits que vous n'avez pas restent inchangés. */
+  /** Pour les modules donnés, garde exactement les droits du niveau choisi ; les droits que vous n'avez pas restent inchangés. */
   function calculer(niveaux: Record<string, Niveau>): string[] {
     const r = new Set(effectifs);
-    for (const [module, niveau] of Object.entries(niveaux))
-      for (const a of ACTIONS_GRILLE) {
-        const code = `${module}.${a}`;
+    for (const m of GRILLE) {
+      const n = niveaux[m.code];
+      if (!n) continue;
+      const voulus = droitsDuNiveau(m, n);
+      for (const code of universDe(m)) {
         if (!mesDroits.has(code)) continue;
-        if (ACTIONS_NIVEAU[niveau].includes(a)) r.add(code);
+        if (voulus.includes(code)) r.add(code);
         else r.delete(code);
       }
+    }
     return [...r].sort();
   }
 
@@ -862,15 +947,16 @@ function GrilleModules({
     setOccupe(false);
   }
 
-  const peutRegler = (module: string, n: Niveau) => ACTIONS_NIVEAU[n].every((a) => mesDroits.has(`${module}.${a}`));
+  const peutRegler = (m: ModuleGrille, n: Niveau) => droitsDuNiveau(m, n).every((c) => mesDroits.has(c));
 
   return (
     <div className="grille-modules">
       <p className="secondaire">
-        Choisissez ce que cette personne peut faire dans chaque module. Le changement s’applique sur son téléphone ou sa
-        caisse dans les 30 secondes, sans qu’elle ait à se reconnecter.
+        Choisissez ce que cette personne peut faire dans chaque module. Le changement s’applique sur son téléphone ou son
+        terminal dans les 30 secondes, sans qu’elle ait à se reconnecter ; le serveur refuse aussitôt ce qui lui est retiré.
       </p>
       <div className="profils-rapides">
+        <span className="secondaire">Partir d’un profil :</span>
         {PROFILS.map((p) => (
           <button
             key={p.libelle}
@@ -878,9 +964,7 @@ function GrilleModules({
             className="puce"
             title={p.aide}
             disabled={occupe}
-            onClick={() =>
-              void appliquer(Object.fromEntries(MODULES.map((m) => [m.code, p.niveaux[m.code] ?? 'aucun'])) as Record<string, Niveau>)
-            }
+            onClick={() => void appliquer(Object.fromEntries(GRILLE.map((m) => [m.code, p.niveaux[m.code] ?? 'aucun'])) as Record<string, Niveau>)}
           >
             {p.libelle}
           </button>
@@ -888,30 +972,43 @@ function GrilleModules({
       </div>
       <div className="defilement-horizontal">
         <table className="grille-droits">
+          <thead>
+            <tr>
+              <th>Module</th>
+              <th>Niveau</th>
+            </tr>
+          </thead>
           <tbody>
-            {MODULES.map((m) => {
-              const actuel = niveauDe(effectifs, m.code);
+            {GRILLE.map((m) => {
+              const actuel = niveauDe(effectifs, m);
               return (
                 <tr key={m.code}>
                   <th scope="row">{m.libelle}</th>
                   <td>
                     <div className="niveaux" role="radiogroup" aria-label={m.libelle}>
-                      {NIVEAUX.map((n) => (
-                        <button
-                          key={n.code}
-                          type="button"
-                          role="radio"
-                          aria-checked={actuel === n.code}
-                          className={`niveau ${actuel === n.code ? 'niveau-actif' : ''}`}
-                          disabled={occupe || !peutRegler(m.code, n.code)}
-                          title={peutRegler(m.code, n.code) ? undefined : 'Vous n’avez pas ces droits vous-même'}
-                          onClick={() => void appliquer({ [m.code]: n.code })}
-                        >
-                          {n.libelle}
-                        </button>
-                      ))}
+                      {ORDRE_NIVEAUX.map((n) =>
+                        niveauPossible(m, n) ? (
+                          <button
+                            key={n}
+                            type="button"
+                            role="radio"
+                            aria-checked={actuel === n}
+                            className={`niveau ${actuel === n ? 'niveau-actif' : ''}`}
+                            disabled={occupe || !peutRegler(m, n)}
+                            title={!peutRegler(m, n) ? 'Vous n’avez pas ces droits vous-même' : n === 'aucun' ? 'Aucun accès' : m.aide[n as Exclude<Niveau, 'aucun'>]}
+                            onClick={() => void appliquer({ [m.code]: n })}
+                          >
+                            {LIBELLES_NIVEAUX[n]}
+                          </button>
+                        ) : (
+                          <span key={n} className="niveau niveau-vide" aria-hidden>
+                            —
+                          </span>
+                        ),
+                      )}
                       {actuel === null && <span className="niveau-perso">Personnalisé</span>}
                     </div>
+                    {actuel && actuel !== 'aucun' && <div className="niveau-aide">{m.aide[actuel as Exclude<Niveau, 'aucun'>]}</div>}
                   </td>
                 </tr>
               );
@@ -919,10 +1016,7 @@ function GrilleModules({
           </tbody>
         </table>
       </div>
-      <p className="secondaire">
-        Voir : consulter et exporter. Saisir : en plus, créer et modifier. Valider : en plus, valider, annuler et clôturer.
-        Supprimer et administrer se règlent dans le réglage fin.
-      </p>
+      <p className="secondaire">Chaque niveau comprend le précédent : Valider comprend Saisir, qui comprend Voir.</p>
     </div>
   );
 }

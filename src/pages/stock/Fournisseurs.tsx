@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { montant } from '../../lib/argent';
+import { dateFr } from '../../lib/tresorerie';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { messageErreur } from '../../lib/format';
-import { Alerte, Champ, EnTetePage, Fenetre, Pastille, Vide } from '../../components/ui';
+import { Alerte, Champ, EnTetePage, Fenetre, MontantFort, Pastille, Vide } from '../../components/ui';
 
 export interface Fournisseur {
   id: string;
@@ -41,12 +44,33 @@ export function useFournisseurs(org: string) {
   return { fournisseurs, charger, creer };
 }
 
+interface Situation {
+  id: string;
+  achats: number;
+  total_achats: number;
+  total_paye: number;
+  reste_du: number;
+  prochaine_echeance: string | null;
+  dernier_achat: string | null;
+}
+
 export function Fournisseurs() {
   const { organisation, peut } = useSession();
   const org = organisation!.organisation_id;
+  const naviguer = useNavigate();
   const { fournisseurs, charger, creer } = useFournisseurs(org);
   const [edition, setEdition] = useState<Partial<Fournisseur> | null>(null);
   const [erreur, setErreur] = useState('');
+  const [situation, setSituation] = useState<Record<string, Situation>>({});
+  const voitSituation = peut('fournisseurs.consulter') || peut('achats.consulter');
+
+  useEffect(() => {
+    if (!voitSituation) return;
+    void supabase.rpc('situation_fournisseurs', { p_org: org }).then(({ data }) => {
+      setSituation(Object.fromEntries(((data ?? []) as Situation[]).map((x) => [x.id, x])));
+    });
+  }, [org, voitSituation, fournisseurs]);
+  const totalDu = Object.values(situation).reduce((t, x) => t + Number(x.reste_du), 0);
 
   async function enregistrer(e: FormEvent) {
     e.preventDefault();
@@ -80,7 +104,7 @@ export function Fournisseurs() {
     <>
       <EnTetePage
         icone="🚚" titre="Fournisseurs"
-        sousTitre="Coordonnées des fournisseurs. Les factures, dettes et paiements viendront avec le module tiers."
+        sousTitre="Fiches, achats, dettes et paiements. Touchez un fournisseur pour voir son historique et le payer."
         actions={
           (peut('fournisseurs.creer') || peut('stock.creer') || peut('achats.creer')) && (
             <button className="bouton bouton-principal" onClick={() => setEdition({ actif: true })}>
@@ -89,6 +113,18 @@ export function Fournisseurs() {
           )
         }
       />
+      {voitSituation && (
+        <section className="tuiles">
+          <div className="tuile tuile-fixe">
+            <span className="tuile-valeur"><MontantFort v={totalDu} /></span>
+            <span className="tuile-libelle">reste dû aux fournisseurs</span>
+          </div>
+          <div className="tuile tuile-fixe">
+            <span className="tuile-valeur">{fournisseurs.filter((f) => f.actif).length}</span>
+            <span className="tuile-libelle">fournisseurs actifs</span>
+          </div>
+        </section>
+      )}
       <section className="carte">
         {fournisseurs.length === 0 ? (
           <Vide>Aucun fournisseur.</Vide>
@@ -98,22 +134,47 @@ export function Fournisseurs() {
               <tr>
                 <th>Nom</th>
                 <th>Téléphone</th>
-                <th className="col-secondaire">E-mail</th>
+                {voitSituation && <th className="nombre col-secondaire">Achats</th>}
+                {voitSituation && <th className="nombre">Reste dû</th>}
+                {voitSituation && <th className="col-secondaire">Échéance</th>}
                 <th>Statut</th>
+                <th aria-label="Modifier" />
               </tr>
             </thead>
             <tbody>
-              {fournisseurs.map((f) => (
-                <tr key={f.id} className="ligne-cliquable" onClick={() => setEdition(f)}>
-                  <td>
-                    <strong>{f.nom}</strong>
-                    {f.adresse && <div className="secondaire">{f.adresse}</div>}
-                  </td>
-                  <td>{f.telephone ?? '—'}</td>
-                  <td className="col-secondaire">{f.email ?? '—'}</td>
-                  <td>{f.actif ? <Pastille ton="vert">Actif</Pastille> : <Pastille ton="gris">Inactif</Pastille>}</td>
-                </tr>
-              ))}
+              {fournisseurs.map((f) => {
+                const s = situation[f.id];
+                const enRetard = s?.prochaine_echeance && s.prochaine_echeance < new Date().toISOString().slice(0, 10);
+                return (
+                  <tr key={f.id} className="ligne-cliquable" onClick={() => (voitSituation ? naviguer(`/fournisseurs/${f.id}`) : setEdition(f))}>
+                    <td>
+                      <strong>{f.nom}</strong>
+                      {f.adresse && <div className="secondaire">{f.adresse}</div>}
+                    </td>
+                    <td>{f.telephone ?? '—'}</td>
+                    {voitSituation && <td className="nombre col-secondaire">{montant(s?.total_achats ?? 0)}</td>}
+                    {voitSituation && <td className="nombre">{Number(s?.reste_du ?? 0) > 0 ? <strong>{montant(s!.reste_du)}</strong> : '—'}</td>}
+                    {voitSituation && (
+                      <td className="col-secondaire">
+                        {s?.prochaine_echeance ? <Pastille ton={enRetard ? 'rouge' : 'or'}>{dateFr(s.prochaine_echeance)}</Pastille> : '—'}
+                      </td>
+                    )}
+                    <td>{f.actif ? <Pastille ton="vert">Actif</Pastille> : <Pastille ton="gris">Inactif</Pastille>}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="bouton-lien"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEdition(f);
+                        }}
+                      >
+                        Modifier
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

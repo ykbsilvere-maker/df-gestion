@@ -1,7 +1,7 @@
 {
   "name": "decodeur-gestion",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Le Décodeur Financier — logiciel de gestion commerciale, stock et caisse (PWA)",
   "type": "module",
   "scripts": {

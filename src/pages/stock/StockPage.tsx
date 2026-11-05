@@ -9,7 +9,6 @@ const ONGLETS: { vers: string; libelle: string; icone: string; permission?: stri
   { vers: '/stock/sorties', libelle: 'Sorties et ajustements', icone: '📤', permission: 'stock.modifier' },
   { vers: '/stock/inventaires', libelle: 'Inventaires', icone: '📋' },
   { vers: '/stock/mouvements', libelle: 'Mouvements', icone: '🔄' },
-  { vers: '/stock/fournisseurs', libelle: 'Fournisseurs', icone: '🚚' },
 ];
 
 /** Module Stock : onglets partagés par toutes les pages du module. */
