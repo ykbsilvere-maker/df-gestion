@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Le Décodeur Financier">
+  <rect width="512" height="512" rx="112" fill="#fff"/>
+  <rect x="156" y="214" width="38" height="78" fill="#D91517"/>
+  <rect x="206" y="174" width="38" height="118" fill="#D91517"/>
+  <rect x="256" y="132" width="38" height="160" fill="#D91517"/>
+  <circle cx="226" cy="222" r="138" fill="none" stroke="#111" stroke-width="34"/>
+  <line x1="330" y1="326" x2="428" y2="424" stroke="#111" stroke-width="54" stroke-linecap="round"/>
+</svg>

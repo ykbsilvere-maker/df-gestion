@@ -1,0 +1,96 @@
+name: Construire DF Gestion (site + APK)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['54329:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres@localhost:54329/postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Dépendances
+        run: npm ci
+
+      - name: Vérification des types
+        run: npm run typecheck
+
+      - name: Tests (logique et base de données)
+        run: npx vitest run tests/unit tests/db
+
+      - name: Site web
+        run: |
+          npx vite build
+          cp dist/index.html dist/404.html
+          (cd dist && zip -qr ../DF-Gestion-site.zip .)
+
+      - name: Application web pour l'APK
+        run: npx vite build --mode apk
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: APK Android
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.KEYSTORE_PASS }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/cle.jks"
+          else
+            echo "::warning::Pas de clé de signature en secret : APK signé avec une clé temporaire."
+            KS_PASS=temporaire
+            keytool -genkeypair -keystore "$RUNNER_TEMP/cle.jks" -storepass "$KS_PASS" -keypass "$KS_PASS" \
+              -alias decodeur -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=DF Gestion"
+          fi
+          SDK=$ANDROID_HOME
+          OUTILS=$SDK/build-tools/$(ls $SDK/build-tools | sort -V | tail -1)
+          PLATEFORME=$SDK/platforms/$(ls $SDK/platforms | sort -V | tail -1)/android.jar
+          echo "build-tools: $OUTILS · plateforme: $PLATEFORME"
+          cd android
+          KEYSTORE="$RUNNER_TEMP/cle.jks" KS_PASS="$KS_PASS" OUTILS="$OUTILS" PLATEFORME="$PLATEFORME" \
+            VERSION_CODE=$((80 + ${{ github.run_number }})) VERSION_NOM="$VERSION" sh build-apk.sh
+          cp "DF-Gestion-$VERSION.apk" ../DF-Gestion.apk
+          cp "DF-Gestion-$VERSION.apk" ../
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: df-gestion-${{ env.VERSION }}
+          path: |
+            DF-Gestion*.apk
+            DF-Gestion-site.zip
+
+      - name: Publication (Releases)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${VERSION}-${{ github.run_number }}"
+          gh release create "$TAG" DF-Gestion.apk "DF-Gestion-${VERSION}.apk" DF-Gestion-site.zip \
+            --title "DF Gestion ${VERSION} (construction ${{ github.run_number }})" \
+            --notes "APK Android et site web. Lien stable de l'APK : https://github.com/${{ github.repository }}/releases/latest/download/DF-Gestion.apk" \
+            --latest
