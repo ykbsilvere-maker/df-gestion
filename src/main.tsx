@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { FiletSecurite, signalerErreur } from './components/FiletSecurite';
 import '@fontsource/barlow/400.css';
 import '@fontsource/barlow/500.css';
 import '@fontsource/barlow/600.css';
@@ -18,8 +19,14 @@ document.addEventListener(
   { passive: true },
 );
 
+// Erreurs hors de l'affichage (promesses non gérées…) : signalées, sans rien interrompre.
+window.addEventListener('error', (e) => signalerErreur(e.error ?? e.message, 'fenêtre'));
+window.addEventListener('unhandledrejection', (e) => signalerErreur(e.reason, 'promesse'));
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <FiletSecurite niveau="application">
+      <App />
+    </FiletSecurite>
   </StrictMode>,
 );

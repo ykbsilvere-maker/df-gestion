@@ -1313,3 +1313,13 @@ body { background: var(--fond); }
   .action-rapide { padding: 10px 2px; font-size: 0.72rem; border-radius: 16px; }
   .action-icone { width: 42px; height: 42px; font-size: 1.3rem; }
 }
+
+/* Filet de sécurité (erreur d'affichage) */
+.filet-page { display: grid; place-items: center; padding: 40px 12px; }
+.filet-application { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 16px; background: var(--fond); }
+.filet-carte { max-width: 480px; background: var(--surface); border-radius: 22px; padding: 26px 22px; text-align: center; box-shadow: 0 18px 50px rgba(0,0,0,.1); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.filet-icone { font-size: 2.4rem; }
+.filet-carte h2 { margin: 0; }
+.filet-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 6px; }
+.filet-detail { font-size: 0.78rem; margin-top: 8px; text-align: left; width: 100%; }
+.filet-detail code { display: block; white-space: pre-wrap; word-break: break-word; background: var(--surface-2); padding: 8px; border-radius: 8px; margin: 6px 0; }

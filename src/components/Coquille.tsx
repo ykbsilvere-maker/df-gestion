@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { VerrouInactivite, verrouillerMaintenant } from './VerrouInactivite';
+import { FiletSecurite } from './FiletSecurite';
 import { useSession } from '../lib/session';
 import { useIdentite } from '../lib/identite';
 import { identifiantAffiche } from '../lib/acces';
@@ -43,12 +44,18 @@ export function Coquille() {
   );
   const [menuMobile, setMenuMobile] = useState(false);
   const emplacement = useLocation();
-  useEffect(() => setMenuMobile(false), [emplacement.pathname]);
+  useEffect(() => {
+    setMenuMobile(false);
+  }, [emplacement.pathname]);
   // La caisse occupe tout l'écran : seul le panier défile.
   const pleinEcran = emplacement.pathname === '/caisse';
   // Chaque page repart du haut (le contenu défile dans son cadre, pas la fenêtre).
   const cadre = useRef<HTMLElement>(null);
-  useEffect(() => cadre.current?.scrollTo({ top: 0 }), [emplacement.pathname]);
+  // Attention : scrollTo() renvoie une promesse dans les navigateurs récents ; un effet ne doit
+  // jamais la renvoyer (React la prendrait pour une fonction de nettoyage et planterait).
+  useEffect(() => {
+    if (cadre.current) cadre.current.scrollTop = 0;
+  }, [emplacement.pathname]);
 
   const principaux = liens.length > MAX_MOBILE + 1 ? liens.slice(0, MAX_MOBILE) : liens;
   const autres = liens.length > MAX_MOBILE + 1 ? liens.slice(MAX_MOBILE) : [];
@@ -141,7 +148,10 @@ export function Coquille() {
       </header>
 
       <main ref={cadre} className={`app-contenu ${pleinEcran ? 'contenu-plein' : ''}`}>
-        <Outlet />
+        {/* Une erreur dans un module n'emporte plus le menu ni l'en-tête. */}
+        <FiletSecurite key={emplacement.pathname} niveau="page">
+          <Outlet />
+        </FiletSecurite>
       </main>
 
       <nav className="app-onglets">

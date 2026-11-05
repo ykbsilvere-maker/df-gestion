@@ -3,7 +3,13 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 1.3.** **Code d'entrée de 4 chiffres, comme Wave** : un employé se connecte avec le code établissement,
+**Version 1.3.1.** Correctif des **pages blanches** à l'ouverture d'un module : la remise en haut de page renvoyait une
+promesse (navigateurs récents) qu'un effet React prenait pour son nettoyage, ce qui faisait planter l'affichage. Ajout
+d'un **filet de sécurité** : une erreur dans un module n'efface plus l'application (le menu reste, message « Réessayer /
+Accueil / Recharger ») et elle est **signalée automatiquement** au serveur (page, version, appareil ; aucune donnée de
+vente), visible dans la console d'administration. Test automatique interdisant les effets mal formés.
+
+Version 1.3 : **Code d'entrée de 4 chiffres, comme Wave** : un employé se connecte avec le code établissement,
 son matricule et son code d'entrée sur un pavé numérique (validation automatique au 4e chiffre). Le gérant donne un code
 provisoire ; l'employé choisit le sien à la première connexion. 5 erreurs bloquent 5 minutes, 15 erreurs bloquent jusqu'à
 un nouveau code du gérant. La session est ouverte par la fonction serveur « connexion » (la clé secrète reste sur le

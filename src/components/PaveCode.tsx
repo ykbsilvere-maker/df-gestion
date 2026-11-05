@@ -19,7 +19,9 @@ export function PaveCode({
   const [code, setCode] = useState('');
   const [secousse, setSecousse] = useState(false);
 
-  useEffect(() => setCode(''), [remiseAZero]);
+  useEffect(() => {
+    setCode('');
+  }, [remiseAZero]);
   useEffect(() => {
     if (!erreur) return;
     setCode('');

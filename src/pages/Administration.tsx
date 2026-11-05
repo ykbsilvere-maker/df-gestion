@@ -62,7 +62,9 @@ export function Administration() {
       })),
     );
   }, []);
-  useEffect(() => void charger(), [charger]);
+  useEffect(() => {
+    void charger();
+  }, [charger]);
 
   async function apres(message: string) {
     setInfo(message);
@@ -338,7 +340,47 @@ export function Administration() {
         )}
         {fenetre?.type === 'identifiants' && <Identifiants texte={fenetre.texte} />}
       </Fenetre>
+      <ErreursSignalees />
     </>
+  );
+}
+
+/** Incidents d'affichage remontés automatiquement par les appareils (7 derniers jours). */
+function ErreursSignalees() {
+  const [liste, setListe] = useState<
+    { message: string; page: string | null; version: string | null; dernier: string; nombre: number; personnes: number; entreprise: string | null; pile: string | null }[] | null
+  >(null);
+  useEffect(() => {
+    void supabase.rpc('erreurs_recentes', { p_jours: 7 }).then(({ data }) => setListe((data ?? []) as NonNullable<typeof liste>));
+  }, []);
+  if (!liste) return null;
+  return (
+    <section className="carte">
+      <h2>🛠️ Erreurs signalées par les appareils (7 jours)</h2>
+      {liste.length === 0 ? (
+        <Vide>Aucune erreur signalée. ✅</Vide>
+      ) : (
+        <div className="defilement-horizontal">
+          <table className="tableau tableau-compact">
+            <thead>
+              <tr><th>Dernière fois</th><th>Entreprise</th><th>Page</th><th>Message</th><th>Version</th><th className="nombre">Fois</th></tr>
+            </thead>
+            <tbody>
+              {liste.map((e, i) => (
+                <tr key={i} title={e.pile ?? ''}>
+                  <td>{new Date(e.dernier).toLocaleString('fr-FR')}</td>
+                  <td>{e.entreprise ?? '—'}</td>
+                  <td className="code">{e.page}</td>
+                  <td>{e.message}</td>
+                  <td>{e.version}</td>
+                  <td className="nombre">{e.nombre} ({e.personnes} pers.)</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

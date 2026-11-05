@@ -6,6 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 // les fichiers sont déjà dans l'application).
 export default defineConfig(({ mode }) => ({
   build: mode === 'apk' ? { outDir: 'dist-apk' } : undefined,
+  // Version affichée et jointe aux rapports d'erreur.
+  define: { __VERSION_APP__: JSON.stringify(process.env.npm_package_version ?? '') },
   plugins: [
     react(),
     mode !== 'apk' && VitePWA({

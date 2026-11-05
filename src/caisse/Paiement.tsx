@@ -47,7 +47,9 @@ export function Paiement({
   const moyensRendu = actifs.filter((m) => m.nature !== 'especes');
   const [renduAutre, setRenduAutre] = useState<{ moyenId: string; montant: string; reference: string } | null>(null);
   const premierChamp = useRef<HTMLInputElement>(null);
-  useEffect(() => premierChamp.current?.focus(), []);
+  useEffect(() => {
+    premierChamp.current?.focus();
+  }, []);
 
   // Un seul moyen : son montant est le total de la vente, jamais modifiable.
   const montantFige = lignes.length === 1;
