@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { VerrouCaisse } from './Verrou';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
@@ -104,13 +103,9 @@ export function versRecu(v: VenteLocale): VenteRecu {
 const totalLignes = (ls: LigneVente[]) => ls.reduce((s, l) => s + Math.round(l.quantite * l.prix_unitaire) - l.remise, 0);
 
 /** Page Caisse : choix de la caisse et ouverture, puis point de vente. */
-/** La caisse s'ouvre avec le code personnel de la caissière. */
+// Le verrouillage après 5 minutes est désormais celui de toute l'application (code d'entrée).
 export function CaissePage() {
-  return (
-    <VerrouCaisse>
-      <CaissePageInterne />
-    </VerrouCaisse>
-  );
+  return <CaissePageInterne />;
 }
 
 function CaissePageInterne() {

@@ -10,6 +10,7 @@ import { dateFr } from '../lib/tresorerie';
 import { useImpression } from '../impression/impression';
 import { Alerte, Champ, EnTetePage, Pastille, Vide } from '../components/ui';
 import { RechercheProduit, type ProduitTrouve } from '../components/RechercheProduit';
+import { useDemandeCreation } from '../lib/demande';
 
 type Statut = 'brouillon' | 'envoye' | 'accepte' | 'refuse' | 'converti';
 interface Devis {
@@ -54,6 +55,7 @@ export function ListeDevis() {
   const [magasin] = useMagasinCourant(org, magasins);
   const [liste, setListe] = useState<Devis[]>([]);
   const [erreur, setErreur] = useState('');
+  useDemandeCreation(magasins.length > 0, () => void creer('devis'));
 
   useEffect(() => {
     void supabase

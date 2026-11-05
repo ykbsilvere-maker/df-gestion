@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { VerrouInactivite, verrouillerMaintenant } from './VerrouInactivite';
 import { useSession } from '../lib/session';
 import { useIdentite } from '../lib/identite';
 import { identifiantAffiche } from '../lib/acces';
@@ -43,30 +44,43 @@ export function Coquille() {
   const [menuMobile, setMenuMobile] = useState(false);
   const emplacement = useLocation();
   useEffect(() => setMenuMobile(false), [emplacement.pathname]);
+  // La caisse occupe tout l'écran : seul le panier défile.
+  const pleinEcran = emplacement.pathname === '/caisse';
+  // Chaque page repart du haut (le contenu défile dans son cadre, pas la fenêtre).
+  const cadre = useRef<HTMLElement>(null);
+  useEffect(() => cadre.current?.scrollTo({ top: 0 }), [emplacement.pathname]);
 
   const principaux = liens.length > MAX_MOBILE + 1 ? liens.slice(0, MAX_MOBILE) : liens;
   const autres = liens.length > MAX_MOBILE + 1 ? liens.slice(MAX_MOBILE) : [];
   const logo = identite?.logoUrl;
-  // La caisse occupe tout l'écran, sans défilement de page : seul le panier défile.
-  const pleinEcran = emplacement.pathname === '/caisse';
+  const page = [...liens].reverse().find((l) => (l.vers === '/' ? emplacement.pathname === '/' : emplacement.pathname.startsWith(l.vers)));
+  const nomUtilisateur = (session?.user.user_metadata?.nom_complet as string | undefined) || identifiantAffiche(session?.user.email);
+
+  const lien = (l: (typeof liens)[number]) => (
+    <NavLink key={l.vers} to={l.vers} end={l.vers === '/'}>
+      <span className="nav-icone" aria-hidden>
+        {l.icone}
+      </span>
+      <span className="nav-libelle">{l.libelle}</span>
+    </NavLink>
+  );
 
   return (
-    <div className={`coquille ${pleinEcran ? 'coquille-plein' : ''}`}>
-      <aside className="barre-laterale">
-        <div className="marque marque-client">
+    <div className={`app ${pleinEcran ? 'app-plein' : ''}`}>
+      <aside className="app-menu">
+        <div className="app-marque">
           {logo ? (
             <span className="logo-client">
               <img src={logo} alt="" />
             </span>
           ) : (
-            <img src="/icone.svg" alt="" width={32} height={32} />
+            <img src="/icone.svg" alt="" width={34} height={34} />
           )}
           <div>
             <strong>{organisation?.nom ?? 'Le Décodeur Financier'}</strong>
             <span>{organisation?.role_libelle ?? (adminGeneral ? 'Administrateur général' : '')}</span>
           </div>
         </div>
-
         {organisations.length > 1 && (
           <select
             className="choix-entreprise"
@@ -81,26 +95,15 @@ export function Coquille() {
             ))}
           </select>
         )}
-
-        <nav className="navigation">
+        <nav className="app-nav">
           {liens.map((l, i) => (
             <Fragment key={l.vers}>
               {l.groupe && l.groupe !== liens[i - 1]?.groupe && <span className="titre-groupe">{GROUPES[l.groupe]}</span>}
-              <NavLink to={l.vers} end={l.vers === '/'}>
-                <span className="nav-icone" aria-hidden>
-                  {l.icone}
-                </span>
-                {l.libelle}
-              </NavLink>
+              {lien(l)}
             </Fragment>
           ))}
         </nav>
-
-        <div className="pied-barre">
-          <span className="email-courant">{identifiantAffiche(session?.user.email)}</span>
-          <button type="button" className="bouton-lien" onClick={() => void deconnecter()}>
-            Se déconnecter
-          </button>
+        <div className="app-menu-pied">
           <span className="propulse">
             <img src="/icone.svg" alt="" />
             Propulsé par Le Décodeur Financier
@@ -108,48 +111,76 @@ export function Coquille() {
         </div>
       </aside>
 
-      <main className={`contenu ${pleinEcran ? 'contenu-plein' : ''}`}>
+      <header className="app-entete">
+        <div className="app-entete-marque">
+          {logo ? (
+            <span className="logo-client">
+              <img src={logo} alt="" />
+            </span>
+          ) : (
+            <img src="/icone.svg" alt="" width={30} height={30} />
+          )}
+          <strong>{organisation?.nom ?? 'DF Gestion'}</strong>
+        </div>
+        <div className="app-entete-titre">
+          <span aria-hidden>{page?.icone}</span>
+          {page?.libelle}
+        </div>
+        <div className="app-entete-actions">
+          <button type="button" className="entete-bouton" onClick={verrouillerMaintenant} title="Verrouiller (code d’entrée)" aria-label="Verrouiller">
+            🔒
+          </button>
+          <Link to="/compte" className="entete-utilisateur" title={nomUtilisateur}>
+            <span className="avatar-matricule">{nomUtilisateur.charAt(0).toUpperCase()}</span>
+            <span className="entete-nom">{nomUtilisateur}</span>
+          </Link>
+          <button type="button" className="entete-bouton" onClick={() => void deconnecter()} title="Se déconnecter" aria-label="Se déconnecter">
+            ⏻
+          </button>
+        </div>
+      </header>
+
+      <main ref={cadre} className={`app-contenu ${pleinEcran ? 'contenu-plein' : ''}`}>
         <Outlet />
       </main>
 
-      <nav className="navigation-mobile">
-        {principaux.map((l) => (
-          <NavLink key={l.vers} to={l.vers} end={l.vers === '/'}>
-            <span className="nav-icone" aria-hidden>
-              {l.icone}
-            </span>
-            <span>{l.libelle}</span>
-          </NavLink>
-        ))}
+      <nav className="app-onglets">
+        {principaux.map((l) => lien(l))}
         {autres.length > 0 && (
           <button
             type="button"
-            className={`bouton-plus ${autres.some((l) => emplacement.pathname.startsWith(l.vers)) ? 'active' : ''}`}
+            className={`bouton-plus ${menuMobile || autres.some((l) => emplacement.pathname.startsWith(l.vers)) ? 'active' : ''}`}
             onClick={() => setMenuMobile(!menuMobile)}
             aria-expanded={menuMobile}
           >
             <span className="nav-icone" aria-hidden>
               ☰
             </span>
-            <span>Plus</span>
+            <span className="nav-libelle">Plus</span>
           </button>
         )}
       </nav>
       {menuMobile && (
-        <div className="menu-mobile" role="menu">
-          {autres.map((l) => (
-            <NavLink key={l.vers} to={l.vers} role="menuitem">
-              <span className="nav-icone" aria-hidden>
-                {l.icone}
-              </span>
-              {l.libelle}
-            </NavLink>
-          ))}
-          <button type="button" className="bouton-lien" onClick={() => void deconnecter()}>
-            Se déconnecter
-          </button>
+        <div className="app-plus" role="menu" onClick={() => setMenuMobile(false)}>
+          <div className="app-plus-feuille" onClick={(e) => e.stopPropagation()}>
+            <div className="app-plus-poignee" />
+            <div className="app-plus-grille">
+              {autres.map((l) => (
+                <NavLink key={l.vers} to={l.vers} role="menuitem">
+                  <span className="nav-icone" aria-hidden>
+                    {l.icone}
+                  </span>
+                  <span className="nav-libelle">{l.libelle}</span>
+                </NavLink>
+              ))}
+            </div>
+            <button type="button" className="bouton bouton-discret bouton-plein" onClick={() => void deconnecter()}>
+              ⏻ Se déconnecter
+            </button>
+          </div>
         </div>
       )}
+      <VerrouInactivite />
     </div>
   );
 }

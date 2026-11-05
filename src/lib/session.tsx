@@ -4,6 +4,7 @@ import { definirDevise } from './argent';
 import { supabase } from './supabase';
 import type { MonOrganisation } from './types';
 import { nomAppareil } from './format';
+import { estAccesEmploye } from './acces';
 
 export interface InfoPlateforme {
   admin_existe: boolean;
@@ -20,6 +21,11 @@ interface EtatSession {
   adminGeneral: boolean;
   /** Connexion avec un mot de passe provisoire : il doit en choisir un nouveau. */
   mdpProvisoire: boolean;
+  /** Employé dont le code d'entrée est provisoire (ou absent) : il doit en choisir un. */
+  codeAChoisir: boolean;
+  /** Code d'entrée de 4 chiffres défini pour ce compte (sert au déverrouillage). */
+  codeEntreeDefini: boolean;
+  rechargerCodeEntree: () => Promise<void>;
   rechargerPlateforme: () => Promise<void>;
   chargement: boolean;
   organisations: MonOrganisation[];
@@ -40,6 +46,12 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
   const [chargement, setChargement] = useState(true);
   const [organisations, setOrganisations] = useState<MonOrganisation[]>([]);
   const [plateforme, setPlateforme] = useState<InfoPlateforme | null>(null);
+  const [codeEntree, setCodeEntree] = useState<{ defini: boolean; provisoire: boolean } | null>(null);
+  const rechargerCodeEntree = useCallback(async () => {
+    const { data, error } = await supabase.rpc('mon_pin');
+    // Sans réseau : on garde l'état connu (le serveur revérifie à chaque connexion).
+    if (!error) setCodeEntree(data as { defini: boolean; provisoire: boolean });
+  }, []);
   const [orgId, setOrgId] = useState<string | null>(() => {
     try {
       return localStorage.getItem(CLE_ORG);
@@ -121,6 +133,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
       if (!uid) {
         dernierJson.current = '';
         setOrganisations([]);
+        setCodeEntree(null);
         setChargement(false);
         void rechargerPlateforme();
         return;
@@ -130,7 +143,11 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
       setTimeout(async () => {
         // Rattache d'éventuelles invitations reçues depuis la dernière visite (ignoré sans réseau).
         await supabase.rpc('accepter_invitations').then(undefined, () => undefined);
-        await Promise.all([rechargerOrganisations().catch(() => appliquerOrganisations([])), rechargerPlateforme()]);
+        await Promise.all([
+          rechargerOrganisations().catch(() => appliquerOrganisations([])),
+          rechargerPlateforme(),
+          rechargerCodeEntree().catch(() => undefined),
+        ]);
         if (actif) setChargement(false);
       }, 0);
     });
@@ -138,7 +155,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
       actif = false;
       data.subscription.unsubscribe();
     };
-  }, [rechargerOrganisations, rechargerPlateforme, appliquerOrganisations]);
+  }, [rechargerOrganisations, rechargerPlateforme, appliquerOrganisations, rechargerCodeEntree]);
 
   // Droits modifiés par le propriétaire : appliqués sur cet appareil en moins de 30 s,
   // et tout de suite au retour sur l'application ou au retour du réseau.
@@ -215,6 +232,9 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
     plateforme,
     adminGeneral: !!plateforme?.je_suis_admin,
     mdpProvisoire: session?.user.user_metadata?.mdp_provisoire === true,
+    codeAChoisir: estAccesEmploye(session?.user.email) && !!codeEntree && (!codeEntree.defini || codeEntree.provisoire),
+    codeEntreeDefini: !!codeEntree?.defini,
+    rechargerCodeEntree,
     rechargerPlateforme,
     chargement,
     organisations,

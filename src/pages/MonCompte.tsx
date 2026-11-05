@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { messageErreur, nomAppareil } from '../lib/format';
-import { Alerte, Champ, EnTetePage } from '../components/ui';
+import { Alerte, Champ, EnTetePage, Pastille } from '../components/ui';
 import { estAccesEmploye, identifiantAffiche } from '../lib/acces';
 
 export function MonCompte() {
-  const { session, organisations } = useSession();
+  const { session, organisations, codeEntreeDefini } = useSession();
   const naviguer = useNavigate();
   const [nom, setNom] = useState('');
   const [telephone, setTelephone] = useState('');
@@ -79,13 +79,27 @@ export function MonCompte() {
           <button className="bouton bouton-principal">Enregistrer</button>
         </form>
 
-        <form className="carte formulaire" onSubmit={changerMotDePasse}>
-          <h2>Mot de passe</h2>
-          <Champ label={estAccesEmploye(session?.user.email) ? 'Nouveau code secret' : 'Nouveau mot de passe'} aide={estAccesEmploye(session?.user.email) ? '6 chiffres minimum' : '8 caractères minimum'}>
-            <input type="password" value={mdp} onChange={(e) => setMdp(e.target.value)} autoComplete="new-password" />
-          </Champ>
-          <button className="bouton bouton-principal">Modifier</button>
-        </form>
+        <section className="carte formulaire">
+          <h2>🔢 Code d’entrée</h2>
+          <p className="secondaire">
+            4 chiffres, comme sur Wave. Il ouvre l’application à la connexion
+            {estAccesEmploye(session?.user.email) ? '' : ' (pour les employés par matricule)'} et la déverrouille après 5 minutes sans activité.
+          </p>
+          <p>{codeEntreeDefini ? <Pastille ton="vert">Code d’entrée défini</Pastille> : <Pastille ton="or">Pas encore de code</Pastille>}</p>
+          <button type="button" className="bouton bouton-principal" onClick={() => naviguer('/choisir-code')}>
+            {codeEntreeDefini ? 'Modifier mon code' : 'Créer mon code'}
+          </button>
+        </section>
+
+        {!estAccesEmploye(session?.user.email) && (
+          <form className="carte formulaire" onSubmit={changerMotDePasse}>
+            <h2>Mot de passe</h2>
+            <Champ label="Nouveau mot de passe" aide="8 caractères minimum">
+              <input type="password" value={mdp} onChange={(e) => setMdp(e.target.value)} autoComplete="new-password" />
+            </Champ>
+            <button className="bouton bouton-principal">Modifier</button>
+          </form>
+        )}
 
         <section className="carte">
           <h2>Mes entreprises</h2>

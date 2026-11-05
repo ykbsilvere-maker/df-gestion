@@ -6,7 +6,8 @@ import { ACTIONS, MODULES, type Caisse, type Invitation, type Magasin, type Memb
 import { Alerte, Champ, EnTetePage, Fenetre, Pastille, Vide } from '../components/ui';
 import { Identifiants } from '../components/Identifiants';
 import { genererMotDePasse, gererCompte, messageIdentifiants } from '../lib/comptes';
-import { estAccesEmploye, genererCodeProvisoire, identifiantAffiche, lireAccesEmploye, messageAccesEmploye, normaliserMatricule } from '../lib/acces';
+import { codeEntreeValide, estAccesEmploye, genererCodeProvisoire, identifiantAffiche, lireAccesEmploye, messageAccesEmploye, normaliserMatricule } from '../lib/acces';
+import { useDemandeCreation } from '../lib/demande';
 
 interface Donnees {
   membres: Membre[];
@@ -44,6 +45,7 @@ export function Utilisateurs() {
   const [info, setInfo] = useState('');
   const [fenetre, setFenetre] = useState<Fenetres>(null);
   const [afficherInactifs, setAfficherInactifs] = useState(false);
+  useDemandeCreation(peut('utilisateurs.creer'), () => setFenetre({ type: 'inviter' }));
   const [acces, setAcces] = useState<{ code_acces: string; matricule_suivant: string } | null>(null);
   useEffect(() => {
     if (!org) return;
@@ -112,6 +114,22 @@ export function Utilisateurs() {
     return true;
   }
 
+  /** Nouveau code d'entrée provisoire (4 chiffres) pour un employé par matricule. */
+  async function redonnerCode(email: string, nom?: string) {
+    const a = lireAccesEmploye(email);
+    if (!a || !org || !organisation) return;
+    if (!window.confirm(`Donner un nouveau code d’entrée au matricule ${a.matricule} ? L’ancien ne marchera plus.`)) return;
+    const code = genererCodeProvisoire();
+    setErreur('');
+    const { error } = await supabase.rpc('definir_pin_employe', { p_org: org, p_matricule: a.matricule, p_pin: code });
+    if (error) return setErreur(messageErreur(error));
+    setInfo(`Nouveau code provisoire pour le matricule ${a.matricule}.`);
+    setFenetre({
+      type: 'identifiants',
+      texte: messageAccesEmploye({ nom, entreprise: organisation.nom, code: a.code, matricule: a.matricule, codeProvisoire: code }),
+    });
+  }
+
   async function envoyerReinitialisation(email: string | null) {
     if (!email) return;
     setErreur('');
@@ -155,9 +173,9 @@ export function Utilisateurs() {
 
       {acces && (
         <div className="bandeau-code-acces">
-          <span>Code entreprise</span>
+          <span>Code établissement</span>
           <strong className="code-acces">{acces.code_acces}</strong>
-          <span className="secondaire">Vos employés se connectent avec ce code, leur matricule et leur code secret. Seul le gérant principal utilise une adresse e-mail.</span>
+          <span className="secondaire">Vos employés se connectent avec ce code établissement, leur matricule et leur code d’entrée de 4 chiffres. Seul le gérant principal utilise une adresse e-mail.</span>
         </div>
       )}
 
@@ -232,18 +250,15 @@ export function Utilisateurs() {
                                     Droits
                                   </button>
                                 )}
-                                <button className="bouton-lien" onClick={() => setFenetre({ type: 'motdepasse', membre: m })}>
-                                  Mot de passe
-                                </button>
-                                <button
-                                  className="bouton-lien"
-                                  onClick={() => {
-                                    if (window.confirm(`Réinitialiser le code de caisse de ce membre ? Il en créera un nouveau à sa prochaine ouverture de caisse.`))
-                                      void appeler('reinitialiser_code_caisse', { p_membre: m.id }, 'Code de caisse réinitialisé.');
-                                  }}
-                                >
-                                  Code caisse
-                                </button>
+                                {lireAccesEmploye(p?.email) ? (
+                                  <button className="bouton-lien" onClick={() => void redonnerCode(p?.email ?? '', p?.nom_complet ?? undefined)}>
+                                    Code d’entrée
+                                  </button>
+                                ) : (
+                                  <button className="bouton-lien" onClick={() => setFenetre({ type: 'motdepasse', membre: m })}>
+                                    Mot de passe
+                                  </button>
+                                )}
                                 <button
                                   className="bouton-lien lien-danger"
                                   onClick={() => setFenetre({ type: 'desactiver', membre: m })}
@@ -351,10 +366,16 @@ export function Utilisateurs() {
                   p_caisses: v.caisses,
                 });
                 if (inv.error) return setErreur(messageErreur(inv.error));
-                const r = await gererCompte('creer', inv.data as string, v.motDePasse, v.nom);
-                await charger();
+                const r = await gererCompte('creer', inv.data as string, genererMotDePasse(), v.nom);
                 if (!r.ok) {
+                  await charger();
                   setErreur(`Employé enregistré, mais son accès n’a pas pu être créé : ${r.message}`);
+                  return setFenetre(null);
+                }
+                const pin = await supabase.rpc('definir_pin_employe', { p_org: org, p_matricule: v.matricule, p_pin: v.motDePasse });
+                await charger();
+                if (pin.error) {
+                  setErreur(`Accès créé, mais le code d’entrée n’a pas pu être enregistré : ${messageErreur(pin.error)}. Utilisez « Code d’entrée » sur sa ligne.`);
                   return setFenetre(null);
                 }
                 setInfo(`Accès créé pour le matricule ${v.matricule.toUpperCase()}.`);
@@ -580,9 +601,13 @@ function FormulaireRole({
     setV({ ...v, magasins, caisses });
   }
 
+  const [erreurCode, setErreurCode] = useState('');
   async function soumettre(e: FormEvent) {
     e.preventDefault();
     if (envoi) return;
+    if (parMatricule && !codeEntreeValide(v.motDePasse))
+      return setErreurCode('Code trop simple : 4 chiffres, ni tous identiques ni qui se suivent (cliquez « Générer »).');
+    setErreurCode('');
     setEnvoi(true);
     await onValider({ ...v, email: v.email.trim().toLowerCase(), magasins: v.tousMagasins ? [] : v.magasins });
     setEnvoi(false);
@@ -598,7 +623,7 @@ function FormulaireRole({
             <input type="radio" checked={v.typeAcces === 'matricule'} onChange={() => setV({ ...v, typeAcces: 'matricule', motDePasse: genererCodeProvisoire() })} />
             <span>
               <strong>Par matricule</strong>
-              Recommandé pour les employés : code entreprise + matricule + code secret.
+              Recommandé pour les employés : code établissement + matricule + code d’entrée de 4 chiffres.
             </span>
           </label>
           <label className={v.typeAcces === 'email' ? 'actif' : ''}>
@@ -612,6 +637,7 @@ function FormulaireRole({
       )}
       {parMatricule && (
         <>
+          <Alerte>{erreurCode}</Alerte>
           <div className="grille-2">
             <Champ label="Nom et prénoms">
               <input value={v.nom} onChange={(e) => setV({ ...v, nom: e.target.value })} required autoComplete="off" />
@@ -627,9 +653,9 @@ function FormulaireRole({
               />
             </Champ>
           </div>
-          <Champ label="Code provisoire (6 chiffres)" aide="À lui transmettre ; il choisira son propre code secret à la première connexion.">
+          <Champ label="Code d’entrée provisoire (4 chiffres)" aide="À lui transmettre ; il choisira son propre code à la première connexion.">
             <div className="champ-avec-bouton">
-              <input className="champ-code" value={v.motDePasse} onChange={(e) => setV({ ...v, motDePasse: e.target.value.replace(/\D/g, '').slice(0, 12) })} minLength={6} required inputMode="numeric" autoComplete="off" />
+              <input className="champ-code" value={v.motDePasse} onChange={(e) => setV({ ...v, motDePasse: e.target.value.replace(/\D/g, '').slice(0, 4) })} minLength={4} maxLength={4} required inputMode="numeric" autoComplete="off" />
               <button type="button" className="bouton bouton-discret" onClick={() => setV({ ...v, motDePasse: genererCodeProvisoire() })}>
                 Générer
               </button>

@@ -12,6 +12,7 @@ import { useFournisseurs } from './Fournisseurs';
 import { useComptes } from '../../lib/tresorerie';
 import { useImpression } from '../../impression/impression';
 import { useIdentite } from '../../lib/identite';
+import { useDemandeCreation } from '../../lib/demande';
 
 interface Reception {
   id: string;
@@ -81,6 +82,7 @@ export function ListeReceptions() {
   const [liste, setListe] = useState<(Reception & { total: number })[]>([]);
   const [erreur, setErreur] = useState('');
   const peutCreer = peut('stock.creer') || peut('achats.creer');
+  useDemandeCreation(peutCreer && !!magasin, () => void nouvelle());
 
   useEffect(() => {
     void (async () => {

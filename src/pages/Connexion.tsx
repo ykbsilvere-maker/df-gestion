@@ -7,11 +7,14 @@ import { useSession } from '../lib/session';
 import { messageErreur } from '../lib/format';
 import { Alerte, Champ } from '../components/ui';
 import { MarqueDecodeur } from '../components/Marque';
+import { PaveCode } from '../components/PaveCode';
 import {
   codeEntrepriseMemorise,
+  connexionParCode,
   emailEmploye,
   identifiantAffiche,
   lireAccesEmploye,
+  marquerVerrou,
   memoriserCodeEntreprise,
   normaliserCode,
   normaliserMatricule,
@@ -73,12 +76,39 @@ export function Connexion() {
     }
   }, [premiere]);
   const parMatricule = mode === 'connexion' && type === 'employe';
+  // Employé : 1) code établissement + matricule, 2) code d'entrée sur le pavé (comme Wave).
+  const [etape, setEtape] = useState<'identite' | 'code'>(() => (codeEntreprise.length >= 4 && matricule ? 'code' : 'identite'));
+  const [erreurCode, setErreurCode] = useState('');
+  const [tentative, setTentative] = useState(0);
+
+  async function entrerCode(pin: string) {
+    if (envoi) return;
+    setEnvoi(true);
+    setErreurCode('');
+    const r = await connexionParCode(codeEntreprise, matricule, pin);
+    setEnvoi(false);
+    if (!r.ok) {
+      setErreurCode(r.message ?? 'Code incorrect.');
+      setTentative((t) => t + 1);
+      return;
+    }
+    memoriser(emailEmploye(codeEntreprise, matricule));
+    marquerVerrou(false);
+    await apresConnexion().catch(() => undefined);
+    naviguer(r.provisoire ? '/choisir-code' : '/');
+  }
 
   async function soumettre(e: FormEvent) {
     e.preventDefault();
     if (envoi) return;
     setErreur('');
     setInfo('');
+    if (parMatricule) {
+      if (codeEntreprise.length < 4 || !matricule) return setErreur('Indiquez le code établissement et votre matricule.');
+      setErreurCode('');
+      setEtape('code');
+      return;
+    }
     setEnvoi(true);
     try {
       if (mode === 'connexion') {
@@ -90,6 +120,7 @@ export function Connexion() {
           throw error;
         }
         memoriser(identifiant.toLowerCase());
+        marquerVerrou(false);
         if (parMatricule) memoriserCodeEntreprise(codeEntreprise);
         await apresConnexion();
         naviguer('/');
@@ -178,6 +209,8 @@ export function Connexion() {
                         setType('employe');
                         setCodeEntreprise(a.code);
                         setMatricule(a.matricule);
+                        setErreurCode('');
+                        setEtape('code');
                       } else {
                         setType('email');
                         setEmail(r);
@@ -230,9 +263,25 @@ export function Connexion() {
               <input value={nom} onChange={(e) => setNom(e.target.value)} required autoComplete="name" />
             </Champ>
           )}
-          {parMatricule ? (
+          {parMatricule && etape === 'code' ? (
+            <div className="etape-code">
+              <div className="qui-se-connecte">
+                <span className="avatar-matricule">#</span>
+                <div>
+                  <strong>Matricule {matricule}</strong>
+                  <span className="secondaire">Établissement {codeEntreprise}</span>
+                </div>
+                <button type="button" className="bouton-lien" onClick={() => setEtape('identite')}>
+                  Changer
+                </button>
+              </div>
+              <p className="consigne-code">Tapez votre code d’entrée (4 chiffres)</p>
+              <PaveCode onComplet={(c) => void entrerCode(c)} occupe={envoi} erreur={erreurCode} remiseAZero={tentative} />
+              <p className="secondaire centre">Code oublié ? Votre gérant vous en donne un nouveau.</p>
+            </div>
+          ) : parMatricule ? (
             <div className="grille-acces">
-              <Champ label="Code entreprise" aide="Donné par votre gérant ; retenu sur cet appareil.">
+              <Champ label="Code établissement" aide="Donné par votre gérant ; retenu sur cet appareil.">
                 <input
                   value={codeEntreprise}
                   onChange={(e) => setCodeEntreprise(normaliserCode(e.target.value))}
@@ -270,8 +319,8 @@ export function Connexion() {
               />
             </Champ>
           )}
-          {mode !== 'oubli' && (
-            <Champ label={parMatricule ? 'Code secret' : 'Mot de passe'} aide={mode === 'inscription' ? '8 caractères minimum' : undefined}>
+          {mode !== 'oubli' && !parMatricule && (
+            <Champ label="Mot de passe" aide={mode === 'inscription' ? '8 caractères minimum' : undefined}>
               <div className="champ-mot-de-passe">
                 <input
                   type={voirMotDePasse ? 'text' : 'password'}
@@ -280,8 +329,7 @@ export function Connexion() {
                   required
                   minLength={mode === 'inscription' ? 8 : undefined}
                   autoComplete={mode === 'inscription' ? 'new-password' : 'current-password'}
-                  autoFocus={mode === 'connexion' && (parMatricule ? !!matricule : !!email)}
-                  inputMode={parMatricule ? 'numeric' : undefined}
+                  autoFocus={mode === 'connexion' && !!email}
                 />
                 <button
                   type="button"
@@ -295,15 +343,19 @@ export function Connexion() {
             </Champ>
           )}
 
+          {!(parMatricule && etape === 'code') && (
           <button className="bouton bouton-principal bouton-plein" disabled={envoi}>
             {envoi
               ? 'Veuillez patienter…'
-              : mode === 'connexion'
+              : parMatricule
+                ? 'Continuer'
+                : mode === 'connexion'
                 ? 'Se connecter'
                 : mode === 'inscription'
                   ? 'Créer mon compte'
                   : 'Recevoir le lien'}
           </button>
+          )}
 
           <div className="liens-formulaire">
             {mode !== 'connexion' && (
@@ -321,7 +373,7 @@ export function Connexion() {
                 Mot de passe oublié
               </button>
             )}
-            {parMatricule && <span className="secondaire">Code secret oublié ? Votre gérant vous en donne un nouveau.</span>}
+
           </div>
         </form>
         <p className="note-publique">

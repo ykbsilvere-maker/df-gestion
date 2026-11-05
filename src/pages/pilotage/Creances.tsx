@@ -10,6 +10,7 @@ import { useImpression } from '../../impression/impression';
 import { classeurXlsx, telechargerFichier, TYPE_XLSX } from '../../lib/excel';
 import { enUnites } from '../../lib/argent';
 import { Alerte, Champ, EnTetePage, Fenetre, MontantFort, Pastille, Vide } from '../../components/ui';
+import { useDemandeCreation } from '../../lib/demande';
 
 /** Module Trésorerie : comptes, créances clients, approvisionnement. */
 export function TresorerieModule() {
@@ -82,6 +83,12 @@ export function Creances() {
   const [info, setInfo] = useState('');
   const [client, setClient] = useState<Partial<Client> | null>(null);
   const [creance, setCreance] = useState<Record<string, string> | null>(null);
+  const [charge, setCharge] = useState(false);
+  useDemandeCreation(charge, (v) =>
+    v === 'client' || !clients.some((c) => c.actif)
+      ? setClient({ delai_paiement: 30, actif: true })
+      : setCreance({ client: clients.find((c) => c.actif)?.id ?? '', date: aujourdhui(), montant: '' }),
+  );
 
   const charger = useCallback(async () => {
     const [a, b] = await Promise.all([
@@ -91,6 +98,7 @@ export function Creances() {
     if (a.error) return setErreur(messageErreur(a.error));
     setLignes(((a.data as { clients: LigneBalance[] }).clients ?? []) as LigneBalance[]);
     setClients((b.data ?? []) as Client[]);
+    setCharge(true);
   }, [org, au]);
   useEffect(() => {
     void charger();

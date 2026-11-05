@@ -3,7 +3,18 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 1.2.** **Connexion des employés par matricule** : chaque entreprise a un **code entreprise** fixe (ex. BOUT78) ;
+**Version 1.3.** **Code d'entrée de 4 chiffres, comme Wave** : un employé se connecte avec le code établissement,
+son matricule et son code d'entrée sur un pavé numérique (validation automatique au 4e chiffre). Le gérant donne un code
+provisoire ; l'employé choisit le sien à la première connexion. 5 erreurs bloquent 5 minutes, 15 erreurs bloquent jusqu'à
+un nouveau code du gérant. La session est ouverte par la fonction serveur « connexion » (la clé secrète reste sur le
+serveur). **Après 5 minutes sans activité**, l'application revient à l'écran du code (aussi au retour sur l'application),
+sans perdre la vente en cours ; déverrouillage possible sans réseau (empreinte du code gardée sur l'appareil). Le code de
+caisse séparé est supprimé. **Nouveau design « application »** : en-tête et menu fixes, seul le contenu défile ; sur
+téléphone, barre du haut, onglets du bas et feuille « Plus » en tuiles ; accueil avec carte des ventes du jour et
+**actions rapides** (+ Produit, + Arrivage, + Dépense, + Devis, + Créance, + Client, + Employé) qui ouvrent directement
+le formulaire, sur l'APK comme sur le web.
+
+Version 1.2 : **Connexion des employés par matricule** : chaque entreprise a un **code entreprise** fixe (ex. BOUT78) ;
 un employé se connecte avec ce code (retenu sur l'appareil), son **matricule** et son **code secret** (6 chiffres au moins,
 choisi à la première connexion) ; seul le gérant principal garde son adresse e-mail. Le gérant crée l'accès dans
 Utilisateurs (matricule proposé, code provisoire de 6 chiffres, message prêt pour WhatsApp) et redonne un code oublié.

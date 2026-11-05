@@ -9,6 +9,7 @@ import { Alerte, EnTetePage, Fenetre, Pastille, Vide } from '../components/ui';
 import { Scanner } from '../components/Scanner';
 import { FicheProduit } from './FicheProduit';
 import { Vignette } from '../components/PhotoProduit';
+import { useDemandeCreation } from '../lib/demande';
 
 interface Ligne extends Produit {
   codes_barres: string[];
@@ -38,6 +39,7 @@ export function Catalogue() {
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [codeInconnu, setCodeInconnu] = useState('');
   const champ = useRef<HTMLInputElement>(null);
+  useDemandeCreation(peut('catalogue.creer'), () => setEdition({}));
   const requete = useRef(0);
 
   const chargerCategories = useCallback(async () => {

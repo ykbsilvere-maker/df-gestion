@@ -5,6 +5,7 @@ import { messageErreur } from '../../lib/format';
 import { clavierMontant, lireMontant, montant } from '../../lib/argent';
 import { aujourdhui, dateFr, useComptes } from '../../lib/tresorerie';
 import { Alerte, Champ, EnTetePage, Fenetre, MontantFort, Pastille, Vide } from '../../components/ui';
+import { useDemandeCreation } from '../../lib/demande';
 
 interface LigneSuivi {
   poste_id: string;
@@ -102,6 +103,9 @@ export function Budget() {
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [vue, setVue] = useState<'mois' | 'annee'>('mois');
   const [bilan, setBilan] = useState<BilanAnnee | null>(null);
+  useDemandeCreation(!!suivi && comptes.length > 0 && peut('budget.creer'), () =>
+    setNouvelle({ date: aujourdhui(), poste: suivi?.lignes.find((p) => p.actif)?.poste_id ?? '', compte: comptes[0]?.id ?? '', montant: '' }),
+  );
   const [depenses, setDepenses] = useState<Depense[]>([]);
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');

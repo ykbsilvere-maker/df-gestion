@@ -67,11 +67,10 @@ Deno.serve(async (req) => {
   const email = String(corps.email ?? '').trim().toLowerCase();
   const motDePasse = String(corps.mot_de_passe ?? '');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return reponse({ ok: false, erreur: 'Adresse e-mail invalide' });
-  // Employés connectés par matricule : code secret de 6 chiffres au moins ; autres comptes : 8 caractères.
+  // Employés connectés par matricule : ils entrent avec leur code d'entrée ; autres comptes : 8 caractères.
   const employe = email.endsWith('@acces.dfgestion.app');
-  const minimum = employe ? 6 : 8;
-  if (motDePasse.length < minimum)
-    return reponse({ ok: false, erreur: `Le ${employe ? 'code provisoire' : 'mot de passe provisoire'} doit contenir au moins ${minimum} caractères` });
+  if (!employe && motDePasse.length < 8)
+    return reponse({ ok: false, erreur: 'Le mot de passe provisoire doit contenir au moins 8 caractères' });
 
   const appelant = createClient(url, publique, {
     global: { headers: { Authorization: autorisation } },
@@ -90,18 +89,24 @@ Deno.serve(async (req) => {
   const c = controle as { statut: string; message?: string; user_id?: string; organisations?: string[] };
   if (c.statut !== 'ok') return reponse({ ok: false, statut: c.statut, erreur: c.message ?? 'Refusé' });
 
+  // Employé par matricule : il se connecte avec son code d'entrée (4 chiffres) ; son mot de passe technique
+  // est long, aléatoire et jamais montré.
+  const motDePasseFinal = employe
+    ? Array.from(crypto.getRandomValues(new Uint8Array(24)), (o) => o.toString(16).padStart(2, '0')).join('')
+    : motDePasse;
+
   if (action === 'creer') {
     const { error } = await service.auth.admin.createUser({
       email,
-      password: motDePasse,
+      password: motDePasseFinal,
       email_confirm: true,
-      user_metadata: { nom_complet: String(corps.nom ?? '').trim() || null, mdp_provisoire: true },
+      user_metadata: { nom_complet: String(corps.nom ?? '').trim() || null, mdp_provisoire: !employe },
     });
     if (error) return reponse({ ok: false, erreur: error.message });
   } else {
     const { error } = await service.auth.admin.updateUserById(c.user_id!, {
-      password: motDePasse,
-      user_metadata: { mdp_provisoire: true },
+      password: motDePasseFinal,
+      user_metadata: { mdp_provisoire: !employe },
     });
     if (error) return reponse({ ok: false, erreur: error.message });
   }

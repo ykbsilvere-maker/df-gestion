@@ -39,6 +39,7 @@ import { Comptabilite } from './pages/pilotage/Comptabilite';
 import { Soldes } from './pages/pilotage/Soldes';
 import { Administration } from './pages/Administration';
 import { Configuration } from './pages/Configuration';
+import { ChoisirCode } from './pages/ChoisirCode';
 
 function Chargement() {
   return (
@@ -54,9 +55,10 @@ function Chargement() {
  * général) ou page de création / d'attente.
  */
 function Protege({ children }: { children: ReactNode }) {
-  const { session, chargement, organisations, mdpProvisoire, adminGeneral } = useSession();
+  const { session, chargement, organisations, mdpProvisoire, codeAChoisir, adminGeneral } = useSession();
   if (chargement) return <Chargement />;
   if (!session) return <Navigate to="/connexion" replace />;
+  if (codeAChoisir) return <Navigate to="/choisir-code" replace />;
   if (mdpProvisoire) return <Navigate to="/nouveau-mot-de-passe" replace />;
   if (organisations.length === 0) return <Navigate to={adminGeneral ? '/administration' : '/creer-entreprise'} replace />;
   return <>{children}</>;
@@ -93,6 +95,7 @@ function Routes_() {
         element={chargement ? <Chargement /> : session ? <Navigate to="/" replace /> : <Connexion />}
       />
       <Route path="/nouveau-mot-de-passe" element={<NouveauMotDePasse />} />
+      <Route path="/choisir-code" element={chargement ? <Chargement /> : session ? <ChoisirCode /> : <Navigate to="/connexion" replace />} />
       <Route path="/configuration" element={<ChangerServeur />} />
       <Route
         element={

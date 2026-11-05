@@ -4,11 +4,50 @@ import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { dateHeure, libelleAction } from '../lib/format';
 import type { LigneAudit } from '../lib/types';
-import { EnTetePage, Ico, MontantFort } from '../components/ui';
+import { Ico, MontantFort } from '../components/ui';
 import { TableauDeBord } from './TableauDeBord';
 
+const salutation = () => {
+  const h = Number(new Date().toLocaleString('fr-FR', { hour: 'numeric', hour12: false, timeZone: 'Africa/Abidjan' }));
+  return h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir';
+};
+
+/** Actions en un geste : chaque tuile ouvre directement le formulaire de création. */
+const ACTIONS: { vers: string; icone: string; libelle: string; droit: string | string[] }[] = [
+  { vers: '/caisse', icone: '🛒', libelle: 'Vendre', droit: 'caisse.creer' },
+  { vers: '/catalogue?nouveau=1', icone: '🛍️', libelle: '+ Produit', droit: 'catalogue.creer' },
+  { vers: '/stock/receptions?nouveau=1', icone: '📥', libelle: '+ Arrivage', droit: ['stock.creer', 'achats.creer'] },
+  { vers: '/budget?nouveau=1', icone: '💸', libelle: '+ Dépense', droit: 'budget.creer' },
+  { vers: '/devis?nouveau=1', icone: '📄', libelle: '+ Devis', droit: 'ventes.valider' },
+  { vers: '/tresorerie/creances?nouveau=1', icone: '🧾', libelle: '+ Créance', droit: 'tresorerie.creer' },
+  { vers: '/tresorerie/creances?nouveau=client', icone: '🙋', libelle: '+ Client', droit: 'clients.creer' },
+  { vers: '/utilisateurs?nouveau=1', icone: '👤', libelle: '+ Employé', droit: 'utilisateurs.creer' },
+  { vers: '/caisse/suivi', icone: '💼', libelle: 'Ma caisse', droit: 'caisse.creer' },
+  { vers: '/stock', icone: '📦', libelle: 'Stock', droit: 'stock.consulter' },
+  { vers: '/tresorerie', icone: '💰', libelle: 'Trésorerie', droit: 'tresorerie.consulter' },
+  { vers: '/rapports/ventes', icone: '📊', libelle: 'Ventes', droit: ['ventes.exporter', 'rapports.consulter'] },
+];
+
+function ActionsRapides({ peut }: { peut: (p: string) => boolean }) {
+  const visibles = ACTIONS.filter((a) => (Array.isArray(a.droit) ? a.droit.some((d) => peut(d)) : peut(a.droit))).slice(0, 8);
+  if (!visibles.length) return null;
+  return (
+    <nav className="actions-rapides" aria-label="Actions rapides">
+      {visibles.map((a) => (
+        <Link key={a.vers} to={a.vers} className="action-rapide">
+          <span className="action-icone" aria-hidden>
+            {a.icone}
+          </span>
+          <span>{a.libelle}</span>
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 export function Accueil() {
-  const { organisation, peut, adminGeneral } = useSession();
+  const { organisation, peut, adminGeneral, session } = useSession();
+  const prenom = ((session?.user.user_metadata?.nom_complet as string | undefined) ?? '').trim().split(/\s+/)[0] ?? '';
   const naviguer = useNavigate();
   // L'administrateur général arrive sur sa console à chaque nouvelle session.
   useEffect(() => {
@@ -74,21 +113,28 @@ export function Accueil() {
 
   return (
     <>
-      <EnTetePage titre={organisation.nom} sousTitre={`Connecté en tant que ${organisation.role_libelle.toLowerCase()}`} />
-      {(peut('rapports.consulter') || peut('ventes.exporter')) && <TableauDeBord />}
-
-      <section className="tuiles">
+      <section className="accueil-hero">
+        <div>
+          <span className="hero-salut">{salutation()}{prenom ? `, ${prenom}` : ''}</span>
+          <strong className="hero-entreprise">{organisation.nom}</strong>
+          <span className="hero-role">{organisation.role_libelle}</span>
+        </div>
         {ventes && (
-          <Link to={peut('caisse.creer') ? '/caisse' : '/'} className="tuile tuile-ventes">
-            <span className="tuile-icone" aria-hidden>💰</span>
-            <span className="tuile-valeur">
-              <MontantFort v={ventes.total} />
-            </span>
-            <span className="tuile-libelle">
-              ventes du jour ({ventes.nombre} ticket{ventes.nombre > 1 ? 's' : ''})
+          <Link to={peut('caisse.creer') ? '/caisse' : '/rapports/ventes'} className="hero-ventes">
+            <span>Ventes du jour</span>
+            <MontantFort v={ventes.total} />
+            <span>
+              {ventes.nombre} ticket{ventes.nombre > 1 ? 's' : ''}
             </span>
           </Link>
         )}
+      </section>
+
+      <ActionsRapides peut={peut} />
+
+      {(peut('rapports.consulter') || peut('ventes.exporter')) && <TableauDeBord />}
+
+      <section className="tuiles">
         {stock && (
           <Link to="/stock" className="tuile">
             <span className="tuile-icone" aria-hidden>📦</span>
