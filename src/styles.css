@@ -962,3 +962,13 @@ input:disabled, select:disabled { background: var(--surface-2); color: var(--enc
   .page-connexion { grid-template-columns: 1fr; }
   .connexion-vitrine { display: none; }
 }
+
+/* v1.0 — Rentabilité, soldes */
+.kpi-positif { border-color: #b9e3d2; background: var(--vert-clair); }
+.kpi-negatif { border-color: #efc4bb; background: var(--rouge-clair); }
+.barre-positive { fill: var(--vert); }
+.barre-negative { fill: var(--rouge); }
+.jauge-grande { height: 14px; margin: 10px 0 4px; }
+.sig .sig-detail td { font-size: 0.84rem; color: var(--encre-douce); padding-left: 22px; }
+.petit-texte { font-size: 0.85rem; }
+.texte-positif { color: var(--vert); font-weight: 700; }

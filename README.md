@@ -3,7 +3,13 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 0.10.** **Tableau de bord** (chiffre d'affaires par jour, semaine, mois ou année avec évolution, histogramme,
+**Version 1.0.** **Rentabilité** : compte d'exploitation du mois (chiffre d'affaires, coût d'achat des ventes, marge,
+charges réelles ou à défaut budget validé, résultat net), seuil de rentabilité, point mort et vente à faire par jour,
+évolution sur 12 mois avec les causes d'un mauvais mois, soldes intermédiaires de gestion SYSCOHADA XA à XI, export Excel.
+**Surstock et soldes** : couverture, âge moyen du stock, jours sans vente, péremption proche, coût de stockage mensuel,
+proposition de remise avec prix plancher au coût de revient, période de vente conseillée, promotions datées appliquées
+automatiquement par la caisse (et acceptées par le serveur), bilan des ventes gagnées, réglages des seuils.
+Version 0.10 : **Tableau de bord** (chiffre d'affaires par jour, semaine, mois ou année avec évolution, histogramme,
 répartition des paiements, meilleurs produits, dernières ventes, alertes), **caisse** : code personnel (PIN) de la caissière,
 montant figé au total avec un seul moyen de paiement, alerte de stock non bloquante, **Ma caisse** (espèces au tiroir,
 encaissements, paiements du jour, remboursements, journal, sorties et apports, dépenses du tiroir, historique des clôtures),
