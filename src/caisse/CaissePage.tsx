@@ -550,7 +550,7 @@ function PointDeVente({
   }, [terme, produits]);
   // Liste des articles toujours visible : tout le catalogue, filtré en direct pendant la frappe.
   const TAILLE_LISTE = 300;
-  const liste = useMemo(() => {
+  const articlesAffiches = useMemo(() => {
     if (!terme.trim()) return [...produits].sort((a, b) => a.designation.localeCompare(b.designation, 'fr')).slice(0, TAILLE_LISTE);
     return recherche.resultats;
   }, [terme, produits, recherche]);
@@ -832,7 +832,7 @@ function PointDeVente({
                     valeurSaisie();
                   } else if (e.key === 'ArrowDown') {
                     e.preventDefault();
-                    setIndexActif((i) => Math.min(i + 1, liste.length - 1));
+                    setIndexActif((i) => Math.min(i + 1, articlesAffiches.length - 1));
                   } else if (e.key === 'ArrowUp') {
                     e.preventDefault();
                     setIndexActif((i) => Math.max(i - 1, 0));
@@ -851,7 +851,7 @@ function PointDeVente({
           <div className="articles-entete">
             <span>
               {terme.trim()
-                ? `${liste.length}${liste.length >= TAILLE_LISTE ? '+' : ''} article${liste.length > 1 ? 's' : ''} pour « ${terme.trim()} »`
+                ? `${articlesAffiches.length}${articlesAffiches.length >= TAILLE_LISTE ? '+' : ''} article${articlesAffiches.length > 1 ? 's' : ''} pour « ${terme.trim()} »`
                 : `${produits.length} article${produits.length > 1 ? 's' : ''}`}
             </span>
             {terme && (
@@ -861,7 +861,7 @@ function PointDeVente({
             )}
           </div>
           <ul className="liste-articles" role="listbox" aria-label="Articles">
-            {liste.map((p, i) => {
+            {articlesAffiches.map((p, i) => {
               const q = qteDansPanier(p);
               return (
                 <li key={p.id} className={`article-caisse ${q > 0 ? 'dans-panier' : ''} ${terme.trim() && i === indexActif ? 'actif' : ''}`}>
@@ -876,8 +876,8 @@ function PointDeVente({
                 </li>
               );
             })}
-            {articlesPrets && liste.length === 0 && <li className="articles-vide">Aucun article pour « {terme.trim()} ».</li>}
-            {liste.length >= TAILLE_LISTE && <li className="articles-vide">Tapez quelques lettres pour affiner la liste.</li>}
+            {articlesPrets && articlesAffiches.length === 0 && <li className="articles-vide">Aucun article pour « {terme.trim()} ».</li>}
+            {articlesAffiches.length >= TAILLE_LISTE && <li className="articles-vide">Tapez quelques lettres pour affiner la liste.</li>}
           </ul>
         </section>
 
