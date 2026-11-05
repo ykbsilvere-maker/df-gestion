@@ -10,9 +10,36 @@ import { MarqueDecodeur } from '../components/Marque';
 
 type Mode = 'connexion' | 'inscription' | 'oubli';
 
+/** Comptes récemment utilisés sur cet appareil (adresse seulement, jamais le mot de passe). */
+const CLE_RECENTS = 'dfg_comptes_recents';
+function lireRecents(): string[] {
+  try {
+    return (JSON.parse(localStorage.getItem(CLE_RECENTS) ?? '[]') as string[]).slice(0, 4);
+  } catch {
+    return [];
+  }
+}
+function memoriser(email: string) {
+  try {
+    const l = [email, ...lireRecents().filter((e) => e !== email)].slice(0, 4);
+    localStorage.setItem(CLE_RECENTS, JSON.stringify(l));
+  } catch {
+    /* stockage indisponible */
+  }
+}
+function oublier(email: string) {
+  try {
+    localStorage.setItem(CLE_RECENTS, JSON.stringify(lireRecents().filter((e) => e !== email)));
+  } catch {
+    /* stockage indisponible */
+  }
+}
+
 export function Connexion() {
   const [mode, setMode] = useState<Mode>('connexion');
-  const [email, setEmail] = useState('');
+  const [recents, setRecents] = useState<string[]>(lireRecents);
+  const [email, setEmail] = useState(() => lireRecents()[0] ?? '');
+  const [voirMotDePasse, setVoirMotDePasse] = useState(false);
   const [motDePasse, setMotDePasse] = useState('');
   const [nom, setNom] = useState('');
   const [erreur, setErreur] = useState('');
@@ -37,6 +64,7 @@ export function Connexion() {
       if (mode === 'connexion') {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: motDePasse });
         if (error) throw error;
+        memoriser(email.trim().toLowerCase());
         await apresConnexion();
         naviguer('/');
       } else if (mode === 'inscription') {
@@ -84,12 +112,58 @@ export function Connexion() {
   };
 
   return (
-    <div className="page-accueil-public">
-      <section className="panneau-public">
+    <div className="page-connexion">
+      <aside className="connexion-vitrine" aria-hidden>
+        <div className="vitrine-contenu">
+          <span className="vitrine-badge">DF Gestion</span>
+          <h2>Votre commerce, en un coup d’œil.</h2>
+          <p>Caisse, stock, fournisseurs, budget, trésorerie et comptabilité SYSCOHADA, sur téléphone, terminal et ordinateur.</p>
+          <ul className="vitrine-points">
+            <li><span>🛒</span>Caisse rapide, même sans réseau</li>
+            <li><span>📦</span>Stock et arrivages contrôlés</li>
+            <li><span>💰</span>Trésorerie et créances suivies</li>
+            <li><span>📊</span>Tableau de bord en temps réel</li>
+          </ul>
+          <div className="vitrine-carte">
+            <span className="secondaire">Chiffre d’affaires du mois</span>
+            <strong>+ 12,5 %</strong>
+            <div className="vitrine-barres">
+              {[30, 45, 38, 60, 52, 75, 90].map((h, i) => (
+                <span key={i} style={{ height: `${h}%` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </aside>
+      <section className="panneau-public connexion-panneau">
         <MarqueDecodeur sousTitre="Caisse, stock et pilotage de votre commerce" />
 
-        <form className="carte formulaire" onSubmit={soumettre}>
+        <form className="carte formulaire carte-connexion" onSubmit={soumettre}>
           <h1>{titres[mode]}</h1>
+          {mode === 'connexion' && recents.length > 0 && (
+            <div className="comptes-recents" aria-label="Comptes récents sur cet appareil">
+              {recents.map((r) => (
+                <span key={r} className={`compte-recent ${r === email ? 'actif' : ''}`}>
+                  <button type="button" onClick={() => setEmail(r)} title={r}>
+                    <span className="compte-recent-initiale">{r.charAt(0).toUpperCase()}</span>
+                    <span className="compte-recent-email">{r}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="compte-recent-retirer"
+                    aria-label={`Oublier ${r} sur cet appareil`}
+                    onClick={() => {
+                      oublier(r);
+                      setRecents(lireRecents());
+                      if (email === r) setEmail('');
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           {premiere && mode === 'inscription' && (
             <Alerte type="info">
               Première installation : ce premier compte devient l’administrateur général. Il crée ensuite les entreprises et
@@ -116,14 +190,25 @@ export function Connexion() {
           </Champ>
           {mode !== 'oubli' && (
             <Champ label="Mot de passe" aide={mode === 'inscription' ? '8 caractères minimum' : undefined}>
-              <input
-                type="password"
-                value={motDePasse}
-                onChange={(e) => setMotDePasse(e.target.value)}
-                required
-                minLength={mode === 'inscription' ? 8 : undefined}
-                autoComplete={mode === 'inscription' ? 'new-password' : 'current-password'}
-              />
+              <div className="champ-mot-de-passe">
+                <input
+                  type={voirMotDePasse ? 'text' : 'password'}
+                  value={motDePasse}
+                  onChange={(e) => setMotDePasse(e.target.value)}
+                  required
+                  minLength={mode === 'inscription' ? 8 : undefined}
+                  autoComplete={mode === 'inscription' ? 'new-password' : 'current-password'}
+                  autoFocus={mode === 'connexion' && !!email}
+                />
+                <button
+                  type="button"
+                  className="voir-mot-de-passe"
+                  onClick={() => setVoirMotDePasse((v) => !v)}
+                  aria-label={voirMotDePasse ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                >
+                  {voirMotDePasse ? '🙈' : '👁️'}
+                </button>
+              </div>
             </Champ>
           )}
 

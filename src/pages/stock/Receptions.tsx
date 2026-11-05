@@ -10,6 +10,8 @@ import { Alerte, Champ, EnTetePage, Pastille, Vide } from '../../components/ui';
 import { RechercheProduit, type ProduitTrouve } from '../../components/RechercheProduit';
 import { useFournisseurs } from './Fournisseurs';
 import { useComptes } from '../../lib/tresorerie';
+import { useImpression } from '../../impression/impression';
+import { useIdentite } from '../../lib/identite';
 
 interface Reception {
   id: string;
@@ -27,6 +29,9 @@ interface Reception {
   reglement: 'comptant' | 'credit';
   echeance: string | null;
   compte_paiement_id: string | null;
+  annoncee: boolean;
+  annonce_le: string | null;
+  ecarts_controle: { designation: string; attendu: number | null; compte: number; ecart: number; prix_attendu: number | null; prix: number }[] | null;
 }
 
 interface FraisReception {
@@ -54,6 +59,9 @@ interface LigneReception {
   date_peremption: string | null;
   cout_unitaire: number | string | null;
   poids: number | string | null;
+  quantite_attendue: number | string | null;
+  prix_attendu: number | string | null;
+  quantite_comptee: number | string | null;
   created_at: string;
 }
 
@@ -146,7 +154,11 @@ export function ListeReceptions() {
                     <td>{nom(r.fournisseur_id, fournisseurs)}</td>
                     <td className="nombre">{montant(r.total)}</td>
                     <td>
-                      <Pastille ton={STATUTS[r.statut].ton}>{STATUTS[r.statut].libelle}</Pastille>
+                      {r.statut === 'brouillon' && r.annoncee ? (
+                        <Pastille ton="or">Arrivage attendu</Pastille>
+                      ) : (
+                        <Pastille ton={STATUTS[r.statut].ton}>{STATUTS[r.statut].libelle}</Pastille>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -167,6 +179,8 @@ export function FicheReception() {
   const magasins = useMagasins(org);
   const { fournisseurs, creer: creerFournisseur } = useFournisseurs(org);
   const { comptes } = useComptes(org);
+  const { imprimer } = useImpression();
+  const { identite } = useIdentite();
   const [frais, setFrais] = useState<FraisReception[]>([]);
   const [r, setR] = useState<Reception | null>(null);
   const [lignes, setLignes] = useState<LigneReception[]>([]);
@@ -200,9 +214,14 @@ export function FicheReception() {
 
   const brouillon = r?.statut === 'brouillon';
   const modifiable = brouillon && (peut('stock.creer') || peut('achats.creer'));
+  // Arrivage annoncé : la valeur suit les quantités comptées (les lignes non comptées gardent l'attendu).
+  const qteRetenue = useCallback(
+    (l: LigneReception) => (r?.annoncee && r.statut === 'brouillon' && l.quantite_comptee !== null ? Number(l.quantite_comptee) : Number(l.quantite)),
+    [r],
+  );
   const totalMarchandises = useMemo(
-    () => lignes.reduce((s, l) => s + Number(l.quantite) * Number(l.prix_unitaire), 0),
-    [lignes],
+    () => lignes.reduce((s, l) => s + qteRetenue(l) * Number(l.prix_unitaire), 0),
+    [lignes, qteRetenue],
   );
   const totalFrais = Number(r?.frais_approche ?? 0);
 
@@ -266,8 +285,9 @@ export function FicheReception() {
     setErreur('');
     const existante = lignes.find((l) => l.produit_id === p.id && !l.numero_lot && !l.date_peremption);
     if (existante) {
-      // Scanner à nouveau le même article ajoute une unité.
-      await majLigne(existante, { quantite: Number(existante.quantite) + 1 });
+      // Scanner à nouveau le même article ajoute une unité (au comptage pour un arrivage annoncé).
+      if (r?.annoncee) await majLigne(existante, { quantite_comptee: Number(existante.quantite_comptee ?? 0) + 1 });
+      else await majLigne(existante, { quantite: Number(existante.quantite) + 1 });
       return;
     }
     const { data: prod } = await supabase.from('produits').select('*').eq('id', p.id).single();
@@ -279,6 +299,8 @@ export function FicheReception() {
       produit_id: p.id,
       quantite: 1,
       prix_unitaire: Number(produit.prix_achat ?? 0),
+      // Pendant le comptage d'un arrivage annoncé, un article non prévu est compté directement.
+      ...(r!.annoncee ? { quantite_comptee: 1 } : {}),
     });
     if (error) return setErreur(messageErreur(error));
     await charger();
@@ -311,6 +333,89 @@ export function FicheReception() {
     await charger();
   }
 
+  async function annoncer() {
+    if (!r) return;
+    if (!window.confirm('Annoncer cet arrivage ? Le chargé du stock comptera les articles à la livraison ; les écarts seront affichés avant validation.')) return;
+    const { error } = await supabase.rpc('annoncer_reception', { p_reception: r.id });
+    if (error) return setErreur(messageErreur(error));
+    setInfo('Arrivage annoncé : il apparaît dans la liste des réceptions comme « Arrivage attendu ».');
+    await charger();
+  }
+
+  async function toutConforme() {
+    const aCompter = lignes.filter((l) => l.quantite_comptee === null && l.quantite_attendue !== null);
+    for (const l of aCompter) await majLigne(l, { quantite_comptee: Number(l.quantite_attendue) });
+    await charger();
+  }
+
+  async function imprimerFiche() {
+    if (!r) return;
+    const f = fournisseurs.find((x) => x.id === r.fournisseur_id);
+    const mag = magasins.find((m) => m.id === r.magasin_id);
+    await imprimer(
+      <div className="rapport-a4 fiche-stockage">
+        <header className="rapport-entete">
+          <div>
+            <strong>{identite?.organisation.nom ?? organisation!.nom}</strong>
+            <h1>Fiche de stockage — contrôle de livraison</h1>
+            <p>
+              Réception {r.numero} · {new Date(r.date_reception).toLocaleDateString('fr-FR')} · {mag?.nom ?? ''}
+            </p>
+            <p>
+              Fournisseur : <strong>{f?.nom ?? 'non précisé'}</strong> · BL / facture : {r.reference ?? '…………………'}
+            </p>
+          </div>
+          {identite?.logoUrl && <img src={identite.logoUrl} alt="" />}
+        </header>
+        <table className="rapport-tableau">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Désignation</th>
+              <th>Unité</th>
+              <th className="nombre">Attendu</th>
+              <th className="nombre">Compté</th>
+              <th className="nombre">Écart</th>
+              <th>Lot / péremption</th>
+              <th>Emplacement · observations</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lignes.map((l) => {
+              const p = produits[l.produit_id];
+              const attendu = l.quantite_attendue ?? (r.annoncee ? null : l.quantite);
+              const compte = l.quantite_comptee;
+              return (
+                <tr key={l.id}>
+                  <td>{p?.code}</td>
+                  <td>{p?.designation}</td>
+                  <td>{p?.unite}</td>
+                  <td className="nombre">{attendu === null ? '—' : quantite(attendu)}</td>
+                  <td className="nombre case-saisie">{compte === null ? '' : quantite(compte)}</td>
+                  <td className="nombre case-saisie">{compte === null || attendu === null ? '' : quantite(Number(compte) - Number(attendu))}</td>
+                  <td className="case-saisie">{[l.numero_lot, l.date_peremption && new Date(l.date_peremption).toLocaleDateString('fr-FR')].filter(Boolean).join(' · ')}</td>
+                  <td className="case-saisie" />
+                </tr>
+              );
+            })}
+            {Array.from({ length: 3 }).map((_, i) => (
+              <tr key={`v${i}`}>
+                <td className="case-saisie" colSpan={8}>&nbsp;</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="signatures">
+          <div>Livreur<br /><span>Nom et signature</span></div>
+          <div>Chargé du stock<br /><span>Nom et signature</span></div>
+          <div>Gérant<br /><span>Visa</span></div>
+        </div>
+        <footer className="rapport-pied">À agrafer au bordereau de livraison · imprimé le {new Date().toLocaleString('fr-FR')} · DF Gestion</footer>
+      </div>,
+      'a4',
+    );
+  }
+
   async function annuler() {
     if (!r || !window.confirm('Annuler ce brouillon de réception ?')) return;
     const { error } = await supabase.rpc('annuler_reception', { p_reception: r.id });
@@ -341,7 +446,15 @@ export function FicheReception() {
         }
         actions={
           <>
-            <Pastille ton={STATUTS[r.statut].ton}>{STATUTS[r.statut].libelle}</Pastille>
+            {brouillon && r.annoncee ? <Pastille ton="or">Arrivage attendu</Pastille> : <Pastille ton={STATUTS[r.statut].ton}>{STATUTS[r.statut].libelle}</Pastille>}
+            <button className="bouton bouton-discret" onClick={() => void imprimerFiche()} disabled={!lignes.length}>
+              🖨️ Fiche de stockage
+            </button>
+            {brouillon && !r.annoncee && modifiable && lignes.length > 0 && (
+              <button className="bouton bouton-discret" onClick={() => void annoncer()}>
+                📣 Annoncer l’arrivage
+              </button>
+            )}
             <button className="bouton bouton-discret" onClick={() => naviguer('/stock/receptions')}>
               Retour
             </button>
@@ -427,7 +540,9 @@ export function FicheReception() {
               <thead>
                 <tr>
                   <th>Produit</th>
-                  <th className="nombre">Quantité</th>
+                  {r.annoncee && <th className="nombre">Attendu</th>}
+                  <th className="nombre">{r.annoncee ? (brouillon ? 'Compté' : 'Reçu') : 'Quantité'}</th>
+                  {r.annoncee && brouillon && <th className="nombre">Écart</th>}
                   <th className="nombre">Prix d’achat unitaire</th>
                   <th>Lot / péremption</th>
                   {r.repartition === 'poids' && <th className="nombre">Poids total (kg)</th>}
@@ -445,8 +560,24 @@ export function FicheReception() {
                         <strong>{p?.designation ?? '…'}</strong>
                         <div className="secondaire">{p?.unite}</div>
                       </td>
+                      {r.annoncee && <td className="nombre">{l.quantite_attendue === null ? <Pastille ton="or">Non prévu</Pastille> : quantite(l.quantite_attendue)}</td>}
                       <td className="nombre">
-                        {modifiable ? (
+                        {modifiable && r.annoncee ? (
+                          <input
+                            className={`champ-nombre ${l.quantite_comptee === null ? 'champ-a-compter' : ''}`}
+                            inputMode="decimal"
+                            placeholder="à compter"
+                            defaultValue={l.quantite_comptee === null ? '' : quantite(l.quantite_comptee)}
+                            key={`c-${l.id}-${l.quantite_comptee}`}
+                            onBlur={(e) => {
+                              const brut = e.target.value.replace(/\s/g, '').replace(',', '.');
+                              if (brut === '') return;
+                              const v = Number(brut);
+                              if (v >= 0 && v !== Number(l.quantite_comptee)) void majLigne(l, { quantite_comptee: v });
+                            }}
+                            aria-label={`Quantité comptée ${p?.designation ?? ''}`}
+                          />
+                        ) : modifiable ? (
                           <input
                             className="champ-nombre"
                             inputMode="decimal"
@@ -459,9 +590,19 @@ export function FicheReception() {
                             aria-label={`Quantité ${p?.designation ?? ''}`}
                           />
                         ) : (
-                          quantite(l.quantite)
+                          quantite(r.annoncee && brouillon ? l.quantite_comptee ?? 0 : l.quantite)
                         )}
                       </td>
+                      {r.annoncee && brouillon && (
+                        <td className="nombre">
+                          {l.quantite_comptee === null ? (
+                            <span className="secondaire">—</span>
+                          ) : (() => {
+                              const ec = Number(l.quantite_comptee) - Number(l.quantite_attendue ?? 0);
+                              return ec === 0 ? <Pastille ton="vert">Conforme</Pastille> : <Pastille ton={ec < 0 ? 'rouge' : 'or'}>{ec > 0 ? '+' : ''}{quantite(ec)}</Pastille>;
+                            })()}
+                        </td>
+                      )}
                       <td className="nombre">
                         {modifiable ? (
                           <input
@@ -523,7 +664,7 @@ export function FicheReception() {
                           ) : l.poids === null ? '—' : quantite(l.poids)}
                         </td>
                       )}
-                      <td className="nombre">{montant(Number(l.quantite) * Number(l.prix_unitaire))}</td>
+                      <td className="nombre">{montant(qteRetenue(l) * Number(l.prix_unitaire))}</td>
                       <td className="nombre">
                         {r.statut === 'validee'
                           ? montant(Math.round(Number(l.cout_unitaire ?? 0)))
@@ -614,6 +755,17 @@ export function FicheReception() {
           </p>
         </div>
 
+        {brouillon && r.annoncee && (
+          <Alerte type="info">
+            Arrivage annoncé le {r.annonce_le ? new Date(r.annonce_le).toLocaleString('fr-FR') : ''} : comptez chaque article reçu (0 s’il manque).
+            {' '}{lignes.filter((l) => l.quantite_comptee === null).length} ligne(s) restent à compter.{' '}
+            {modifiable && lignes.some((l) => l.quantite_comptee === null) && (
+              <button type="button" className="bouton-lien" onClick={() => void toutConforme()}>
+                Tout est conforme à l’attendu
+              </button>
+            )}
+          </Alerte>
+        )}
         {brouillon && (
           <div className="actions-piece">
             {modifiable && (
@@ -629,6 +781,35 @@ export function FicheReception() {
           </div>
         )}
       </section>
+      {r.statut === 'validee' && r.ecarts_controle && r.ecarts_controle.length > 0 && (
+        <section className="carte">
+          <h2>Écarts constatés à la livraison</h2>
+          <table className="tableau">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th className="nombre">Attendu</th>
+                <th className="nombre">Reçu</th>
+                <th className="nombre">Écart</th>
+                <th className="nombre col-secondaire">Prix attendu → retenu</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.ecarts_controle.map((e, i) => (
+                <tr key={i}>
+                  <td>{e.designation}</td>
+                  <td className="nombre">{e.attendu === null ? 'non prévu' : quantite(e.attendu)}</td>
+                  <td className="nombre">{quantite(e.compte)}</td>
+                  <td className={`nombre ${Number(e.ecart) < 0 ? 'texte-negatif' : ''}`}>{Number(e.ecart) > 0 ? '+' : ''}{quantite(e.ecart)}</td>
+                  <td className="nombre col-secondaire">
+                    {e.prix_attendu === null || Number(e.prix_attendu) === Number(e.prix) ? montant(e.prix) : `${montant(e.prix_attendu)} → ${montant(e.prix)}`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
     </>
   );
 }

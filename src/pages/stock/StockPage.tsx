@@ -5,6 +5,7 @@ const ONGLETS: { vers: string; libelle: string; icone: string; permission?: stri
   { vers: '/stock', libelle: 'État du stock', icone: '📊', fin: true },
   { vers: '/stock/alertes', libelle: 'Alertes', icone: '⚠️' },
   { vers: '/stock/receptions', libelle: 'Réceptions', icone: '📥' },
+  { vers: '/stock/approvisionnement', libelle: 'Approvisionnement', icone: '🛒', permission: 'stock.creer' },
   { vers: '/stock/transferts', libelle: 'Transferts', icone: '🔁', permission: 'stock.modifier' },
   { vers: '/stock/sorties', libelle: 'Sorties et ajustements', icone: '📤', permission: 'stock.modifier' },
   { vers: '/stock/inventaires', libelle: 'Inventaires', icone: '📋' },

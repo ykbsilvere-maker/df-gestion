@@ -3,7 +3,15 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 0.9.** **Fournisseurs et coût de revient** (frais détaillés par achat — transport, manutention, douane, taxes —,
+**Version 0.10.** **Tableau de bord** (chiffre d'affaires par jour, semaine, mois ou année avec évolution, histogramme,
+répartition des paiements, meilleurs produits, dernières ventes, alertes), **caisse** : code personnel (PIN) de la caissière,
+montant figé au total avec un seul moyen de paiement, alerte de stock non bloquante, **Ma caisse** (espèces au tiroir,
+encaissements, paiements du jour, remboursements, journal, sorties et apports, dépenses du tiroir, historique des clôtures),
+**arrivages annoncés** par le gérant puis **comptés** par le chargé du stock avec écarts et **fiche de stockage** imprimable,
+**créances clients** (balance âgée, relances en 3 niveaux, encaissements vers la trésorerie, relevé), **proposition
+d'approvisionnement** selon le rythme des ventes et la trésorerie, **devis et proformas** transformables en vente,
+**photos des produits** privées, nouvel écran de connexion avec comptes récents.
+Version 0.9 : **Fournisseurs et coût de revient** (frais détaillés par achat — transport, manutention, douane, taxes —,
 répartition selon la valeur, la quantité ou le poids, achat comptant ou à crédit avec échéance, paiements partiels et reste dû,
 historique des prix, prix de vente conseillé pour une marge visée), **budget du mois** (11 postes SYSCOHADA proposés,
 reprise du mois précédent, validation puis révision avec motif, dépenses rattachées à un poste et à un compte, alertes 80 % / 100 %),

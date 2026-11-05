@@ -222,6 +222,15 @@ export function Utilisateurs() {
                                   Mot de passe
                                 </button>
                                 <button
+                                  className="bouton-lien"
+                                  onClick={() => {
+                                    if (window.confirm(`Réinitialiser le code de caisse de ce membre ? Il en créera un nouveau à sa prochaine ouverture de caisse.`))
+                                      void appeler('reinitialiser_code_caisse', { p_membre: m.id }, 'Code de caisse réinitialisé.');
+                                  }}
+                                >
+                                  Code caisse
+                                </button>
+                                <button
                                   className="bouton-lien lien-danger"
                                   onClick={() => setFenetre({ type: 'desactiver', membre: m })}
                                 >

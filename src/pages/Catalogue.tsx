@@ -8,6 +8,7 @@ import type { Categorie, Produit } from '../lib/types';
 import { Alerte, EnTetePage, Fenetre, Pastille, Vide } from '../components/ui';
 import { Scanner } from '../components/Scanner';
 import { FicheProduit } from './FicheProduit';
+import { Vignette } from '../components/PhotoProduit';
 
 interface Ligne extends Produit {
   codes_barres: string[];
@@ -240,10 +241,15 @@ export function Catalogue() {
                       />
                     </td>
                     <td onClick={() => setEdition({ produit: p })}>
+                      <div className="produit-avec-photo">
+                      <Vignette chemin={p.photo_path} taille={40} />
+                      <div>
                       <strong>{p.designation}</strong>
                       <div className="secondaire">
                         <span className="code">{p.code}</span> · {p.unite}
                         {p.marque ? ` · ${p.marque}` : ''}
+                      </div>
+                      </div>
                       </div>
                     </td>
                     <td className="col-secondaire" onClick={() => setEdition({ produit: p })}>{nomCategorie(p.categorie_id)}</td>

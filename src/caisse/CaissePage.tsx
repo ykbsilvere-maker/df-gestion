@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { VerrouCaisse } from './Verrou';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { useIdentite } from '../lib/identite';
@@ -101,7 +103,16 @@ export function versRecu(v: VenteLocale): VenteRecu {
 const totalLignes = (ls: LigneVente[]) => ls.reduce((s, l) => s + Math.round(l.quantite * l.prix_unitaire) - l.remise, 0);
 
 /** Page Caisse : choix de la caisse et ouverture, puis point de vente. */
+/** La caisse s'ouvre avec le code personnel de la caissière. */
 export function CaissePage() {
+  return (
+    <VerrouCaisse>
+      <CaissePageInterne />
+    </VerrouCaisse>
+  );
+}
+
+function CaissePageInterne() {
   const { organisation, session } = useSession();
   const org = organisation!.organisation_id;
   const magasins = useMagasins(org);
@@ -394,6 +405,29 @@ function PointDeVente({
     return { multiplicateur, ...chercherLocal(produits, m ? m[2]! : terme) };
   }, [terme, produits]);
 
+  // Devis ou proforma repris en caisse (« Transformer en vente ») : ses lignes remplissent le panier.
+  const devisImporte = useRef<string | null>(null);
+  useEffect(() => {
+    if (!articlesPrets) return;
+    let brut: string | null = null;
+    try {
+      brut = localStorage.getItem('dfg_panier_import');
+      localStorage.removeItem('dfg_panier_import');
+    } catch {
+      return;
+    }
+    if (!brut) return;
+    const imp = JSON.parse(brut) as { devis: string; numero: string; client?: string; lignes: LigneVente[] };
+    const connus = imp.lignes.filter((l) => produits.some((p) => p.id === l.produit_id));
+    setPanier(connus);
+    devisImporte.current = imp.devis;
+    setMessage({
+      type: 'info',
+      texte: `Devis ${imp.numero} repris en caisse${connus.length < imp.lignes.length ? ` (${imp.lignes.length - connus.length} ligne(s) hors catalogue ignorée(s))` : ''}. Vérifiez puis encaissez.`,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articlesPrets]);
+
   function ajouter(p: ProduitCaisse, qte = 1) {
     setPanier((ls) => {
       const i = ls.findIndex((l) => l.produit_id === p.id && l.prix_unitaire === p.prix_vente && !l.remise);
@@ -402,7 +436,8 @@ function PointDeVente({
     });
     setTerme('');
     setIndexActif(0);
-    setMessage(p.quantite_stock - qte < 0 ? { type: 'info', texte: `${p.designation} : stock théorique épuisé (${quantite(p.quantite_stock)}). La vente reste possible ; pensez à régulariser le stock.` } : null);
+    // Stock insuffisant : simple alerte, la vente passe (le stock sera régularisé).
+    setMessage(p.quantite_stock - qte < 0 ? { type: 'info', texte: `⚠️ ${p.designation} : stock insuffisant (${quantite(p.quantite_stock)} en stock). La vente reste possible ; pensez à régulariser le stock.` } : null);
     champ.current?.focus();
   }
 
@@ -480,6 +515,12 @@ function PointDeVente({
     setPanier([]);
     setDerniere(finale);
     setMessage(null);
+    if (devisImporte.current) {
+      // Le devis repris en caisse devient « transformé en vente ».
+      const d = devisImporte.current;
+      devisImporte.current = null;
+      void supabase.rpc('changer_statut_devis', { p_devis: d, p_statut: 'converti', p_vente: vente.id });
+    }
     // Stock affiché mis à jour localement en attendant la prochaine actualisation.
     setProduits((ps) =>
       ps.map((p) => {
@@ -578,6 +619,10 @@ function PointDeVente({
           )}
         </div>
         <div className="caisse-actions">
+          <Link to={`/caisse/suivi?session=${sessionCaisse.id}`} className="bouton bouton-discret">
+            <Ico>💼</Ico>
+            Ma caisse
+          </Link>
           <button type="button" className="bouton bouton-discret" onClick={() => setFenetre('ventes')}>
             <Ico>🧾</Ico>
             Ventes ({liste.filter((l) => l.statut !== 'annulee').length})

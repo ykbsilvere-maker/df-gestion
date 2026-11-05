@@ -10,6 +10,7 @@ const LIENS: { vers: string; libelle: string; permission?: string | string[]; ad
   { vers: '/catalogue', libelle: 'Catalogue', permission: 'catalogue.consulter', icone: '🛍️' },
   { vers: '/stock', libelle: 'Stock', permission: 'stock.consulter', icone: '📦' },
   { vers: '/fournisseurs', libelle: 'Fournisseurs', permission: ['fournisseurs.consulter', 'achats.consulter'], icone: '🚚' },
+  { vers: '/devis', libelle: 'Devis', permission: 'ventes.valider', icone: '📄' },
   { vers: '/rapports/ventes', libelle: 'Ventes', permission: ['ventes.exporter', 'rapports.consulter'], icone: '📊' },
   { vers: '/budget', libelle: 'Budget', permission: 'budget.consulter', icone: '📒' },
   { vers: '/tresorerie', libelle: 'Trésorerie', permission: 'tresorerie.consulter', icone: '💰' },

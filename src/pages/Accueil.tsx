@@ -5,6 +5,7 @@ import { useSession } from '../lib/session';
 import { dateHeure, libelleAction } from '../lib/format';
 import type { LigneAudit } from '../lib/types';
 import { EnTetePage, Ico, MontantFort } from '../components/ui';
+import { TableauDeBord } from './TableauDeBord';
 
 export function Accueil() {
   const { organisation, peut, adminGeneral } = useSession();
@@ -74,6 +75,7 @@ export function Accueil() {
   return (
     <>
       <EnTetePage titre={organisation.nom} sousTitre={`Connecté en tant que ${organisation.role_libelle.toLowerCase()}`} />
+      {(peut('rapports.consulter') || peut('ventes.exporter')) && <TableauDeBord />}
 
       <section className="tuiles">
         {ventes && (

@@ -26,10 +26,14 @@ import { FicheInventaire, ListeInventaires } from './pages/stock/Inventaires';
 import { Mouvements } from './pages/stock/Mouvements';
 import { Fournisseurs } from './pages/stock/Fournisseurs';
 import { CaissePage } from './caisse/CaissePage';
+import { SuiviCaisse } from './caisse/SuiviCaisse';
 import { ExtractionVentes } from './pages/rapports/ExtractionVentes';
 import { CoutsDeRevient, FicheFournisseur, FournisseursModule } from './pages/fournisseurs/FournisseursModule';
 import { Budget } from './pages/pilotage/Budget';
 import { Tresorerie } from './pages/pilotage/Tresorerie';
+import { Creances, FicheClient, TresorerieModule } from './pages/pilotage/Creances';
+import { Approvisionnement } from './pages/pilotage/Approvisionnement';
+import { FicheDevis, ListeDevis } from './pages/Devis';
 import { Administration } from './pages/Administration';
 import { Configuration } from './pages/Configuration';
 
@@ -113,6 +117,7 @@ function Routes_() {
       >
         <Route index element={<Accueil />} />
         <Route path="caisse" element={<AvecDroit permission="caisse.creer"><CaissePage /></AvecDroit>} />
+        <Route path="caisse/suivi" element={<AvecDroit permission={['caisse.creer', 'caisse.consulter']}><SuiviCaisse /></AvecDroit>} />
         <Route path="magasins" element={<AvecDroit permission="magasins.consulter"><Magasins /></AvecDroit>} />
         <Route path="utilisateurs" element={<AvecDroit permission="utilisateurs.consulter"><Utilisateurs /></AvecDroit>} />
         <Route path="journal" element={<AvecDroit permission="audit.consulter"><Journal /></AvecDroit>} />
@@ -129,6 +134,7 @@ function Routes_() {
           <Route path="inventaires/:id" element={<FicheInventaire />} />
           <Route path="mouvements" element={<Mouvements />} />
           <Route path="fournisseurs" element={<Navigate to="/fournisseurs" replace />} />
+          <Route path="approvisionnement" element={<Approvisionnement />} />
         </Route>
         <Route path="fournisseurs" element={<AvecDroit permission={['fournisseurs.consulter', 'achats.consulter']}><FournisseursModule /></AvecDroit>}>
           <Route index element={<Fournisseurs />} />
@@ -136,7 +142,14 @@ function Routes_() {
           <Route path=":id" element={<FicheFournisseur />} />
         </Route>
         <Route path="budget" element={<AvecDroit permission="budget.consulter"><Budget /></AvecDroit>} />
-        <Route path="tresorerie" element={<AvecDroit permission="tresorerie.consulter"><Tresorerie /></AvecDroit>} />
+        <Route path="tresorerie" element={<AvecDroit permission={['tresorerie.consulter', 'achats.creer', 'stock.creer']}><TresorerieModule /></AvecDroit>}>
+          <Route index element={<AvecDroit permission="tresorerie.consulter"><Tresorerie /></AvecDroit>} />
+          <Route path="creances" element={<AvecDroit permission="tresorerie.consulter"><Creances /></AvecDroit>} />
+          <Route path="clients/:id" element={<AvecDroit permission="tresorerie.consulter"><FicheClient /></AvecDroit>} />
+          <Route path="approvisionnement" element={<Approvisionnement />} />
+        </Route>
+        <Route path="devis" element={<AvecDroit permission="ventes.valider"><ListeDevis /></AvecDroit>} />
+        <Route path="devis/:id" element={<AvecDroit permission="ventes.valider"><FicheDevis /></AvecDroit>} />
         <Route path="rapports/ventes" element={<AvecDroit permission={['ventes.exporter', 'rapports.consulter']}><ExtractionVentes /></AvecDroit>} />
         <Route path="personnalisation" element={<AvecDroit permission="administration.consulter"><Personnalisation /></AvecDroit>} />
         <Route path="entreprise" element={<Navigate to="/personnalisation" replace />} />

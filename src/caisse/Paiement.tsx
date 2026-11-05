@@ -49,7 +49,9 @@ export function Paiement({
   const premierChamp = useRef<HTMLInputElement>(null);
   useEffect(() => premierChamp.current?.focus(), []);
 
-  const montants = lignes.map((l) => lireMontant(l.montant) ?? 0);
+  // Un seul moyen : son montant est le total de la vente, jamais modifiable.
+  const montantFige = lignes.length === 1;
+  const montants = montantFige ? [total] : lignes.map((l) => lireMontant(l.montant) ?? 0);
   const regle = montants.reduce((s, m) => s + m, 0);
   const reste = total - regle;
   const rendu = lignes.reduce((s, l, i) => {
@@ -143,9 +145,12 @@ export function Paiement({
             <label className="champ">
               <span className="champ-label">Montant</span>
               <input
-                ref={i === 0 ? premierChamp : undefined}
+                ref={i === 0 && !montantFige ? premierChamp : undefined}
                 inputMode={clavierMontant()}
-                value={l.montant}
+                value={montantFige ? saisieMontant(total) : l.montant}
+                readOnly={montantFige}
+                className={montantFige ? 'champ-fige' : undefined}
+                title={montantFige ? 'Total de la vente : ajoutez un second moyen pour partager le paiement' : undefined}
                 onChange={(e) => modifier(i, 'montant', e.target.value)}
                 aria-label={`Montant ${l.moyen.libelle}`}
               />
@@ -154,9 +159,10 @@ export function Paiement({
               <label className="champ">
                 <span className="champ-label">Reçu du client</span>
                 <input
+                  ref={i === 0 && montantFige ? premierChamp : undefined}
                   inputMode={clavierMontant()}
                   value={l.recu}
-                  placeholder={l.montant}
+                  placeholder={montantFige ? saisieMontant(total) : l.montant}
                   onChange={(e) => modifier(i, 'recu', e.target.value)}
                   aria-label="Somme reçue en espèces"
                 />

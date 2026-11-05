@@ -7,6 +7,7 @@ import { UNITES, type Categorie, type CodeBarres, type Produit, type StatutProdu
 import { Alerte, Champ } from '../components/ui';
 import { CodeBarre, cleValide } from '../components/CodeBarre';
 import { Scanner } from '../components/Scanner';
+import { PhotoProduit } from '../components/PhotoProduit';
 
 interface Props {
   produit?: Produit;
@@ -267,6 +268,16 @@ export function FicheProduit({ produit, codeInitial, categories, onCategorieCree
           </button>
         )}
       </form>
+
+      {courant && (
+        <PhotoProduit
+          org={org}
+          produitId={courant.id}
+          chemin={courant.photo_path}
+          modifiable={peut('catalogue.modifier')}
+          onChange={(chemin) => setCourant({ ...courant, photo_path: chemin })}
+        />
+      )}
 
       {courant && (
         <section className="codes-produit">
