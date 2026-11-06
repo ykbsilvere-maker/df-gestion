@@ -14,6 +14,7 @@ import { RapportCaisse, type RapportSession } from '../impression/RapportCaisse'
 import { useImpressionCaisse } from './impressionCaisse';
 import { Paiement } from './Paiement';
 import { Cloture } from './Cloture';
+import { RapportProvisoire } from './RapportProvisoire';
 import { Billetage, totalBilletage, versLignes } from './Billetage';
 import { identifiantAffiche } from '../lib/acces';
 import {
@@ -231,7 +232,16 @@ interface CaisseEtat {
   magasin_nom: string;
   accessible: boolean;
   raison: 'droit' | 'magasin' | 'caisse' | null;
-  session: { id: string; ouverte_le: string; mienne: boolean; par: string; ouverte_par: string; fond: number } | null;
+  session: {
+    id: string;
+    ouverte_le: string;
+    mienne: boolean;
+    par: string;
+    ouverte_par: string;
+    fond: number;
+    /** Solde des ventes en cours : fourni aux responsables seulement. */
+    ventes?: { total: number; nombre: number } | null;
+  } | null;
   caissiers: { user_id: string; nom: string; moi: boolean }[];
 }
 interface EtatCaisses {
@@ -265,9 +275,14 @@ function OuvrirCaisse({
 }) {
   const [ouverture, setOuverture] = useState<CaisseEtat | null>(null);
   const [cloture, setCloture] = useState<CaisseEtat | null>(null);
+  const [rapport, setRapport] = useState<CaisseEtat | null>(null);
   const [info, setInfo] = useState('');
   const visibles = etat.responsable ? etat.caisses : etat.caisses.filter((c) => c.accessible);
   const mienne = etat.caisses.find((c) => c.session?.mienne);
+  // Solde des ventes en cours (responsable) : total de toutes les caisses ouvertes et part de chacune.
+  const ouvertes = visibles.filter((c) => c.session?.ventes);
+  const totalJour = ouvertes.reduce((s, c) => s + Number(c.session!.ventes!.total), 0);
+  const ticketsJour = ouvertes.reduce((s, c) => s + Number(c.session!.ventes!.nombre), 0);
 
   return (
     <div className="ouvrir-caisse">
@@ -283,6 +298,21 @@ function OuvrirCaisse({
       </div>
       {horsLigne && <Alerte>Pas de connexion : l’ouverture et la clôture se font connecté.</Alerte>}
       <Alerte type="succes">{info}</Alerte>
+
+      {etat.responsable && ouvertes.length > 0 && (
+        <div className="carte solde-ventes">
+          <div>
+            <span className="secondaire">Ventes en cours · {ouvertes.length} caisse{ouvertes.length > 1 ? 's' : ''} ouverte{ouvertes.length > 1 ? 's' : ''}</span>
+            <strong>{montant(totalJour)}</strong>
+          </div>
+          <span className="secondaire">
+            {ticketsJour} ticket{ticketsJour > 1 ? 's' : ''}
+          </span>
+          <button type="button" className="bouton-lien" onClick={onActualiser} disabled={horsLigne}>
+            ↻ Actualiser
+          </button>
+        </div>
+      )}
 
       {!etat.responsable && !mienne && (
         <div className="carte attente-ouverture">
@@ -330,6 +360,20 @@ function OuvrirCaisse({
                 ) : (
                   <Pastille ton="gris">Fermée</Pastille>
                 )}
+                {c.session?.ventes && (
+                  <div className="solde-caisse">
+                    <div className="solde-caisse-ligne">
+                      <strong>{montant(Number(c.session.ventes.total))}</strong>
+                      <span className="secondaire">
+                        {c.session.ventes.nombre} vente{Number(c.session.ventes.nombre) > 1 ? 's' : ''}
+                        {totalJour > 0 ? ` · ${Math.round((Number(c.session.ventes.total) / totalJour) * 100)} %` : ''}
+                      </span>
+                    </div>
+                    <div className="barre-part" aria-hidden>
+                      <span style={{ width: `${totalJour > 0 ? Math.round((Number(c.session.ventes.total) / totalJour) * 100) : 0}%` }} />
+                    </div>
+                  </div>
+                )}
               </div>
               {c.session?.mienne && etat.peut_vendre && (
                 <button type="button" className="bouton bouton-principal bouton-plein" onClick={() => onEntrer(c.id)}>
@@ -345,9 +389,14 @@ function OuvrirCaisse({
                 <p className="secondaire petit">Aucun caissier n’a cette caisse : attribuez-la à un caissier dans Utilisateurs.</p>
               )}
               {etat.responsable && c.session && (
-                <button type="button" className="bouton bouton-discret bouton-plein" disabled={horsLigne} onClick={() => setCloture(c)}>
-                  🔒 Clôturer
-                </button>
+                <div className="actions-carte-caisse">
+                  <button type="button" className="bouton bouton-discret" disabled={horsLigne} onClick={() => setRapport(c)}>
+                    📈 Rapport X
+                  </button>
+                  <button type="button" className="bouton bouton-discret" disabled={horsLigne} onClick={() => setCloture(c)}>
+                    🔒 Clôturer
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -365,6 +414,18 @@ function OuvrirCaisse({
               if (pourMoi) onEntrer(ouverture.id);
               else onActualiser();
             }}
+          />
+        )}
+      </Fenetre>
+
+      <Fenetre titre={rapport ? `Rapport X · ${rapport.nom}` : ''} ouverte={!!rapport} onFermer={() => setRapport(null)}>
+        {rapport?.session && (
+          <RapportProvisoire
+            sessionId={rapport.session.id}
+            caisse={`${rapport.nom} (${rapport.code})`}
+            magasin={rapport.magasin_nom}
+            caissier={rapport.session.par}
+            ouverteLe={rapport.session.ouverte_le}
           />
         )}
       </Fenetre>
@@ -537,7 +598,9 @@ function PointDeVente({
   const [rejetees, setRejetees] = useState<VenteLocale[]>([]);
   const [liste, setListe] = useState<LigneListe[]>([]);
   const [derniere, setDerniere] = useState<VenteLocale | null>(null);
-  const [fenetre, setFenetre] = useState<null | 'paiement' | 'cloture' | 'ventes' | 'scanner' | 'rejets' | 'case'>(null);
+  const [fenetre, setFenetre] = useState<null | 'paiement' | 'cloture' | 'ventes' | 'scanner' | 'rejets' | 'case' | 'options'>(null);
+  // Options du poste (impression, changement de caisse) : réservées aux responsables, jamais aux caissiers.
+  const optionsVisibles = peut('caisse.valider');
   const [edition, setEdition] = useState<number | null>(null);
   const [annulation, setAnnulation] = useState<LigneListe | null>(null);
   const [enregistrement, setEnregistrement] = useState(false);
@@ -836,7 +899,7 @@ function PointDeVente({
   const derniersRendusAutres = derniere ? derniere.reglements.filter((r) => r.sens === 'rendu') : [];
 
   return (
-    <div className="caisse">
+    <div className={`caisse ${terme.trim() ? 'en-recherche' : ''}`}>
       <div className="caisse-barre">
         <div className="caisse-titre">
           <strong>{caisse.nom}</strong>
@@ -883,6 +946,12 @@ function PointDeVente({
             <Ico>🔒</Ico>
             Clôturer
           </button>
+          {optionsVisibles && (
+            <button type="button" className="bouton bouton-discret" onClick={() => setFenetre('options')} aria-label="Options de la caisse">
+              <Ico>⚙️</Ico>
+              Options
+            </button>
+          )}
         </div>
       </div>
 
@@ -933,9 +1002,13 @@ function PointDeVente({
                 ? `${articlesAffiches.length}${articlesAffiches.length >= TAILLE_LISTE ? '+' : ''} article${articlesAffiches.length > 1 ? 's' : ''} pour « ${terme.trim()} »`
                 : `${produits.length} article${produits.length > 1 ? 's' : ''}`}
             </span>
-            {terme && (
+            {terme ? (
               <button type="button" className="bouton-lien" onClick={() => setTerme('')}>
                 Effacer
+              </button>
+            ) : (
+              <button type="button" className="bouton-lien" onClick={() => void chargerArticles()} disabled={!enLigne} title="Actualiser les articles et les prix">
+                ↻ Actualiser
               </button>
             )}
           </div>
@@ -946,11 +1019,13 @@ function PointDeVente({
                 <li key={p.id} className={`article-caisse ${q > 0 ? 'dans-panier' : ''} ${terme.trim() && i === indexActif ? 'actif' : ''}`}>
                   <button type="button" className="article-corps" onMouseDown={(e) => e.preventDefault()} onClick={() => ajouter(p, recherche.multiplicateur, true)}>
                     <span className="article-nom">{p.designation}</span>
-                    <span className="secondaire">
-                      {p.code} · stock <span className={p.quantite_stock <= 0 ? 'texte-negatif' : ''}>{quantite(p.quantite_stock)}</span>
+                    <span className="article-details">
+                      <strong className="article-prix">{montant(p.prix_vente)}</strong>
+                      <span className="secondaire">
+                        {p.code} · stock <span className={p.quantite_stock <= 0 ? 'texte-negatif' : ''}>{quantite(p.quantite_stock)}</span>
+                      </span>
                     </span>
                   </button>
-                  <strong className="article-prix">{montant(p.prix_vente)}</strong>
                   <ChoixQuantite valeur={q} unite={p.unite} onChange={(v) => fixerQuantite(p, v)} libelle={p.designation} />
                 </li>
               );
@@ -965,6 +1040,18 @@ function PointDeVente({
             <strong>🧺 Panier</strong>
             <span className="secondaire">
               {panier.length} ligne{panier.length > 1 ? 's' : ''}
+              {panier.length > 0 && (
+                <>
+                  {' · '}
+                  <button
+                    type="button"
+                    className="bouton-lien lien-danger vider-panier"
+                    onClick={() => window.confirm(`Vider le panier (${panier.length} ligne${panier.length > 1 ? 's' : ''}) ?`) && setPanier([])}
+                  >
+                    Vider
+                  </button>
+                </>
+              )}
             </span>
           </div>
           {message && (
@@ -1051,20 +1138,15 @@ function PointDeVente({
               {montant(total)}
             </div>
           </div>
-          <button type="button" className="bouton bouton-principal bouton-plein bouton-encaisser" disabled={!panier.length} onClick={() => setFenetre('paiement')}>
+          <button type="button" className="bouton bouton-principal bouton-encaisser" disabled={!panier.length} onClick={() => setFenetre('paiement')}>
             Encaisser <kbd>F9</kbd>
           </button>
-          {panier.length > 0 && (
-            <button
-              type="button"
-              className="bouton-lien lien-danger vider-panier"
-              onClick={() => window.confirm(`Vider le panier (${panier.length} ligne${panier.length > 1 ? 's' : ''}) ?`) && setPanier([])}
-            >
-              Vider le panier
-            </button>
-          )}
-          <details className="caisse-options">
-            <summary>⚙️ Options de la caisse</summary>
+        </aside>
+      </div>
+
+      {optionsVisibles && (
+        <Fenetre titre="Options de la caisse" ouverte={fenetre === 'options'} onFermer={() => setFenetre(null)}>
+          <div className="caisse-options">
             <label className="case">
               <input
                 type="checkbox"
@@ -1087,9 +1169,6 @@ function PointDeVente({
                 </>
               )}
             </div>
-            <button type="button" className="bouton-lien" onClick={() => void chargerArticles()} disabled={!enLigne}>
-              Actualiser les articles et les prix
-            </button>
             {autresCaisses.length === 0 && (
               <button
                 type="button"
@@ -1099,9 +1178,9 @@ function PointDeVente({
                 ↔ Changer de caisse (la caisse reste ouverte)
               </button>
             )}
-          </details>
-        </aside>
-      </div>
+          </div>
+        </Fenetre>
+      )}
 
       <Fenetre titre="Encaissement" ouverte={fenetre === 'paiement'} onFermer={() => setFenetre(null)}>
         <Paiement total={total} moyens={moyens} enCours={enregistrement} onValider={(r) => void encaisser(r)} />

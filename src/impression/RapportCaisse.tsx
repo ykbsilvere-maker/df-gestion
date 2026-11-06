@@ -18,6 +18,8 @@ export interface RapportSession {
   /** montant = net à reverser (encaissé − monnaie rendue par ce moyen). */
   par_moyen: { libelle: string; nature: string; montant: number; nombre: number; encaisse?: number; rendu?: number }[];
   rendus_autres_moyens?: number;
+  /** Produits vendus pendant la session (ventes validées), du plus gros montant au plus petit. */
+  par_produit?: { designation: string; quantite: number; montant: number }[];
   calcule_le: string;
   // Rapport Z (session clôturée)
   numero_z?: number;
@@ -128,6 +130,23 @@ export function RapportCaisse({
           </Fragment>
         ))}
       </div>
+
+      {!!rapport.par_produit?.length && (
+        <>
+          <div className="rapport-section">Produits vendus</div>
+          <table className="recu-lignes">
+            <tbody>
+              {rapport.par_produit.map((p) => (
+                <tr key={p.designation}>
+                  <td className="recu-designation">{p.designation}</td>
+                  <td className="recu-quantite">× {Number(p.quantite).toLocaleString('fr-FR')}</td>
+                  <td className="recu-montant">{montant(Number(p.montant), '')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
 
       <div className="rapport-section">Espèces</div>
       <div className="recu-totaux">

@@ -149,7 +149,10 @@ export function Coquille() {
             <span className="entete-nom">{nomUtilisateur}</span>
           </Link>
           <button type="button" className="entete-bouton" onClick={() => void deconnecter()} title="Se déconnecter" aria-label="Se déconnecter">
-            ⏻
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+              <path d="M12 3v8" />
+              <path d="M6.3 6.8a8 8 0 1 0 11.4 0" />
+            </svg>
           </button>
         </div>
       </header>
@@ -192,7 +195,7 @@ export function Coquille() {
               ))}
             </div>
             <button type="button" className="bouton bouton-discret bouton-plein" onClick={() => void deconnecter()}>
-              ⏻ Se déconnecter
+              🚪 Se déconnecter
             </button>
           </div>
         </div>

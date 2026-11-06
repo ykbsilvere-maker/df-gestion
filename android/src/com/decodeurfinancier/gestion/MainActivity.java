@@ -71,6 +71,8 @@ public class MainActivity extends Activity {
         r.setDatabaseEnabled(true);
         r.setMediaPlaybackRequiresUserGesture(false);
         r.setAllowFileAccess(false);
+        // Tailles identiques sur tous les téléphones : la taille de police du système n'agrandit plus l'application.
+        r.setTextZoom(100);
         r.setUserAgentString(r.getUserAgentString() + " DFGestionAndroid/" + BuildConfig.VERSION);
 
         web.addJavascriptInterface(new Pont(), "DFGAndroid");

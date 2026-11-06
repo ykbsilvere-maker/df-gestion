@@ -3,7 +3,15 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 1.6.** **Le gérant principal ne tient pas de caisse** : il ouvre (après comptage du fond) et clôture les
+**Version 1.7.** **Suivi des ventes par le gérant principal** : sur « Caisses du jour », solde des ventes en cours
+de chaque caisse ouverte, nombre de tickets et part de chaque caissier, et **rapport X provisoire** (règlements, espèces
+attendues, produits vendus, imprimable) sans clôturer. Les rapports X et Z listent désormais les produits vendus ; un
+caissier ne lit que le rapport de sa propre session. **Caisse plus compacte** : article trouvé sur une ligne (nom, prix,
+stock, quantité), barre « Total + Encaisser » fine en bas, fenêtres en feuille qui monte du bas au-dessus du clavier ;
+options de la caisse réservées aux responsables. **Catalogue** sans en-tête, recherche figée en haut, liste compacte.
+APK : la taille de police du téléphone n'agrandit plus l'application.
+
+Version 1.6 : **Le gérant principal ne tient pas de caisse** : il ouvre (après comptage du fond) et clôture les
 caisses de ses caissiers, mais ne vend pas et ne saisit aucune opération de caisse ; personne ne s'ouvre sa propre
 caisse (celui qui ouvre n'est jamais celui qui vend). Le caissier se connecte et entre directement dans la caisse
 ouverte pour lui. **Écrans figés** : le clavier passe par-dessus le contenu (APK et navigateur) au lieu de le pousser ;

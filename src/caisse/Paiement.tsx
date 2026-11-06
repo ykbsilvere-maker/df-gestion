@@ -48,6 +48,8 @@ export function Paiement({
   const [renduAutre, setRenduAutre] = useState<{ moyenId: string; montant: string; reference: string } | null>(null);
   const premierChamp = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    // Sur écran tactile, on n'ouvre pas le clavier d'office : les billets proposés suffisent souvent.
+    if (window.matchMedia?.('(pointer: coarse)').matches) return;
     premierChamp.current?.focus();
   }, []);
 

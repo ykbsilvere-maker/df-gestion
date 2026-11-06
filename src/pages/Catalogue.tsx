@@ -5,7 +5,7 @@ import { useSession } from '../lib/session';
 import { messageErreur } from '../lib/format';
 import { montant } from '../lib/argent';
 import type { Categorie, Produit } from '../lib/types';
-import { Alerte, EnTetePage, Fenetre, Pastille, Vide } from '../components/ui';
+import { Alerte, Fenetre, Pastille, Vide } from '../components/ui';
 import { Scanner } from '../components/Scanner';
 import { FicheProduit } from './FicheProduit';
 import { Vignette } from '../components/PhotoProduit';
@@ -138,32 +138,12 @@ export function Catalogue() {
   const nomCategorie = (id: string | null) => categories.find((c) => c.id === id)?.nom ?? '—';
 
   return (
-    <>
-      <EnTetePage
-        icone="🛍️"
-        titre="Catalogue"
-        sousTitre="Scannez un article, cherchez-le par nom ou code, ou créez-le. Un lecteur de codes-barres branché fonctionne directement dans le champ de recherche."
-        actions={
-          <>
-            {selection.size > 0 && (
-              <button
-                className="bouton bouton-discret"
-                onClick={() => naviguer('/catalogue/etiquettes', { state: { produits: [...selection] } })}
-              >
-                Étiquettes ({selection.size})
-              </button>
-            )}
-            {peut('catalogue.creer') && (
-              <button className="bouton bouton-principal" onClick={() => setEdition({})}>
-                Nouveau produit
-              </button>
-            )}
-          </>
-        }
-      />
+    <div className="page-catalogue">
+      <h1 className="sr-only">Catalogue</h1>
       <Alerte>{erreur}</Alerte>
 
-      <section className="carte barre-recherche">
+      {/* Recherche figée en haut : la liste défile dessous, comme à la caisse. */}
+      <section className="carte barre-recherche barre-figee">
         <div className="champ-avec-bouton">
           <input
             ref={champ}
@@ -185,9 +165,14 @@ export function Catalogue() {
             autoFocus
             enterKeyHint="search"
           />
-          <button className="bouton bouton-discret" onClick={() => setScan(true)}>
-            Scanner
+          <button className="bouton bouton-discret" onClick={() => setScan(true)} aria-label="Scanner un code-barres">
+            📷
           </button>
+          {peut('catalogue.creer') && (
+            <button className="bouton bouton-principal" onClick={() => setEdition({})} aria-label="Nouveau produit" title="Nouveau produit">
+              + Nouveau
+            </button>
+          )}
         </div>
         <div className="filtres-ligne">
           <select value={filtreCategorie} onChange={(e) => { setFiltreCategorie(e.target.value); setPage(0); }} aria-label="Catégorie">
@@ -200,8 +185,13 @@ export function Catalogue() {
           </select>
           <label className="case">
             <input type="checkbox" checked={avecArretes} onChange={(e) => setAvecArretes(e.target.checked)} />
-            Inclure suspendus et arrêtés
+            Suspendus et arrêtés
           </label>
+          {selection.size > 0 && (
+            <button className="bouton-lien" onClick={() => naviguer('/catalogue/etiquettes', { state: { produits: [...selection] } })}>
+              🏷 Étiquettes ({selection.size})
+            </button>
+          )}
         </div>
         {codeInconnu && (
           <Alerte type="info">
@@ -330,6 +320,6 @@ export function Catalogue() {
           />
         )}
       </Fenetre>
-    </>
+    </div>
   );
 }

@@ -1534,3 +1534,111 @@ input:not([type='checkbox']):not([type='radio']), select, textarea { font-size: 
 }
 /* La recherche de la caisse reste en haut : le clavier recouvre le bas sans déplacer l'écran. */
 .contenu-plein .caisse-recherche input { scroll-margin: 0; }
+
+/* =====================================================================
+   1.7 — Caisse plus compacte, fenêtres en feuille du bas, catalogue figé
+   ===================================================================== */
+.article-details { display: flex; align-items: baseline; gap: 8px; min-width: 0; max-width: 100%; }
+.article-details .article-prix { font-size: 0.86rem; }
+.article-details .secondaire { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.article-caisse { grid-template-columns: minmax(0, 1fr) auto; }
+.panier-titre .vider-panier { font-size: inherit; }
+.caisse-options { display: flex; flex-direction: column; gap: 10px; border: 0; padding: 0; font-size: 0.9rem; }
+
+@media (max-width: 860px) {
+  /* Article trouvé : une seule ligne compacte (nom, prix · stock) et la quantité à droite, jamais coupée. */
+  .article-caisse { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'corps qte'; gap: 6px; padding: 3px 4px; border-radius: 10px; }
+  .article-caisse .article-nom { font-size: 0.9rem; }
+  .contenu-plein .caisse-articles { flex: 1 1 0; min-height: 132px; }
+  .contenu-plein .caisse-panier { flex: 1 1 0; min-height: 96px; }
+  .contenu-plein .caisse.en-recherche .caisse-articles { flex: 2.2 1 0; }
+  .choix-quantite button { width: 34px; height: 36px; font-size: 1.1rem; }
+  .choix-quantite input, .choix-quantite input[inputmode] { height: 36px; width: 44px !important; max-width: 44px !important; flex-basis: 44px !important; font-size: 0.95rem; }
+  .tableau-panier .choix-quantite button { width: 30px; height: 32px; }
+  .tableau-panier .choix-quantite input { height: 32px; }
+  .contenu-plein .tableau-panier tr { padding: 6px 0; }
+  .contenu-plein .caisse-recherche input { min-height: 40px; }
+  .contenu-plein .caisse-recherche .bouton { padding: 6px 10px; }
+  .articles-entete { margin: 6px 2px 3px; }
+
+  /* Total + Encaisser : une barre fine collée en bas, au-dessus du menu. */
+  .contenu-plein .caisse-total {
+    display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 6px 6px 6px 12px; border-radius: 14px;
+  }
+  .contenu-plein .total-bloc { display: flex; flex-direction: column; min-width: 0; }
+  .contenu-plein .total-libelle { font-size: 0.7rem; color: var(--encre-douce); line-height: 1.2; }
+  .contenu-plein .total-montant { font-size: 1.2rem; line-height: 1.15; }
+  .contenu-plein .bouton-encaisser { min-height: 42px; padding: 0 20px; font-size: 0.95rem; border-radius: 12px; flex: none; }
+
+  /* Fenêtres : feuille qui monte du bas, comme le clavier, et redescend à la fermeture. */
+  .fenetre, .fenetre-large {
+    width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 20px 20px 0 0;
+    max-height: 88vh; max-height: calc(88dvh - var(--clavier, 0px)); animation: feuille-monte .22s ease-out;
+    margin-bottom: var(--clavier, 0px); transition: margin-bottom .15s ease-out;
+  }
+  .fenetre-entete { padding: 10px 14px; border-radius: 20px 20px 0 0; }
+  .fenetre-entete h2 { font-size: 0.98rem; margin: 0; }
+  .fenetre-corps { padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
+
+  /* Encaissement compact */
+  .paiement { gap: 10px; }
+  .paiement-total { padding: 8px 12px; border-radius: 12px; }
+  .paiement-total strong { font-size: 1.3rem; }
+  .paiement-ligne { grid-template-columns: 1fr 1fr; gap: 4px 8px; padding: 8px 10px; border-radius: 12px; }
+  .paiement-ligne input { font-size: 1rem; min-height: 38px; }
+  .paiement-ligne .champ-label { font-size: 0.72rem; }
+  .billets-rapides .bouton, .paiement-moyens .bouton { min-height: 32px; padding: 3px 10px; font-size: 0.82rem; }
+  .paiement-bilan > div { padding: 1px 0; font-size: 0.88rem; }
+  .paiement-rendu { font-size: 1.05rem; }
+  .contenu-plein .paiement .bouton-encaisser { width: 100%; min-height: 46px; font-size: 1rem; }
+}
+@keyframes feuille-monte { from { transform: translateY(100%); } to { transform: none; } }
+
+/* Catalogue : recherche figée en haut, liste qui défile dessous */
+.barre-figee { position: sticky; top: 0; z-index: 5; box-shadow: 0 6px 16px rgba(16,24,40,.06); }
+.barre-figee .champ-avec-bouton { gap: 6px; }
+.barre-figee .filtres-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 8px; }
+.barre-figee .filtres-ligne select { width: auto; min-width: 0; flex: 0 1 auto; }
+@media (max-width: 860px) {
+  .page-catalogue .barre-figee { top: -12px; margin: -12px -10px 10px; border-radius: 0 0 16px 16px; padding: 10px; }
+  .barre-figee .filtres-ligne { font-size: 0.82rem; }
+  .barre-figee .filtres-ligne select { padding: 6px 10px; font-size: 0.82rem; }
+  .barre-figee input[type='search'] { min-height: 40px; }
+  /* Liste du catalogue en lignes compactes, sans défilement horizontal */
+  .page-catalogue .defilement-horizontal { overflow: visible; }
+  .tableau-catalogue thead, .tableau-catalogue .col-secondaire { display: none; }
+  .tableau-catalogue, .tableau-catalogue tbody { display: block; }
+  .tableau-catalogue tr { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: 'case produit prix' 'case produit statut'; align-items: center; gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid var(--trait); }
+  .tableau-catalogue td { display: block; padding: 0; border: 0; }
+  .tableau-catalogue td:nth-child(1) { grid-area: case; }
+  .tableau-catalogue td:nth-child(2) { grid-area: produit; min-width: 0; }
+  .tableau-catalogue td:nth-child(4) { grid-area: prix; text-align: right; font-weight: 700; white-space: nowrap; }
+  .tableau-catalogue td:nth-child(6) { grid-area: statut; text-align: right; }
+  .tableau-catalogue .produit-avec-photo { gap: 8px; }
+  .tableau-catalogue .produit-avec-photo strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* Gérant : solde des ventes en cours et rapport X provisoire */
+.solde-ventes { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 10px 14px; margin-bottom: 10px; }
+.solde-ventes > div { display: flex; flex-direction: column; margin-right: auto; }
+.solde-ventes strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.solde-caisse { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; width: 100%; }
+.solde-caisse-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.solde-caisse-ligne strong { font-variant-numeric: tabular-nums; }
+.barre-part { height: 5px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.barre-part span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #000)); }
+.actions-carte-caisse { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.actions-carte-caisse .bouton { padding: 8px 6px; font-size: 0.82rem; }
+.rapport-provisoire { display: flex; flex-direction: column; gap: 12px; }
+.rapport-provisoire p { margin: 0; }
+.rapport-chiffres { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.rapport-chiffres > div { display: flex; flex-direction: column; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); }
+.rapport-chiffres span { font-size: 0.74rem; color: var(--encre-douce); }
+.rapport-chiffres strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
+.rapport-bloc h3 { margin: 0 0 4px; font-size: 0.85rem; }
+.rapport-ligne { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; font-variant-numeric: tabular-nums; }
+.rapport-ligne > :first-child { margin-right: auto; min-width: 0; }
+.rapport-produit { padding: 2px 0 4px; }
+.rapport-produit-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entete-bouton svg { width: 18px; height: 18px; }

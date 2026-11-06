@@ -40,6 +40,22 @@ export function Fenetre({
     if (ouverte && !d.open) d.showModal();
     if (!ouverte && d.open) d.close();
   }, [ouverte]);
+  // Sur téléphone, la fenêtre est une feuille posée en bas : quand le clavier recouvre l'écran,
+  // elle remonte juste au-dessus de lui, puis redescend quand il se ferme.
+  useEffect(() => {
+    const d = ref.current;
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+    if (!ouverte || !d || !vv) return;
+    const maj = () => d.style.setProperty('--clavier', `${Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))}px`);
+    maj();
+    vv.addEventListener('resize', maj);
+    vv.addEventListener('scroll', maj);
+    return () => {
+      vv.removeEventListener('resize', maj);
+      vv.removeEventListener('scroll', maj);
+      d.style.removeProperty('--clavier');
+    };
+  }, [ouverte]);
   return (
     <dialog ref={ref} className={`fenetre ${large ? 'fenetre-large' : ''}`} onClose={onFermer}>
       <div className="fenetre-entete">
