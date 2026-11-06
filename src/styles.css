@@ -1549,9 +1549,10 @@ input:not([type='checkbox']):not([type='radio']), select, textarea { font-size: 
   /* Article trouvé : une seule ligne compacte (nom, prix · stock) et la quantité à droite, jamais coupée. */
   .article-caisse { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'corps qte'; gap: 6px; padding: 3px 4px; border-radius: 10px; }
   .article-caisse .article-nom { font-size: 0.9rem; }
-  .contenu-plein .caisse-articles { flex: 1 1 0; min-height: 132px; }
+  /* La liste prend la place de ses articles (pas de vide), le panier prend le reste. */
+  .contenu-plein .caisse-articles { flex: 0 1 auto; max-height: 52%; min-height: 0; }
+  .contenu-plein .caisse.en-recherche .caisse-articles { max-height: 64%; }
   .contenu-plein .caisse-panier { flex: 1 1 0; min-height: 96px; }
-  .contenu-plein .caisse.en-recherche .caisse-articles { flex: 2.2 1 0; }
   .choix-quantite button { width: 34px; height: 36px; font-size: 1.1rem; }
   .choix-quantite input, .choix-quantite input[inputmode] { height: 36px; width: 44px !important; max-width: 44px !important; flex-basis: 44px !important; font-size: 0.95rem; }
   .tableau-panier .choix-quantite button { width: 30px; height: 32px; }
@@ -1628,8 +1629,8 @@ input:not([type='checkbox']):not([type='radio']), select, textarea { font-size: 
 .solde-caisse-ligne strong { font-variant-numeric: tabular-nums; }
 .barre-part { height: 5px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
 .barre-part span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #000)); }
-.actions-carte-caisse { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.actions-carte-caisse .bouton { padding: 8px 6px; font-size: 0.82rem; }
+.actions-carte-caisse { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.actions-carte-caisse .bouton { padding: 7px 6px; font-size: 0.82rem; white-space: nowrap; }
 .rapport-provisoire { display: flex; flex-direction: column; gap: 12px; }
 .rapport-provisoire p { margin: 0; }
 .rapport-chiffres { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
