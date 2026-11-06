@@ -88,6 +88,9 @@ describe('Surstock et soldes', () => {
   });
 
   it('la caisse vend au prix de la promotion, et refuse un autre prix', async () => {
+    // La caisse d'Alice est clôturée, puis ouverte pour Carine (on ne vend que dans sa propre caisse).
+    await commeAlice((q) => q(`select public.cloturer_session($1, 0, null, 'Fin de journée de test')`, [session]));
+    session = (await commeAlice((q) => un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0, $3) id`, [org, caisse, carine])))).id;
     const cat = await enTantQue(pool, carine, (q) => q<{ prix_vente: number }>(`select prix_vente from public.catalogue_caisse($1, $2) where id = $3`, [org, mag, pagne]));
     expect(Number(cat[0]!.prix_vente)).toBe(4000);
     await enTantQue(pool, carine, (q) => q(`select public.enregistrer_vente($1::jsonb)`, [vente(4000, 2)]));

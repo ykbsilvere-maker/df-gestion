@@ -37,7 +37,7 @@ describe('mes_caisses', () => {
     await enTantQue(pool, alice, (q) => q(`select public.inviter_membre($1, 'akissi@k.ci', 'caissier', false, '{}', '{}')`, [org]));
     await enTantQue(pool, akissi, (q) => q(`select public.accepter_invitations()`));
     const e = await etat(akissi);
-    expect(e.peut_ouvrir).toBe(true);
+    expect(e.peut_ouvrir).toBe(false);
     expect(e.caisses.filter((c) => c.accessible)).toEqual([]);
   });
 

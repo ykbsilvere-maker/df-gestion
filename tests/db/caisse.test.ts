@@ -146,8 +146,11 @@ describe('Ventes', () => {
   it('réserve les remises au droit « ventes.valider »', async () => {
     const v = () => vente([{ produit_id: riz, quantite: 1, prix_unitaire: 4500, remise: 500 }], [{ moyen: 'especes', montant: 4000 }]);
     await expect(enregistrer(carine, v())).rejects.toThrow(/ventes.valider/);
-    // Le responsable de caisse peut vendre sur la caisse 1 (aucune restriction de caisse) et accorder la remise.
-    const r = await enregistrer(robert, v());
+    // Le responsable de caisse ne vend pas dans la caisse de Carine…
+    await expect(enregistrer(robert, v())).rejects.toThrow(/autre personne/);
+    // …mais dans la sienne, ouverte pour lui, il peut accorder la remise.
+    const sR = (await enTantQue(pool, alice, (q) => un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0, $3) id`, [org, caisse2, robert])))).id;
+    const r = await enregistrer(robert, { ...v(), session_id: sR, caisse_id: caisse2 });
     expect(r.total).toBe(4000);
   });
 
@@ -204,21 +207,21 @@ describe('Annulation', () => {
 describe('Rapports et clôture', () => {
   it('le rapport X totalise par moyen et calcule les espèces attendues', async () => {
     const r = await enTantQue(pool, carine, (q) => un(q<{ r: Record<string, unknown> }>(`select public.rapport_session($1) r`, [session]))).then((x) => x.r);
-    // Espèces nettes : 4 450 + 4 000 + 600 + 2 100 = 11 150 (la vente annulée est exclue)
-    expect(r.especes_encaissees).toBe(11150);
-    expect(r.especes_attendues).toBe(20000 + 11150);
+    // Espèces nettes : 4 450 + 600 + 2 100 = 7 150 (la vente annulée est exclue ; la remise de Robert est dans sa caisse)
+    expect(r.especes_encaissees).toBe(7150);
+    expect(r.especes_attendues).toBe(20000 + 7150);
     expect(r.nombre_annulations).toBe(1);
     const parMoyen = Object.fromEntries((r.par_moyen as { libelle: string; montant: number }[]).map((m) => [m.libelle, m.montant]));
-    expect(parMoyen).toEqual({ 'Carte bancaire': 90000, Espèces: 11150, Wave: 2000 });
+    expect(parMoyen).toEqual({ 'Carte bancaire': 90000, Espèces: 7150, Wave: 2000 });
   });
 
   it('exige un motif en cas d’écart, puis clôture avec un numéro Z', async () => {
-    await expect(enTantQue(pool, carine, (q) => q(`select public.cloturer_session($1, 31000)`, [session]))).rejects.toThrow(/justifié/);
+    await expect(enTantQue(pool, carine, (q) => q(`select public.cloturer_session($1, 27000)`, [session]))).rejects.toThrow(/justifié/);
     const z = await enTantQue(pool, carine, (q) =>
-      un(q<{ r: Record<string, unknown> }>(`select public.cloturer_session($1, 31000, '{"10000": 3, "1000": 1}'::jsonb, 'Pièces manquantes') r`, [session])),
+      un(q<{ r: Record<string, unknown> }>(`select public.cloturer_session($1, 27000, '{"10000": 2, "1000": 7}'::jsonb, 'Pièces manquantes') r`, [session])),
     ).then((x) => x.r);
     expect(z).toMatchObject({ numero_z: 1, ecart: -150, motif_ecart: 'Pièces manquantes' });
-    await expect(enTantQue(pool, carine, (q) => q(`select public.cloturer_session($1, 31150)`, [session]))).rejects.toThrow(/déjà clôturée/);
+    await expect(enTantQue(pool, carine, (q) => q(`select public.cloturer_session($1, 27150)`, [session]))).rejects.toThrow(/déjà clôturée/);
   });
 
   it('après clôture : vente en ligne refusée, vente faite hors connexion acceptée et signalée', async () => {
