@@ -137,7 +137,7 @@ function CaissePageInterne() {
 
   // On entre directement dans la caisse que l'on tient (ouverte pour soi).
   useEffect(() => {
-    if (!etat || quitte) return;
+    if (!etat || quitte || !etat.peut_vendre) return;
     const mienne = etat.caisses.find((c) => c.session?.mienne);
     if (mienne && caisseId !== mienne.id) setCaisseId(mienne.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,7 +179,8 @@ function CaissePageInterne() {
   if (!etat) return <div className="chargement">Chargement des caisses…</div>;
 
   // On ne vend que dans SA caisse : celle ouverte pour soi par le responsable.
-  const vendable = !!caisse && !!sessionCaisse && (sessionCaisse.caissier_id ?? sessionCaisse.ouverte_par) === moi && !quitte;
+  // Le gérant principal ne vend jamais (peut_vendre faux) : il ouvre et clôture les caisses des autres.
+  const vendable = etat.peut_vendre && !!caisse && !!sessionCaisse && (sessionCaisse.caissier_id ?? sessionCaisse.ouverte_par) === moi && !quitte;
 
   if (!vendable) {
     return (
@@ -274,7 +275,9 @@ function OuvrirCaisse({
         <h1>{etat.responsable ? '🔓 Caisses du jour' : '🧾 Ma caisse'}</h1>
         <p className="secondaire">
           {etat.responsable
-            ? 'Ouvrez chaque caisse pour la personne qui la tiendra, après avoir compté le fond ensemble. Vous clôturez aussi les caisses en fin de journée.'
+            ? etat.peut_vendre
+              ? 'Ouvrez chaque caisse pour la personne qui la tiendra, après avoir compté le fond ensemble. Vous clôturez aussi les caisses en fin de journée.'
+              : 'En tant que gérant principal, vous ouvrez la caisse de chaque caissier après avoir compté le fond avec lui, et vous la clôturez en fin de journée. Vous ne vendez pas.'
             : 'Votre caisse est ouverte par le gérant principal, après comptage du fond avec vous.'}
         </p>
       </div>
@@ -316,14 +319,19 @@ function OuvrirCaisse({
                   {c.code} · {c.magasin_nom}
                 </span>
                 {c.session ? (
-                  <Pastille ton={c.session.mienne ? 'vert' : 'or'}>
-                    {c.session.mienne ? 'Ouverte pour vous' : `Tenue par ${c.session.par}`} · {heureAbidjan(c.session.ouverte_le)}
+                  <Pastille ton={c.session.mienne && etat.peut_vendre ? 'vert' : 'or'}>
+                    {c.session.mienne
+                      ? etat.peut_vendre
+                        ? 'Ouverte pour vous'
+                        : 'Encore ouverte à votre nom : à clôturer'
+                      : `Tenue par ${c.session.par}`}{' '}
+                    · {heureAbidjan(c.session.ouverte_le)}
                   </Pastille>
                 ) : (
                   <Pastille ton="gris">Fermée</Pastille>
                 )}
               </div>
-              {c.session?.mienne && (
+              {c.session?.mienne && etat.peut_vendre && (
                 <button type="button" className="bouton bouton-principal bouton-plein" onClick={() => onEntrer(c.id)}>
                   Entrer dans ma caisse
                 </button>
@@ -334,7 +342,7 @@ function OuvrirCaisse({
                 </button>
               )}
               {etat.responsable && !c.session && c.caissiers.length === 0 && (
-                <p className="secondaire petit">Personne n’a cette caisse : attribuez-la dans Utilisateurs.</p>
+                <p className="secondaire petit">Aucun caissier n’a cette caisse : attribuez-la à un caissier dans Utilisateurs.</p>
               )}
               {etat.responsable && c.session && (
                 <button type="button" className="bouton bouton-discret bouton-plein" disabled={horsLigne} onClick={() => setCloture(c)}>
@@ -381,7 +389,7 @@ function OuvrirCaisse({
 
 /** Ouverture d'une caisse par le responsable : pour qui, et comptage du fond. */
 function FormulaireOuverture({ org, caisse, onOuverte }: { org: string; caisse: CaisseEtat; onOuverte: (nom: string, pourMoi: boolean) => void }) {
-  const [caissier, setCaissier] = useState(caisse.caissiers.find((c) => !c.moi)?.user_id ?? caisse.caissiers[0]?.user_id ?? '');
+  const [caissier, setCaissier] = useState(caisse.caissiers[0]?.user_id ?? '');
   const [nombres, setNombres] = useState<Record<string, number>>({});
   const [erreur, setErreur] = useState('');
   const [enCours, setEnCours] = useState(false);

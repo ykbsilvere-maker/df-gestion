@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
-import { creerCompte, enTantQue, preparerBase } from './helpers';
+import { creerCompte, devenir, enTantQue, ouvrirPourCaissier, preparerBase } from './helpers';
 
 // v0.8 : extraction des ventes (vues, droits, marges masquées) et grille d'habilitations.
 let pool: pg.Pool;
@@ -54,7 +54,7 @@ beforeAll(async () => {
     );
     await q(`select public.valider_reception($1)`, [r.id]);
     await q(`select public.inviter_membre($1, 'carine@x.ci', 'caissier', false, $2, $3)`, [org, [mag], [caisse]]);
-    session = (await un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0) id`, [org, caisse]))).id;
+    session = await ouvrirPourCaissier(q, { org, caisse, gerant: alice, caissier: carine, email: 'carine@x.ci' });
     const vendre = (lignes: { produit_id: string; quantite: number; prix_unitaire: number }[], total: number) =>
       q(`select public.enregistrer_vente($1::jsonb)`, [
         JSON.stringify({
@@ -69,6 +69,7 @@ beforeAll(async () => {
       ]);
     await vendre([{ produit_id: riz, quantite: 2, prix_unitaire: 4500 }], 9000);
     await vendre([{ produit_id: riz, quantite: 1, prix_unitaire: 4500 }, { produit_id: lait, quantite: 3, prix_unitaire: 650 }], 6450);
+    await devenir(q, alice);
   });
   await enTantQue(pool, carine, (q) => q(`select public.accepter_invitations()`));
   membreCarine = (await pool.query(`select id from membres where user_id = $1`, [carine])).rows[0].id;

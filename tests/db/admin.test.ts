@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
-import { creerCompte, enTantQue, preparerBase } from './helpers';
+import { creerCompte, enTantQue, ouvrirPourCaissier, preparerBase } from './helpers';
 
 let pool: pg.Pool;
 let admin: string; // administrateur général (premier compte)
@@ -99,12 +99,13 @@ describe('consultation par l’administrateur général', () => {
   let session: string;
 
   beforeAll(async () => {
-    // Une vente dans l'entreprise d'Awa.
+    // Une vente dans l'entreprise d'Awa (par sa caissière : la gérante principale ne vend pas).
+    const vendeuse = await creerCompte(pool, 'vendeuse@boutique.ci', 'Vendeuse');
     await enTantQue(pool, awa, async (q) => {
       const c = await un(q<{ id: string }>(`select id from caisses where organisation_id = $1 and code = 'CAISSE01'`, [org]));
-      session = (await un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 5000) id`, [org, c.id]))).id;
       const p = await un(q<{ id: string }>(`insert into produits (organisation_id, designation, prix_vente) values ($1, 'Savon', 500) returning id`, [org]));
       const especes = await un(q<{ id: string }>(`select id from moyens_paiement where organisation_id = $1 and code = 'especes'`, [org]));
+      session = await ouvrirPourCaissier(q, { org, caisse: c.id, fond: 5000, gerant: awa, caissier: vendeuse, email: 'vendeuse@boutique.ci' });
       await q(`select public.enregistrer_vente($1::jsonb)`, [JSON.stringify({
         id: randomUUID(), organisation_id: org, caisse_id: c.id, session_id: session, date_vente: new Date().toISOString(),
         lignes: [{ produit_id: p.id, quantite: 3, prix_unitaire: 500 }], reglements: [{ moyen_id: especes.id, montant: 1500 }],

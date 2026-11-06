@@ -1500,3 +1500,37 @@ input:not([type='checkbox']):not([type='radio']), select, textarea { font-size: 
 .billetage-total { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
 .billetage-total strong { font-size: 1.3rem; }
 @media (max-width: 620px) { .billetage { grid-template-columns: 1fr; } }
+
+/* =====================================================================
+   1.6 — Écrans figés : le clavier passe par-dessus, rien ne bouge
+   ===================================================================== */
+@media (max-width: 860px) {
+  /* Connexion : bandeau de marque en haut, carte juste dessous, sans défilement */
+  .page-connexion {
+    display: block; height: 100vh; height: 100dvh; overflow: hidden;
+    background: linear-gradient(165deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #000) 230px, var(--fond) 230px);
+  }
+  .connexion-panneau { justify-content: flex-start; align-items: stretch; gap: 10px; padding: calc(14px + env(safe-area-inset-top)) 14px 14px; height: 100%; overflow-y: auto; overscroll-behavior: none; }
+  .connexion-panneau > .marque-decodeur { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px; margin: 0; }
+  .connexion-panneau > .marque-decodeur img { width: 92px; height: auto; background: #fff; border-radius: 14px; padding: 4px 6px; }
+  .connexion-panneau > .marque-decodeur span { display: none; }
+  .carte-connexion { width: 100%; padding: 14px 14px 12px; border-radius: 20px; box-shadow: 0 14px 34px rgba(0,0,0,.14); gap: 8px; }
+  .carte-connexion h1 { font-size: 1.05rem; margin: 0; }
+  .carte-connexion .champ { margin: 0; }
+  .carte-connexion .liens-formulaire { margin-top: 2px; }
+  .comptes-recents { margin-bottom: 0; }
+  /* Pavé de code compact pour tenir sur l'écran avec le reste */
+  .carte-connexion .pave-touches { grid-template-columns: repeat(3, 62px); gap: 8px 22px; }
+  .carte-connexion .pave-touches button { width: 62px; height: 62px; font-size: 1.45rem; }
+  .carte-connexion .pave-points { margin: 4px 0 0; }
+  .carte-connexion .qui-se-connecte { padding: 8px 10px; }
+
+  /* Choix du code et verrouillage : contenu en haut (le clavier ne le pousse pas) */
+  .ecran-code, .ecran-verrouille { place-items: start center; padding-top: calc(16px + env(safe-area-inset-top)); overflow: hidden; }
+  .carte-code { padding: 16px 14px 12px; gap: 6px; border-radius: 22px; }
+  .carte-code .marque-decodeur img { width: 84px; }
+  .carte-code .pave-touches { grid-template-columns: repeat(3, 62px); gap: 8px 22px; }
+  .carte-code .pave-touches button { width: 62px; height: 62px; font-size: 1.45rem; }
+}
+/* La recherche de la caisse reste en haut : le clavier recouvre le bas sans déplacer l'écran. */
+.contenu-plein .caisse-recherche input { scroll-margin: 0; }

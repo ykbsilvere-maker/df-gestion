@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
-import { creerCompte, enTantQue, preparerBase } from './helpers';
+import { creerCompte, devenir, enTantQue, ouvrirPourCaissier, preparerBase } from './helpers';
 
 // v0.9 : coût de revient et dettes fournisseurs, budget du mois, trésorerie, droits du cahier des charges.
 let pool: pg.Pool;
@@ -120,13 +120,14 @@ describe('Budget du mois', () => {
 describe('Trésorerie', () => {
   it('calcule les soldes à partir des ventes, dépenses, frais, paiements et virements', async () => {
     await commeAlice(async (q) => {
-      const session = (await un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0) id`, [org, caisse]))).id;
+      const session = await ouvrirPourCaissier(q, { org, caisse, gerant: alice, caissier: carine, email: 'carine@p.ci' });
       const moyen = async (code: string) => (await un(q<{ id: string }>(`select id from moyens_paiement where organisation_id = $1 and code = $2`, [org, code]))).id;
       await q(`select public.enregistrer_vente($1::jsonb)`, [JSON.stringify({
         id: randomUUID(), organisation_id: org, caisse_id: caisse, session_id: session, date_vente: new Date().toISOString(),
         lignes: [{ produit_id: pagne, quantite: 3, prix_unitaire: 4500 }],
         reglements: [{ moyen_id: await moyen('especes'), montant: 9000, montant_recu: 10000 }, { moyen_id: await moyen('wave'), montant: 4500, reference: 'W1' }],
       })]);
+      await devenir(q, alice);
       await q(`select public.saisir_virement($1, $2, $3, 50000, 0, current_date, 'Versement')`, [org, comptes.caisse, comptes.banque]);
     });
     const t = await commeAlice((q) => un(q<{ r: { comptes: { id: string; solde: number }[]; dettes_30_jours: number; budget_restant: number; liquidite: number; total: number } }>(

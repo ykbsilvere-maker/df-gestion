@@ -3,7 +3,13 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 1.5.** **La caisse est ouverte par un responsable, pour une personne** : le gérant (droit « caisse.valider »)
+**Version 1.6.** **Le gérant principal ne tient pas de caisse** : il ouvre (après comptage du fond) et clôture les
+caisses de ses caissiers, mais ne vend pas et ne saisit aucune opération de caisse ; personne ne s'ouvre sa propre
+caisse (celui qui ouvre n'est jamais celui qui vend). Le caissier se connecte et entre directement dans la caisse
+ouverte pour lui. **Écrans figés** : le clavier passe par-dessus le contenu (APK et navigateur) au lieu de le pousser ;
+connexion sur téléphone tenant sur un écran (bandeau de marque, carte, pavé de code compact).
+
+Version 1.5 : **La caisse est ouverte par un responsable, pour une personne** : le gérant (droit « caisse.valider »)
 ouvre chaque caisse pour celui qui la tiendra, après **comptage du fond ensemble, billet par billet** (10 000, 5 000,
 2 000, 1 000… et pièces), qu'ils valident ensemble ; un caissier ne peut pas ouvrir sa caisse seul (« rendez-vous auprès
 du gérant principal »). **Chacun ne vend que dans sa caisse** (le gérant ouvre et clôture les autres caisses, sans y

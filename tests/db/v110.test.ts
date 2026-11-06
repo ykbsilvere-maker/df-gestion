@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
-import { creerCompte, enTantQue, preparerBase } from './helpers';
+import { creerCompte, devenir, enTantQue, ouvrirPourCaissier, preparerBase } from './helpers';
 
 // v1.1 : comptabilité SYSCOHADA générée depuis les opérations ; journal, balance, bilan, clôture, écritures manuelles, extourne.
 let pool: pg.Pool;
@@ -34,16 +34,17 @@ beforeAll(async () => {
     await q(`insert into receptions_lignes (organisation_id, reception_id, produit_id, quantite, prix_unitaire) values ($1, $2, $3, 100, 3000)`, [org, r, p]);
     await q(`select public.valider_reception($1)`, [r]);
     await q(`select public.payer_fournisseur($1, $2, $3, 100000, $4)`, [org, f, r, banque]);
-    const session = (await un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0) id`, [org, caisse]))).id;
+    await q(`select public.inviter_membre($1, 'carine@x.ci', 'caissier', false, $2, $3)`, [org, [mag], [caisse]]);
+    const session = await ouvrirPourCaissier(q, { org, caisse, gerant: alice, caissier: carine, email: 'carine@x.ci' });
     await q(`select public.enregistrer_vente($1::jsonb)`, [JSON.stringify({
       id: randomUUID(), organisation_id: org, caisse_id: caisse, session_id: session, date_vente: new Date().toISOString(),
       lignes: [{ produit_id: p, quantite: 10, prix_unitaire: 4500 }],
       reglements: [{ moyen_id: especes, montant: 45000, montant_recu: 45000 }],
     })]);
+    await devenir(q, alice);
     const loyer = (await un(q<{ id: string }>(`select id from postes_budget where organisation_id = $1 and libelle = 'Loyer'`, [org]))).id;
     await q(`select public.enregistrer_depense($1, current_date, $2, $3, 30000)`, [org, loyer, cpt]);
     await q(`select public.saisir_virement($1, $2, $3, 20000, 500, current_date, 'V1')`, [org, cpt, banque]);
-    await q(`select public.inviter_membre($1, 'carine@x.ci', 'caissier', false, $2, $3)`, [org, [mag], [caisse]]);
   });
   await enTantQue(pool, carine, (q) => q(`select public.accepter_invitations()`));
 });

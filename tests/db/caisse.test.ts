@@ -240,7 +240,8 @@ describe('Rapports et clôture', () => {
   });
 
   it('la caissière ne clôture pas la session ouverte par une autre personne', async () => {
-    const s3 = (await enTantQue(pool, alice, (q) => un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0) id`, [org, caisse1])))).id;
+    // La caisse 2 est tenue par Robert (ouverte pour lui par Alice) : Carine ne peut pas la clôturer.
+    const s3 = (await pool.query(`select id from sessions_caisse where caissier_id = $1 and statut = 'ouverte'`, [robert])).rows[0].id as string;
     await expect(enTantQue(pool, carine, (q) => q(`select public.cloturer_session($1, 0)`, [s3]))).rejects.toThrow(/Seule la personne/);
   });
 });

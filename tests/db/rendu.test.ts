@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
-import { creerCompte, enTantQue, preparerBase } from './helpers';
+import { creerCompte, devenir, enTantQue, ouvrirPourCaissier, preparerBase } from './helpers';
 
 let pool: pg.Pool;
 let alice: string;
+let vendeur: string; // le gérant ne vend pas : un caissier tient la caisse
 let org: string;
 let caisse: string;
 let session: string;
@@ -26,7 +27,7 @@ function vente(lignes: { produit_id: string; quantite: number }[], reglements: R
   };
 }
 const enregistrer = (v: object) =>
-  enTantQue(pool, alice, (q) => un(q<{ r: { numero: string; total: number } }>(`select public.enregistrer_vente($1::jsonb) r`, [JSON.stringify(v)]))).then((x) => x.r);
+  enTantQue(pool, vendeur, (q) => un(q<{ r: { numero: string; total: number } }>(`select public.enregistrer_vente($1::jsonb) r`, [JSON.stringify(v)]))).then((x) => x.r);
 const totaux = () =>
   enTantQue(pool, alice, (q) => un(q<{ t: Record<string, any> }>(`select public.rapport_session($1) t`, [session]))).then((x) => x.t);
 
@@ -34,6 +35,7 @@ beforeAll(async () => {
   pool = await preparerBase('rendu');
   alice = await creerCompte(pool, 'alice@r.ci');
   org = (await enTantQue(pool, alice, (q) => un(q<{ id: string }>(`select public.creer_organisation('Boutique Rendu') id`)))).id;
+  vendeur = await creerCompte(pool, 'vendeur@rendu.ci', 'Vendeur');
   await enTantQue(pool, alice, async (q) => {
     const mag = (await un(q<{ id: string }>(`select id from magasins where organisation_id = $1`, [org]))).id;
     caisse = (await un(q<{ id: string }>(`select id from caisses where magasin_id = $1`, [mag]))).id;
@@ -43,7 +45,8 @@ beforeAll(async () => {
     const r = await un(q<{ id: string }>(`insert into receptions (organisation_id, magasin_id) values ($1, $2) returning id`, [org, mag]));
     await q(`insert into receptions_lignes (organisation_id, reception_id, produit_id, quantite, prix_unitaire) values ($1, $2, $3, 50, 3900), ($1, $2, $4, 50, 500)`, [org, r.id, riz, lait]);
     await q(`select public.valider_reception($1)`, [r.id]);
-    session = (await un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 20000) id`, [org, caisse]))).id;
+    session = await ouvrirPourCaissier(q, { org, caisse, fond: 20000, gerant: alice, caissier: vendeur, email: 'vendeur@rendu.ci' });
+    await devenir(q, alice);
   });
 });
 

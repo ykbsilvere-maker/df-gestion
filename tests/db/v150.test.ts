@@ -71,7 +71,7 @@ describe('Chacun vend et voit sa caisse', () => {
     await vendre(bintou, s1, caisse1, 2);
     await vendre(koffi, s2, caisse2, 3);
     await expect(vendre(bintou, s2, caisse2)).rejects.toThrow();
-    await expect(vendre(alice, s1, caisse1)).rejects.toThrow(/autre personne/);
+    await expect(vendre(alice, s1, caisse1)).rejects.toThrow(/gérant principal ne vend pas/);
   });
   it('Bintou ne voit que ses ventes et sa session ; le gérant voit tout', async () => {
     const vb = await enTantQue(pool, bintou, (q) => q<{ total: string }>(`select total from ventes`));
@@ -89,7 +89,7 @@ describe('Chacun vend et voit sa caisse', () => {
     expect(e.responsable).toBe(true);
     const c1 = e.caisses.find((c) => c.id === caisse1)!;
     expect(c1.session).toMatchObject({ par: 'Bintou', mienne: false });
-    expect(c1.caissiers.map((c) => c.nom).sort()).toEqual(['Alice', 'Bintou']);
+    expect(c1.caissiers.map((c) => c.nom)).toEqual(['Bintou']);
     const k = await enTantQue(pool, koffi, (q) => un(q<{ r: { responsable: boolean; caisses: { id: string }[] } }>(`select public.mes_caisses($1) r`, [org]))).then((x) => x.r);
     expect(k.responsable).toBe(false);
     expect(k.caisses.map((c) => c.id)).toEqual([caisse2]);

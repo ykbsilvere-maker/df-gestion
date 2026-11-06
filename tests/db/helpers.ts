@@ -70,3 +70,31 @@ export async function enTantQue<R>(pool: pg.Pool, userId: string | null, fn: (q:
     client.release();
   }
 }
+
+/** Dans la même transaction, agit désormais comme cet utilisateur (auth.uid() change). */
+export async function devenir(q: Execution, userId: string) {
+  await q(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: userId, role: 'authenticated' })]);
+}
+
+/**
+ * Le gérant principal ne vend pas : il ouvre la caisse pour un caissier. Rattache le caissier
+ * (compte déjà créé avec creerCompte) s'il n'est pas encore membre, ouvre la caisse pour lui
+ * avec le fond indiqué, et laisse q agir COMME LE CAISSIER (revenir avec devenir(q, gerant)).
+ */
+export async function ouvrirPourCaissier(
+  q: Execution,
+  o: { org: string; caisse: string; fond?: number; gerant: string; caissier: string; email: string },
+): Promise<string> {
+  const deja = await q<{ n: number }>(`select count(*)::int n from public.membres where organisation_id = $1 and user_id = $2`, [o.org, o.caissier]);
+  if (!deja[0]!.n) {
+    const invite = await q<{ n: number }>(
+      `select count(*)::int n from public.invitations where organisation_id = $1 and lower(email) = lower($2) and statut = 'en_attente'`, [o.org, o.email]);
+    if (!invite[0]!.n) await q(`select public.inviter_membre($1, $2, 'caissier', true, '{}', '{}')`, [o.org, o.email]);
+    await devenir(q, o.caissier);
+    await q(`select public.accepter_invitations()`);
+    await devenir(q, o.gerant);
+  }
+  const s = await q<{ id: string }>(`select public.ouvrir_session($1, $2, $3, $4) id`, [o.org, o.caisse, o.fond ?? 0, o.caissier]);
+  await devenir(q, o.caissier);
+  return s[0]!.id;
+}

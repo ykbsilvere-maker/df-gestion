@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
-import { creerCompte, enTantQue, preparerBase } from './helpers';
+import { creerCompte, devenir, enTantQue, ouvrirPourCaissier, preparerBase } from './helpers';
 
 // v1.0 : compte d'exploitation, SIG SYSCOHADA, seuil de rentabilité ; surstock, promotions appliquées en caisse.
 let pool: pg.Pool;
@@ -37,8 +37,9 @@ beforeAll(async () => {
     await q(`insert into receptions_frais (organisation_id, reception_id, nature, montant) values ($1, $2, 'transport', 20000)`, [org, r]);
     await q(`select public.valider_reception($1)`, [r]);
     await q(`select public.inviter_membre($1, 'carine@w.ci', 'caissier', false, $2, $3)`, [org, [mag], [caisse]]);
-    session = (await un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0) id`, [org, caisse]))).id;
+    session = await ouvrirPourCaissier(q, { org, caisse, gerant: alice, caissier: carine, email: 'carine@w.ci' });
     await q(`select public.enregistrer_vente($1::jsonb)`, [vente(4500, 10)]);
+    await devenir(q, alice);
     const postes = await q<{ id: string; libelle: string }>(`select id, libelle from postes_budget where organisation_id = $1`, [org]);
     const b = (await un(q<{ id: string }>(`select public.enregistrer_budget($1, current_date, $2::jsonb) id`, [org,
       JSON.stringify(postes.map((p) => ({ poste_id: p.id, montant: p.libelle === 'Loyer' ? 30000 : p.libelle === 'Salaires' ? 50000 : 0 })))]))).id;

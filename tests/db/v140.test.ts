@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type pg from 'pg';
 import { creerCompte, enTantQue, preparerBase } from './helpers';
 
-// 1.4 : « Ouvrir une caisse » ne propose que les caisses que la personne peut ouvrir.
+// 1.4 / 1.6 : l'écran des caisses ne propose que ce que la personne peut faire.
 let pool: pg.Pool;
 let alice: string;
 let akissi: string;
@@ -10,7 +10,11 @@ let org: string;
 let caisse: string;
 let magasin: string;
 const un = async <T>(p: Promise<T[]>) => (await p)[0]!;
-type Etat = { peut_ouvrir: boolean; caisses: { id: string; accessible: boolean; raison: string | null; session: { mienne: boolean; par: string } | null }[] };
+type Etat = {
+  peut_ouvrir: boolean;
+  peut_vendre: boolean;
+  caisses: { id: string; accessible: boolean; raison: string | null; session: { mienne: boolean; par: string } | null; caissiers: { nom: string }[] }[];
+};
 const etat = (uid: string) => enTantQue(pool, uid, (q) => un(q<{ r: Etat }>(`select public.mes_caisses($1) r`, [org]))).then((x) => x.r);
 
 beforeAll(async () => {
@@ -27,25 +31,28 @@ afterAll(async () => {
 });
 
 describe('mes_caisses', () => {
-  it('le propriétaire voit sa caisse libre, puis ouverte par lui', async () => {
-    expect((await etat(alice)).caisses).toMatchObject([{ id: caisse, accessible: true, session: null }]);
-    await enTantQue(pool, alice, (q) => q(`select public.ouvrir_session($1, $2, 0)`, [org, caisse]));
-    expect((await etat(alice)).caisses[0]!.session).toMatchObject({ mienne: true, par: 'Alice' });
+  it('le gérant principal voit les caisses, peut les ouvrir, mais ne peut pas en tenir une', async () => {
+    const e = await etat(alice);
+    expect(e).toMatchObject({ peut_ouvrir: true, peut_vendre: false });
+    expect(e.caisses).toMatchObject([{ id: caisse, accessible: false, session: null, caissiers: [] }]);
+    await expect(enTantQue(pool, alice, (q) => q(`select public.ouvrir_session($1, $2, 0)`, [org, caisse]))).rejects.toThrow(/gérant principal ne tient pas/);
   });
 
   it('une caissière sans magasin ni caisse ne voit rien à ouvrir', async () => {
     await enTantQue(pool, alice, (q) => q(`select public.inviter_membre($1, 'akissi@k.ci', 'caissier', false, '{}', '{}')`, [org]));
     await enTantQue(pool, akissi, (q) => q(`select public.accepter_invitations()`));
     const e = await etat(akissi);
-    expect(e.peut_ouvrir).toBe(false);
+    expect(e).toMatchObject({ peut_ouvrir: false, peut_vendre: true });
     expect(e.caisses.filter((c) => c.accessible)).toEqual([]);
   });
 
-  it('une fois sa caisse attribuée, elle la voit, ouverte par un collègue', async () => {
+  it('une fois sa caisse attribuée et ouverte pour elle par le gérant, elle y entre', async () => {
     const m = await enTantQue(pool, alice, (q) => un(q<{ id: string }>(`select id from membres where user_id = $1`, [akissi])));
     await enTantQue(pool, alice, (q) => q(`select public.modifier_membre($1, 'caissier', false, $2, $3)`, [m.id, [magasin], [caisse]]));
+    expect((await etat(alice)).caisses[0]!.caissiers.map((c) => c.nom)).toEqual(['Akissi']);
+    await enTantQue(pool, alice, (q) => q(`select public.ouvrir_session($1, $2, 0, $3)`, [org, caisse, akissi]));
     const c = (await etat(akissi)).caisses.find((x) => x.id === caisse)!;
     expect(c.accessible).toBe(true);
-    expect(c.session).toMatchObject({ mienne: false, par: 'Alice' });
+    expect(c.session).toMatchObject({ mienne: true, par: 'Akissi' });
   });
 });

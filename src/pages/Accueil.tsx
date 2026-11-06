@@ -28,8 +28,12 @@ const ACTIONS: { vers: string; icone: string; libelle: string; droit: string | s
   { vers: '/rapports/ventes', icone: '📊', libelle: 'Ventes', droit: ['ventes.exporter', 'rapports.consulter'] },
 ];
 
-function ActionsRapides({ peut }: { peut: (p: string) => boolean }) {
-  const visibles = ACTIONS.filter((a) => (Array.isArray(a.droit) ? a.droit.some((d) => peut(d)) : peut(a.droit))).slice(0, 8);
+function ActionsRapides({ peut, gerantPrincipal }: { peut: (p: string) => boolean; gerantPrincipal: boolean }) {
+  // Le gérant principal ne vend pas : sa tuile ouvre les caisses des caissiers ; pas de « Ma caisse ».
+  const visibles = ACTIONS.filter((a) => (Array.isArray(a.droit) ? a.droit.some((d) => peut(d)) : peut(a.droit)))
+    .filter((a) => !(gerantPrincipal && a.vers === '/caisse/suivi'))
+    .map((a) => (gerantPrincipal && a.vers === '/caisse' ? { ...a, libelle: 'Ouvrir les caisses' } : a))
+    .slice(0, 8);
   if (!visibles.length) return null;
   return (
     <nav className="actions-rapides" aria-label="Actions rapides">
@@ -130,7 +134,7 @@ export function Accueil() {
         )}
       </section>
 
-      <ActionsRapides peut={peut} />
+      <ActionsRapides peut={peut} gerantPrincipal={organisation.role_code === 'proprietaire'} />
 
       {(peut('rapports.consulter') || peut('ventes.exporter')) && <TableauDeBord />}
 
