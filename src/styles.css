@@ -1643,3 +1643,13 @@ input:not([type='checkbox']):not([type='radio']), select, textarea { font-size: 
 .rapport-produit { padding: 2px 0 4px; }
 .rapport-produit-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .entete-bouton svg { width: 18px; height: 18px; }
+
+/* Billetage : coupure (et sous-total dessous) à gauche, − nombre + toujours entier à droite */
+.billetage-ligne { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 6px; }
+.billetage-coupure { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.billetage-coupure .billetage-sous-total { text-align: left; font-size: 0.74rem; min-height: 0; }
+.billetage .choix-quantite { flex: none; min-width: max-content; }
+.billetage .choix-quantite button { flex: 0 0 34px; width: 34px; height: 34px; padding: 0; font-size: 1.15rem; line-height: 1; }
+.billetage .choix-quantite input,
+.billetage .choix-quantite input[inputmode] { width: 44px !important; max-width: 44px !important; flex: 0 0 44px !important; height: 34px; font-size: 0.95rem; }
+.fenetre-entete { z-index: 3; }

@@ -39,7 +39,10 @@ export function Billetage({ nombres, onChange }: { nombres: Record<string, numbe
               const n = nombres[c.cle] ?? 0;
               return (
                 <div key={c.cle} className={`billetage-ligne ${n > 0 ? 'rempli' : ''}`}>
-                  <span className="billetage-valeur">{libelleCoupure(c.valeur)}</span>
+                  <span className="billetage-coupure">
+                    <span className="billetage-valeur">{libelleCoupure(c.valeur)}</span>
+                    <span className="billetage-sous-total">{n ? `= ${montant(c.valeur * n, '')}` : ''}</span>
+                  </span>
                   <div className="choix-quantite petit">
                     <button type="button" aria-label={`Moins de ${libelleCoupure(c.valeur)}`} disabled={!n} onClick={() => fixer(c.cle, n - 1)}>
                       −
@@ -56,7 +59,6 @@ export function Billetage({ nombres, onChange }: { nombres: Record<string, numbe
                       +
                     </button>
                   </div>
-                  <span className="billetage-sous-total">{n ? montant(c.valeur * n, '') : ''}</span>
                 </div>
               );
             })}
