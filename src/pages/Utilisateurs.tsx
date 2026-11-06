@@ -175,7 +175,7 @@ export function Utilisateurs() {
         <div className="bandeau-code-acces">
           <span>Code établissement</span>
           <strong className="code-acces">{acces.code_acces}</strong>
-          <span className="secondaire">Vos employés se connectent avec ce code établissement, leur matricule et leur code d’entrée de 4 chiffres. Seul le gérant principal utilise une adresse e-mail.</span>
+          <span className="secondaire">Vos employés se connectent avec ce code établissement, leur matricule et leur code d’entrée de 4 chiffres. Le gérant principal peut faire de même avec le matricule 0000 (ou son adresse e-mail).</span>
         </div>
       )}
 

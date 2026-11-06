@@ -251,10 +251,10 @@ export function Connexion() {
           {mode === 'connexion' && !premiere && (
             <div className="onglets-connexion" role="tablist" aria-label="Type d’accès">
               <button type="button" role="tab" aria-selected={type === 'employe'} className={type === 'employe' ? 'actif' : ''} onClick={() => setType('employe')}>
-                👤 Employé (matricule)
+                🔢 Code d’entrée
               </button>
               <button type="button" role="tab" aria-selected={type === 'email'} className={type === 'email' ? 'actif' : ''} onClick={() => setType('email')}>
-                ✉️ Gérant (e-mail)
+                ✉️ E-mail
               </button>
             </div>
           )}
@@ -268,7 +268,7 @@ export function Connexion() {
               <div className="qui-se-connecte">
                 <span className="avatar-matricule">#</span>
                 <div>
-                  <strong>Matricule {matricule}</strong>
+                  <strong>{matricule === '0000' ? 'Gérant principal' : `Matricule ${matricule}`}</strong>
                   <span className="secondaire">Établissement {codeEntreprise}</span>
                 </div>
                 <button type="button" className="bouton-lien" onClick={() => setEtape('identite')}>
@@ -294,7 +294,7 @@ export function Connexion() {
                   className="champ-code"
                 />
               </Champ>
-              <Champ label="Matricule">
+              <Champ label="Matricule" aide="Gérant principal : 0000">
                 <input
                   value={matricule}
                   onChange={(e) => setMatricule(normaliserMatricule(e.target.value).toUpperCase())}

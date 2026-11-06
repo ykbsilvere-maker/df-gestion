@@ -7,7 +7,15 @@ import { Alerte, Champ, EnTetePage, Pastille } from '../components/ui';
 import { estAccesEmploye, identifiantAffiche } from '../lib/acces';
 
 export function MonCompte() {
-  const { session, organisations, codeEntreeDefini } = useSession();
+  const { session, organisations, organisation, codeEntreeDefini } = useSession();
+  const gerantPrincipal = organisation?.role_code === 'proprietaire';
+  const [codeEtablissement, setCodeEtablissement] = useState('');
+  useEffect(() => {
+    if (!gerantPrincipal || !organisation) return;
+    void supabase
+      .rpc('acces_employes', { p_org: organisation.organisation_id })
+      .then(({ data }) => data && setCodeEtablissement((data as { code_acces: string }).code_acces));
+  }, [gerantPrincipal, organisation]);
   const naviguer = useNavigate();
   const [nom, setNom] = useState('');
   const [telephone, setTelephone] = useState('');
@@ -86,6 +94,22 @@ export function MonCompte() {
             {estAccesEmploye(session?.user.email) ? '' : ' (pour les employés par matricule)'} et la déverrouille après 5 minutes sans activité.
           </p>
           <p>{codeEntreeDefini ? <Pastille ton="vert">Code d’entrée défini</Pastille> : <Pastille ton="or">Pas encore de code</Pastille>}</p>
+          {gerantPrincipal && (
+            <div className="acces-gerant">
+              <p>
+                <strong>Sur une tablette ou un autre ordinateur</strong>, connectez-vous avec « Code d’entrée » :
+              </p>
+              <div className="acces-gerant-grille">
+                <span>Code établissement</span>
+                <strong className="code-acces">{codeEtablissement || '…'}</strong>
+                <span>Matricule</span>
+                <strong className="code-acces">0000</strong>
+                <span>Code d’entrée</span>
+                <strong>{codeEntreeDefini ? 'vos 4 chiffres' : 'à créer ci-dessous'}</strong>
+              </div>
+              <p className="secondaire petit">Vous y retrouvez tous vos accès de gérant principal, quel que soit l’appareil.</p>
+            </div>
+          )}
           <button type="button" className="bouton bouton-principal" onClick={() => naviguer('/choisir-code')}>
             {codeEntreeDefini ? 'Modifier mon code' : 'Créer mon code'}
           </button>

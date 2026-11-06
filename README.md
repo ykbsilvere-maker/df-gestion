@@ -3,7 +3,11 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 1.7.** **Suivi des ventes par le gérant principal** : sur « Caisses du jour », solde des ventes en cours
+**Version 1.8.** **Le gérant principal se connecte partout comme sur Wave** : code établissement + matricule
+**0000** + son code d'entrée (créé dans « Mon compte »), sur n'importe quelle tablette ou ordinateur, avec tous ses
+accès. 0000 est réservé et ne peut pas être donné à un employé. La connexion par e-mail reste possible.
+
+Version 1.7 : **Suivi des ventes par le gérant principal** : sur « Caisses du jour », solde des ventes en cours
 de chaque caisse ouverte, nombre de tickets et part de chaque caissier, et **rapport X provisoire** (règlements, espèces
 attendues, produits vendus, imprimable) sans clôturer. Les rapports X et Z listent désormais les produits vendus ; un
 caissier ne lit que le rapport de sa propre session. **Caisse plus compacte** : article trouvé sur une ligne (nom, prix,
