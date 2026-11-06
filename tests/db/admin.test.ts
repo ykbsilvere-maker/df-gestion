@@ -129,7 +129,7 @@ describe('consultation par l’administrateur général', () => {
       expect(await q(`select * from magasins where organisation_id = $1`, [org])).toHaveLength(1);
       expect(await q(`select * from caisses where organisation_id = $1`, [org])).toHaveLength(2);
       expect(await q(`select * from ventes where organisation_id = $1`, [org])).toHaveLength(1);
-      expect(await q(`select * from membres where organisation_id = $1`, [org])).toHaveLength(1);
+      expect(await q(`select * from membres where organisation_id = $1`, [org])).toHaveLength(2); // Awa et sa vendeuse
       expect((await q(`select * from journal_audit where organisation_id = $1`, [org])).length).toBeGreaterThan(0);
       expect(await q(`select * from public.etat_stock($1)`, [org])).toHaveLength(1);
       const r = await un(q<{ r: { total_ventes: number } }>(`select public.rapport_session($1) r`, [session]));
@@ -154,7 +154,7 @@ describe('consultation par l’administrateur général', () => {
   it('tableau de bord : ventes du jour et du mois, caisses ouvertes, gérants', async () => {
     const lignes = await enTantQue(pool, admin, (q) => q<Record<string, unknown>>(`select * from public.admin_tableau_de_bord()`));
     const awaL = lignes.find((l) => l.organisation_id === org)!;
-    expect(awaL).toMatchObject({ nom: 'Boutique Awa', caisses: 2, caisses_ouvertes: 1, utilisateurs: 1, actif: true, gerants_en_attente: [] });
+    expect(awaL).toMatchObject({ nom: 'Boutique Awa', caisses: 2, caisses_ouvertes: 1, utilisateurs: 2, actif: true, gerants_en_attente: [] });
     expect(Number(awaL.ventes_jour)).toBe(1500);
     expect(Number(awaL.tickets_jour)).toBe(1);
     expect(Number(awaL.ventes_mois)).toBe(1500);
