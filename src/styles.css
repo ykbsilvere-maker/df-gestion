@@ -1420,3 +1420,83 @@ body { background: var(--fond); }
   .contenu-plein .tableau-panier .ligne-panier { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: inline-block; }
 }
 .carte-caisse .pastille { white-space: normal; max-width: 100%; line-height: 1.3; }
+
+/* =====================================================================
+   1.5 — Design affiné (inspiré des applications bancaires mobiles) :
+   textes plus petits, bordures fines, cartes douces, barre du bas flottante
+   ===================================================================== */
+body { font-size: 14px; letter-spacing: -0.005em; }
+h1, .entete-page h1 { font-size: 1.25rem; letter-spacing: -0.01em; }
+h2 { font-size: 1.02rem; }
+h3 { font-size: 0.95rem; }
+.carte { border: 1px solid color-mix(in srgb, var(--trait) 70%, transparent); border-radius: 16px; box-shadow: 0 1px 2px rgba(16,24,40,.04); padding: 14px 16px; }
+.bouton { font-size: 0.88rem; padding: 9px 16px; border-radius: 12px; font-weight: 600; }
+.bouton-principal { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #000)); border: 0; }
+.bouton-discret { border-width: 1px; }
+input:not([type='checkbox']):not([type='radio']), select, textarea { font-size: 0.92rem; border-width: 1px; border-radius: 10px; }
+.tableau { font-size: 0.86rem; }
+.tableau thead th { font-size: 0.72rem; letter-spacing: .04em; }
+.pastille { font-size: 0.7rem; padding: 2px 8px; }
+.secondaire { font-size: 0.86em; }
+.tuile-valeur { font-size: 1.15rem; }
+.app-nav a { font-size: 0.88rem; padding: 7px 10px; }
+.app-entete-titre { font-size: 0.98rem; }
+.entete-bouton { width: 36px; height: 36px; border-radius: 11px; font-size: 0.95rem; }
+.avatar-matricule { width: 30px; height: 30px; font-size: 0.82rem; }
+
+/* Accueil : en-tête dégradé et grille d'icônes sans cadre */
+.accueil-hero { background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #000) 100%); border-radius: 20px; padding: 16px 18px; }
+.hero-entreprise { font-size: 1.15rem; }
+.hero-ventes .montant-bloc, .hero-ventes strong { font-size: 1.3rem; }
+.actions-rapides { gap: 6px 4px; }
+.action-rapide { background: none; border: 0; padding: 8px 2px; font-size: 0.74rem; font-weight: 600; }
+.action-rapide:hover { box-shadow: none; transform: none; background: var(--surface); border-radius: 14px; }
+.action-icone { width: 46px; height: 46px; border-radius: 15px; font-size: 1.45rem; background: var(--surface); box-shadow: 0 4px 12px rgba(16,24,40,.08); border: 1px solid color-mix(in srgb, var(--trait) 60%, transparent); }
+
+@media (max-width: 860px) {
+  body { font-size: 13.5px; }
+  .app { grid-template-rows: 54px minmax(0, 1fr) auto; }
+  .app-entete { background: linear-gradient(120deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #000)); }
+  .app-entete .entete-bouton { background: rgba(255,255,255,.16); }
+  /* Barre du bas flottante, arrondie, couleur de la marque */
+  .app-onglets {
+    margin: 0 10px calc(8px + env(safe-area-inset-bottom)); border-radius: 18px; border: 0; padding: 5px 4px;
+    background: linear-gradient(120deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #000));
+    box-shadow: 0 10px 24px rgba(200, 22, 27, .28);
+  }
+  .app-onglets a, .app-onglets .bouton-plus { color: rgba(255,255,255,.82); font-size: 0.64rem; padding: 4px 2px; }
+  .app-onglets .nav-icone { font-size: 1.15rem; filter: saturate(0) brightness(10); }
+  .app-onglets a.active, .app-onglets .bouton-plus.active { background: rgba(255,255,255,.18); color: #fff; }
+  .app-contenu { padding: 12px 10px 16px; }
+  .carte { padding: 12px; border-radius: 14px; }
+}
+
+/* ---------- Caisses du jour / Ma caisse ---------- */
+.attente-ouverture { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 22px 16px; }
+.attente-ouverture h2 { margin: 0; }
+.attente-ouverture p { margin: 0; max-width: 460px; }
+.attente-icone { font-size: 2rem; }
+.carte-caisse { border-width: 1px; border-radius: 16px; padding: 6px; }
+.carte-caisse.choisie { border-color: var(--accent); }
+.carte-caisse-corps { cursor: default; }
+.carte-caisse-icone { font-size: 1rem; }
+.carte-caisse .bouton { padding: 8px 10px; }
+.choix-caissier { display: flex; flex-wrap: wrap; gap: 6px; }
+.puce-caissier { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 999px; border: 1px solid var(--trait); background: var(--surface); font: inherit; font-weight: 600; cursor: pointer; }
+.puce-caissier .avatar-matricule { width: 26px; height: 26px; font-size: 0.75rem; }
+.puce-caissier.active { border-color: var(--accent); background: var(--accent-clair); color: var(--accent); }
+.verification-commune { align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--accent-clair); gap: 8px; }
+
+/* ---------- Billetage ---------- */
+.billetage { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.billetage-groupe { display: flex; flex-direction: column; gap: 4px; }
+.billetage-titre { font-weight: 700; font-size: 0.78rem; color: var(--encre-douce); margin-bottom: 2px; }
+.billetage-ligne { display: grid; grid-template-columns: minmax(64px, 1fr) auto minmax(70px, auto); align-items: center; gap: 8px; padding: 3px 6px; border-radius: 10px; }
+.billetage-ligne.rempli { background: var(--accent-clair); }
+.billetage-valeur { font-weight: 700; font-variant-numeric: tabular-nums; }
+.billetage-sous-total { text-align: right; font-variant-numeric: tabular-nums; color: var(--encre-douce); font-size: 0.82rem; }
+.choix-quantite.petit button { width: 30px; height: 30px; font-size: 1.05rem; }
+.choix-quantite.petit input { width: 40px !important; max-width: 40px !important; flex-basis: 40px !important; height: 30px; font-size: 0.9rem; }
+.billetage-total { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.billetage-total strong { font-size: 1.3rem; }
+@media (max-width: 620px) { .billetage { grid-template-columns: 1fr; } }

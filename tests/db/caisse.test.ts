@@ -80,13 +80,17 @@ afterAll(async () => {
 });
 
 describe('Ouverture de caisse', () => {
-  it('ouvre la caisse attribuée et refuse une seconde ouverture', async () => {
-    session = (await enTantQue(pool, carine, (q) => un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 20000) id`, [org, caisse1])))).id;
-    await expect(enTantQue(pool, carine, (q) => q(`select public.ouvrir_session($1, $2, 0)`, [org, caisse1]))).rejects.toThrow(/déjà ouverte/);
+  it('la caissière ne peut pas ouvrir sa caisse seule', async () => {
+    await expect(enTantQue(pool, carine, (q) => q(`select public.ouvrir_session($1, $2, 20000)`, [org, caisse1]))).rejects.toThrow(/responsable/);
+  });
+
+  it('le responsable ouvre la caisse attribuée à la caissière et refuse une seconde ouverture', async () => {
+    session = (await enTantQue(pool, alice, (q) => un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 20000, $3) id`, [org, caisse1, carine])))).id;
+    await expect(enTantQue(pool, alice, (q) => q(`select public.ouvrir_session($1, $2, 0, $3)`, [org, caisse1, carine]))).rejects.toThrow(/déjà ouverte/);
   });
 
   it('refuse une caisse non attribuée à la caissière', async () => {
-    await expect(enTantQue(pool, carine, (q) => q(`select public.ouvrir_session($1, $2, 0)`, [org, caisse2]))).rejects.toThrow(/ne vous est pas attribuée/);
+    await expect(enTantQue(pool, alice, (q) => q(`select public.ouvrir_session($1, $2, 0, $3)`, [org, caisse2, carine]))).rejects.toThrow(/pas attribuée à cette personne/);
   });
 });
 
@@ -227,7 +231,7 @@ describe('Rapports et clôture', () => {
   });
 
   it('le numéro Z suit la caisse : la session suivante porte le Z 2', async () => {
-    const s2 = (await enTantQue(pool, carine, (q) => un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0) id`, [org, caisse1])))).id;
+    const s2 = (await enTantQue(pool, alice, (q) => un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0, $3) id`, [org, caisse1, carine])))).id;
     const z = await enTantQue(pool, alice, (q) => un(q<{ r: { numero_z: number } }>(`select public.cloturer_session($1, 0) r`, [s2]))).then((x) => x.r);
     expect(z.numero_z).toBe(2);
   });

@@ -14,6 +14,7 @@ import { RapportCaisse, type RapportSession } from '../impression/RapportCaisse'
 import { useImpressionCaisse } from './impressionCaisse';
 import { Paiement } from './Paiement';
 import { Cloture } from './Cloture';
+import { Billetage, totalBilletage, versLignes } from './Billetage';
 import { identifiantAffiche } from '../lib/acces';
 import {
   catalogueLocal,
@@ -46,6 +47,7 @@ interface SessionCaisse {
   fond_initial: number;
   ouverte_le: string;
   ouverte_par: string | null;
+  caissier_id?: string | null;
 }
 
 interface CaisseInfo extends Caisse {
@@ -109,15 +111,15 @@ export function CaissePage() {
 }
 
 function CaissePageInterne() {
-  const { organisation, session, peut } = useSession();
+  const { organisation, session } = useSession();
   const org = organisation!.organisation_id;
-  // Liste des caisses avec, pour chacune : peut-on l'ouvrir, et la session en cours (par qui).
+  const moi = session?.user.id;
+  // Caisses de la personne ; pour un responsable : toutes celles de ses magasins, avec qui les tient.
   const [etat, setEtat] = useState<EtatCaisses | null>(() => lireCache<EtatCaisses>(`dfg_mes_caisses_${org}`));
   const [caisseId, setCaisseId] = useState<string>(() => lireCache<string>(`dfg_caisse_${org}`) ?? '');
   const [sessionCaisse, setSessionCaisse] = useState<SessionCaisse | null | undefined>(undefined);
   const [horsLigne, setHorsLigne] = useState(false);
-  // Caisse ouverte par un collègue : on n'y vend qu'après l'avoir explicitement reprise.
-  const [reprises, setReprises] = useState<string[]>([]);
+  const [quitte, setQuitte] = useState(false);
 
   const chargerCaisses = useCallback(async () => {
     const { data, error } = await supabase.rpc('mes_caisses', { p_org: org });
@@ -132,14 +134,12 @@ function CaissePageInterne() {
 
   const toutes = etat?.caisses ?? [];
   const caisses: CaisseInfo[] = toutes.filter((c) => c.accessible) as unknown as CaisseInfo[];
-  const choisie = toutes.find((c) => c.id === caisseId && c.accessible);
 
-  // Par défaut : la caisse que j'ai déjà ouverte, sinon rien (la personne choisit).
+  // On entre directement dans la caisse que l'on tient (ouverte pour soi).
   useEffect(() => {
-    if (!etat) return;
-    const mienne = etat.caisses.find((c) => c.accessible && c.session?.mienne);
-    if (mienne && caisseId !== mienne.id && !choisie?.session) setCaisseId(mienne.id);
-    else if (caisseId && !etat.caisses.some((c) => c.id === caisseId && c.accessible)) setCaisseId('');
+    if (!etat || quitte) return;
+    const mienne = etat.caisses.find((c) => c.session?.mienne);
+    if (mienne && caisseId !== mienne.id) setCaisseId(mienne.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etat]);
 
@@ -150,12 +150,12 @@ function CaissePageInterne() {
     const cle = `dfg_session_${caisseId}`;
     const { data, error } = await supabase
       .from('sessions_caisse')
-      .select('id, caisse_id, magasin_id, fond_initial, ouverte_le, ouverte_par')
+      .select('id, caisse_id, magasin_id, fond_initial, ouverte_le, ouverte_par, caissier_id')
       .eq('caisse_id', caisseId)
       .eq('statut', 'ouverte')
       .maybeSingle();
     if (error) {
-      // Sans réseau : on reprend la session ouverte connue sur cet appareil.
+      // Sans réseau : on reprend la session connue sur cet appareil.
       setHorsLigne(true);
       setSessionCaisse(lireCache<SessionCaisse>(cle));
       return;
@@ -178,26 +178,21 @@ function CaissePageInterne() {
 
   if (!etat) return <div className="chargement">Chargement des caisses…</div>;
 
-  const vendable =
-    !!caisse &&
-    !!sessionCaisse &&
-    (sessionCaisse.ouverte_par === session?.user.id || reprises.includes(caisse.id) || horsLigne);
+  // On ne vend que dans SA caisse : celle ouverte pour soi par le responsable.
+  const vendable = !!caisse && !!sessionCaisse && (sessionCaisse.caissier_id ?? sessionCaisse.ouverte_par) === moi && !quitte;
 
   if (!vendable) {
     return (
       <OuvrirCaisse
         org={org}
         etat={etat}
-        choisie={caisseId}
-        onChoisir={choisirCaisse}
         horsLigne={horsLigne}
-        peutReprendre={peut('caisse.cloturer') || peut('caisse.valider')}
-        onReprendre={(id) => {
-          setReprises((r) => [...r, id]);
+        onEntrer={(id) => {
+          setQuitte(false);
           choisirCaisse(id);
+          void chargerSession();
         }}
-        onOuverte={(id) => {
-          choisirCaisse(id);
+        onActualiser={() => {
           void chargerCaisses();
           void chargerSession();
         }}
@@ -213,157 +208,233 @@ function CaissePageInterne() {
       sessionCaisse={sessionCaisse}
       caissier={session?.user.user_metadata?.nom_complet ?? identifiantAffiche(session?.user.email)}
       autresCaisses={[]}
-      onChoisirCaisse={choisirCaisse}
+      onChoisirCaisse={() => {
+        setQuitte(true);
+        void chargerCaisses();
+      }}
       onFermee={() => {
         ecrireCache(`dfg_session_${caisse.id}`, null);
         setSessionCaisse(null);
-        setCaisseId('');
+        setQuitte(true);
         void chargerCaisses();
       }}
     />
   );
 }
 
+interface CaisseEtat {
+  id: string;
+  code: string;
+  nom: string;
+  magasin_id: string;
+  magasin_nom: string;
+  accessible: boolean;
+  raison: 'droit' | 'magasin' | 'caisse' | null;
+  session: { id: string; ouverte_le: string; mienne: boolean; par: string; ouverte_par: string; fond: number } | null;
+  caissiers: { user_id: string; nom: string; moi: boolean }[];
+}
 interface EtatCaisses {
   peut_ouvrir: boolean;
-  caisses: {
-    id: string;
-    code: string;
-    nom: string;
-    magasin_id: string;
-    magasin_nom: string;
-    accessible: boolean;
-    raison: 'droit' | 'magasin' | 'caisse' | null;
-    session: { id: string; ouverte_le: string; mienne: boolean; par: string } | null;
-  }[];
+  peut_vendre: boolean;
+  responsable: boolean;
+  caisses: CaisseEtat[];
 }
 
-const FONDS_RAPIDES = [0, 5000, 10000, 20000, 50000];
+const heureAbidjan = (d: string) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Abidjan' });
 
-/** Écran « Ouvrir une caisse » : on touche sa caisse, on indique le fond, on ouvre. */
+/**
+ * Écran « Caisses ».
+ * - Caissier : voit SA caisse ; si elle n'est pas ouverte, il est invité à aller voir le gérant.
+ * - Responsable : ouvre chaque caisse pour la personne qui la tiendra (comptage du fond billet par
+ *   billet, validé ensemble), clôture les caisses ouvertes, entre dans la sienne. Il ne vend pas
+ *   dans la caisse d'un autre.
+ */
 function OuvrirCaisse({
   org,
   etat,
-  choisie,
-  onChoisir,
   horsLigne,
-  peutReprendre,
-  onReprendre,
-  onOuverte,
+  onEntrer,
+  onActualiser,
 }: {
   org: string;
   etat: EtatCaisses;
-  choisie: string;
-  onChoisir: (id: string) => void;
   horsLigne: boolean;
-  peutReprendre: boolean;
-  onReprendre: (id: string) => void;
-  onOuverte: (id: string) => void;
+  onEntrer: (id: string) => void;
+  onActualiser: () => void;
 }) {
-  const [fond, setFond] = useState('');
-  const [erreur, setErreur] = useState('');
-  const [enCours, setEnCours] = useState(false);
-  const accessibles = etat.caisses.filter((c) => c.accessible);
-  const selection = accessibles.find((c) => c.id === choisie && !c.session) ?? (accessibles.filter((c) => !c.session).length === 1 ? accessibles.find((c) => !c.session) : undefined);
-
-  async function ouvrir(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selection) return;
-    setEnCours(true);
-    setErreur('');
-    const { error } = await supabase.rpc('ouvrir_session', { p_org: org, p_caisse: selection.id, p_fond: lireMontant(fond) ?? 0 });
-    setEnCours(false);
-    if (error) return setErreur(messageErreur(error));
-    onOuverte(selection.id);
-  }
-
-  const heure = (d: string) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Abidjan' });
+  const [ouverture, setOuverture] = useState<CaisseEtat | null>(null);
+  const [cloture, setCloture] = useState<CaisseEtat | null>(null);
+  const [info, setInfo] = useState('');
+  const visibles = etat.responsable ? etat.caisses : etat.caisses.filter((c) => c.accessible);
+  const mienne = etat.caisses.find((c) => c.session?.mienne);
 
   return (
     <div className="ouvrir-caisse">
       <div className="ouvrir-entete">
-        <h1>🔓 Ouvrir une caisse</h1>
-        <p className="secondaire">Touchez votre caisse, indiquez la monnaie présente dans le tiroir, puis ouvrez.</p>
+        <h1>{etat.responsable ? '🔓 Caisses du jour' : '🧾 Ma caisse'}</h1>
+        <p className="secondaire">
+          {etat.responsable
+            ? 'Ouvrez chaque caisse pour la personne qui la tiendra, après avoir compté le fond ensemble. Vous clôturez aussi les caisses en fin de journée.'
+            : 'Votre caisse est ouverte par le gérant principal, après comptage du fond avec vous.'}
+        </p>
       </div>
-      {horsLigne && <Alerte>Pas de connexion : l’ouverture d’une caisse doit être enregistrée sur le serveur. Réessayez une fois connecté.</Alerte>}
-      <Alerte>{erreur}</Alerte>
+      {horsLigne && <Alerte>Pas de connexion : l’ouverture et la clôture se font connecté.</Alerte>}
+      <Alerte type="succes">{info}</Alerte>
 
-      {!etat.peut_ouvrir ? (
-        <Alerte type="info">Votre rôle ne permet pas d’ouvrir une caisse. Demandez à votre gérant le droit « Caisse ».</Alerte>
-      ) : accessibles.length === 0 ? (
-        <div className="carte aucune-caisse">
-          <h2>Aucune caisse ne vous est attribuée</h2>
+      {!etat.responsable && !mienne && (
+        <div className="carte attente-ouverture">
+          <span className="attente-icone" aria-hidden>
+            🔐
+          </span>
+          <h2>Votre caisse n’est pas encore ouverte</h2>
           <p>
-            Votre gérant doit vous donner un magasin et une caisse : <strong>Utilisateurs → votre nom → Modifier → Magasins et caisses</strong>.
-            Ensuite, revenez ici : votre caisse apparaîtra.
+            Rendez-vous auprès du <strong>gérant principal</strong> : vous comptez ensemble le fond de caisse (billets et pièces), il
+            valide, et votre caisse s’ouvre ici.
           </p>
-          {etat.caisses.length > 0 && (
-            <p className="secondaire">Caisses de l’établissement : {etat.caisses.map((c) => `${c.nom} (${c.code})`).join(', ')}.</p>
+          {visibles.length === 0 && (
+            <p className="secondaire">
+              Aucune caisse ne vous est encore attribuée : le gérant doit vous en donner une dans Utilisateurs → votre nom → Magasins et
+              caisses.
+            </p>
           )}
+          <button type="button" className="bouton bouton-principal" onClick={onActualiser}>
+            ↻ Ma caisse a été ouverte
+          </button>
         </div>
-      ) : (
-        <>
-          <div className="grille-caisses">
-            {etat.caisses.map((c) => {
-              const libre = c.accessible && !c.session;
-              const actif = selection?.id === c.id;
-              return (
-                <div key={c.id} className={`carte-caisse ${actif ? 'choisie' : ''} ${!c.accessible ? 'interdite' : ''}`}>
-                  <button type="button" className="carte-caisse-corps" disabled={!libre} onClick={() => onChoisir(c.id)}>
-                    <span className="carte-caisse-icone" aria-hidden>
-                      🧾
-                    </span>
-                    <strong>{c.nom}</strong>
-                    <span className="secondaire">
-                      {c.code} · {c.magasin_nom}
-                    </span>
-                    {!c.accessible ? (
-                      <Pastille ton="gris">Non attribuée</Pastille>
-                    ) : c.session?.mienne ? (
-                      <Pastille ton="vert">Ouverte par vous · {heure(c.session.ouverte_le)}</Pastille>
-                    ) : c.session ? (
-                      <Pastille ton="or">
-                        Ouverte par {c.session.par} · {heure(c.session.ouverte_le)}
-                      </Pastille>
-                    ) : (
-                      <Pastille ton="vert">Libre</Pastille>
-                    )}
-                  </button>
-                  {c.accessible && c.session && (c.session.mienne || peutReprendre) && (
-                    <button type="button" className="bouton bouton-principal bouton-plein" onClick={() => onReprendre(c.id)}>
-                      {c.session.mienne ? 'Reprendre ma caisse' : 'Reprendre cette caisse'}
-                    </button>
-                  )}
-                  {c.accessible && c.session && !c.session.mienne && !peutReprendre && (
-                    <p className="secondaire petit">{c.session.par} doit la clôturer avant que vous puissiez l’ouvrir.</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {selection && (
-            <form className="carte formulaire ouverture-caisse" onSubmit={(e) => void ouvrir(e)}>
-              <h2>
-                {selection.nom} <span className="secondaire">({selection.code})</span>
-              </h2>
-              <Champ label={`Fond de caisse (${deviseCourante().symbole})`} aide="Monnaie laissée dans le tiroir au début de la journée.">
-                <input className="champ-fond" inputMode={clavierMontant()} value={fond} onChange={(e) => setFond(e.target.value)} placeholder="0" />
-              </Champ>
-              <div className="fonds-rapides">
-                {FONDS_RAPIDES.map((f) => (
-                  <button key={f} type="button" className={`puce-montant ${(lireMontant(fond) ?? 0) === f && fond !== '' ? 'active' : ''}`} onClick={() => setFond(f ? montant(f, '') : '0')}>
-                    {f ? montant(f, '') : 'Vide'}
-                  </button>
-                ))}
-              </div>
-              <button type="submit" className="bouton bouton-principal bouton-plein bouton-ouvrir" disabled={enCours || horsLigne}>
-                {enCours ? 'Ouverture…' : `Ouvrir ${selection.nom}`}
-              </button>
-            </form>
-          )}
-        </>
       )}
+
+      {(etat.responsable || visibles.length > 0) && (
+        <div className="grille-caisses">
+          {visibles.map((c) => (
+            <div key={c.id} className={`carte-caisse ${c.session?.mienne ? 'choisie' : ''}`}>
+              <div className="carte-caisse-corps">
+                <span className="carte-caisse-icone" aria-hidden>
+                  {c.session ? '🟢' : '⚪'}
+                </span>
+                <strong>{c.nom}</strong>
+                <span className="secondaire">
+                  {c.code} · {c.magasin_nom}
+                </span>
+                {c.session ? (
+                  <Pastille ton={c.session.mienne ? 'vert' : 'or'}>
+                    {c.session.mienne ? 'Ouverte pour vous' : `Tenue par ${c.session.par}`} · {heureAbidjan(c.session.ouverte_le)}
+                  </Pastille>
+                ) : (
+                  <Pastille ton="gris">Fermée</Pastille>
+                )}
+              </div>
+              {c.session?.mienne && (
+                <button type="button" className="bouton bouton-principal bouton-plein" onClick={() => onEntrer(c.id)}>
+                  Entrer dans ma caisse
+                </button>
+              )}
+              {etat.responsable && !c.session && (
+                <button type="button" className="bouton bouton-principal bouton-plein" disabled={horsLigne || c.caissiers.length === 0} onClick={() => setOuverture(c)}>
+                  🔓 Ouvrir
+                </button>
+              )}
+              {etat.responsable && !c.session && c.caissiers.length === 0 && (
+                <p className="secondaire petit">Personne n’a cette caisse : attribuez-la dans Utilisateurs.</p>
+              )}
+              {etat.responsable && c.session && (
+                <button type="button" className="bouton bouton-discret bouton-plein" disabled={horsLigne} onClick={() => setCloture(c)}>
+                  🔒 Clôturer
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Fenetre titre={ouverture ? `Ouvrir ${ouverture.nom}` : ''} ouverte={!!ouverture} onFermer={() => setOuverture(null)} large>
+        {ouverture && (
+          <FormulaireOuverture
+            org={org}
+            caisse={ouverture}
+            onOuverte={(nom, pourMoi) => {
+              setOuverture(null);
+              setInfo(`${ouverture.nom} est ouverte pour ${nom}.`);
+              if (pourMoi) onEntrer(ouverture.id);
+              else onActualiser();
+            }}
+          />
+        )}
+      </Fenetre>
+
+      <Fenetre titre={cloture ? `Clôturer ${cloture.nom} (${cloture.session?.par ?? ''})` : ''} ouverte={!!cloture} onFermer={() => setCloture(null)} large>
+        {cloture?.session && (
+          <Cloture
+            sessionId={cloture.session.id}
+            enAttente={0}
+            rejetees={0}
+            onCloturee={(z) => {
+              setInfo(`${cloture.nom} clôturée : rapport Z n° ${z.numero_z ?? ''}.`);
+              setCloture(null);
+              onActualiser();
+            }}
+          />
+        )}
+      </Fenetre>
+    </div>
+  );
+}
+
+/** Ouverture d'une caisse par le responsable : pour qui, et comptage du fond. */
+function FormulaireOuverture({ org, caisse, onOuverte }: { org: string; caisse: CaisseEtat; onOuverte: (nom: string, pourMoi: boolean) => void }) {
+  const [caissier, setCaissier] = useState(caisse.caissiers.find((c) => !c.moi)?.user_id ?? caisse.caissiers[0]?.user_id ?? '');
+  const [nombres, setNombres] = useState<Record<string, number>>({});
+  const [erreur, setErreur] = useState('');
+  const [enCours, setEnCours] = useState(false);
+  const [verifie, setVerifie] = useState(false);
+  const fond = totalBilletage(nombres);
+  const choisi = caisse.caissiers.find((c) => c.user_id === caissier);
+
+  async function ouvrir() {
+    if (!choisi) return;
+    setEnCours(true);
+    setErreur('');
+    const { error } = await supabase.rpc('ouvrir_session', {
+      p_org: org,
+      p_caisse: caisse.id,
+      p_fond: fond,
+      p_caissier: caissier,
+      p_billetage: versLignes(nombres),
+    });
+    setEnCours(false);
+    if (error) return setErreur(messageErreur(error));
+    onOuverte(choisi.moi ? 'vous' : choisi.nom, choisi.moi);
+  }
+
+  return (
+    <div className="formulaire ouverture-caisse">
+      <Alerte>{erreur}</Alerte>
+      <Champ label="Personne qui tiendra la caisse">
+        <div className="choix-caissier">
+          {caisse.caissiers.map((c) => (
+            <button key={c.user_id} type="button" className={`puce-caissier ${caissier === c.user_id ? 'active' : ''}`} onClick={() => setCaissier(c.user_id)}>
+              <span className="avatar-matricule">{c.nom.charAt(0).toUpperCase()}</span>
+              {c.moi ? `Moi (${c.nom})` : c.nom}
+            </button>
+          ))}
+        </div>
+      </Champ>
+      <div className="libelle-champ">Comptage du fond de caisse</div>
+      <Billetage
+        nombres={nombres}
+        onChange={(n) => {
+          setNombres(n);
+          setVerifie(false);
+        }}
+      />
+      <label className="case verification-commune">
+        <input type="checkbox" checked={verifie} onChange={(e) => setVerifie(e.target.checked)} />
+        <span>
+          Nous avons compté ensemble : <strong>{montant(fond)}</strong> remis à {choisi ? (choisi.moi ? 'moi-même' : choisi.nom) : '…'}.
+        </span>
+      </label>
+      <button type="button" className="bouton bouton-principal bouton-plein bouton-ouvrir" disabled={!verifie || enCours || !choisi} onClick={() => void ouvrir()}>
+        {enCours ? 'Ouverture…' : `Valider et ouvrir ${caisse.nom}`}
+      </button>
     </div>
   );
 }

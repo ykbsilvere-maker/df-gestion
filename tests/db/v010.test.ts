@@ -81,8 +81,9 @@ describe('Arrivage annoncé puis compté', () => {
 
 describe('Tiroir-caisse', () => {
   it('dépenses, sorties et apports changent les espèces attendues ; historique des clôtures', async () => {
+    const ouverte = (await enTantQue(pool, alice, (q) => un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 10000, $3) id`, [org, caisse, carine])))).id;
     const session = await enTantQue(pool, carine, async (q) => {
-      const s = (await un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 10000) id`, [org, caisse]))).id;
+      const s = ouverte;
       const especes = (await un(q<{ id: string }>(`select id from moyens_paiement where organisation_id = $1 and code = 'especes'`, [org]))).id;
       await q(`select public.enregistrer_vente($1::jsonb)`, [JSON.stringify({
         id: randomUUID(), organisation_id: org, caisse_id: caisse, session_id: s, date_vente: new Date().toISOString(),

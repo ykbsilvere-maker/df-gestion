@@ -144,7 +144,7 @@ describe('consultation par l’administrateur général', () => {
     await expect(enTantQue(pool, admin, (q) => q(`insert into produits (organisation_id, designation, prix_vente) values ($1, 'X', 1)`, [org]))).rejects.toThrow(/row-level security/);
     const maj = await enTantQue(pool, admin, (q) => q(`update organisations set nom = 'Piraté' where id = $1 returning id`, [org]));
     expect(maj).toHaveLength(0);
-    await expect(enTantQue(pool, admin, (q) => q(`select public.ouvrir_session($1, $2, 0)`, [org, caisse]))).rejects.toThrow(/caisse\.creer/);
+    await expect(enTantQue(pool, admin, (q) => q(`select public.ouvrir_session($1, $2, 0)`, [org, caisse]))).rejects.toThrow(/caisse\.valider/);
     await expect(enTantQue(pool, admin, (q) => q(`select public.cloturer_session($1, 0)`, [session]))).rejects.toThrow();
     await expect(enTantQue(pool, admin, (q) => q(`select public.desactiver_membre($1, 'test admin')`, [membre]))).rejects.toThrow(/utilisateurs\.modifier/);
     await expect(enTantQue(pool, admin, (q) => q(`select public.enregistrer_mouvement_manuel($1, $2, (select id from produits where organisation_id = $1 limit 1), 'perte', 1, 'test', null, gen_random_uuid())`, [org, mag]))).rejects.toThrow();
