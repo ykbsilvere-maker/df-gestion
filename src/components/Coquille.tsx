@@ -5,6 +5,7 @@ import { FiletSecurite } from './FiletSecurite';
 import { useSession } from '../lib/session';
 import { useIdentite } from '../lib/identite';
 import { identifiantAffiche } from '../lib/acces';
+import { reprendreLogoDemande } from '../lib/demande';
 
 type Groupe = 'vendre' | 'stock' | 'pilotage' | 'reglages';
 const GROUPES: Record<Groupe, string> = { vendre: 'Vendre', stock: 'Stock et achats', pilotage: 'Pilotage', reglages: 'Réglages' };
@@ -38,7 +39,12 @@ const rangMobile = (vers: string) => {
 };
 
 export function Coquille() {
-  const { organisation, organisations, choisirOrganisation, peut, deconnecter, session, adminGeneral } = useSession();
+  const { organisation, organisations, choisirOrganisation, peut, deconnecter, session, adminGeneral, plateforme } = useSession();
+  const demandes = Number(plateforme?.demandes_en_attente ?? 0);
+  // Nouveau gérant principal : le logo joint à sa demande rejoint son entreprise.
+  useEffect(() => {
+    if (organisation?.role_code === 'proprietaire') void reprendreLogoDemande().catch(() => undefined);
+  }, [organisation?.role_code]);
   const { identite } = useIdentite();
   const liens = LIENS.filter((l) =>
     l.admin
@@ -76,6 +82,11 @@ export function Coquille() {
         {l.icone}
       </span>
       <span className="nav-libelle">{l.libelle}</span>
+      {l.vers === '/administration' && demandes > 0 && (
+        <span className="nav-badge" aria-label={`${demandes} demande(s) à traiter`}>
+          {demandes}
+        </span>
+      )}
     </NavLink>
   );
 

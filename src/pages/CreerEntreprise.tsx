@@ -7,10 +7,11 @@ import { REGIMES, type RegimeFiscal } from '../lib/types';
 import { ChoixDevise } from '../components/ChoixDevise';
 import { Alerte, Champ } from '../components/ui';
 import { ChoixModules } from '../components/ChoixModules';
-import { identifiantAffiche } from '../lib/acces';
+import { DemandeEntreprise } from './DemandeEntreprise';
+import { estAccesEmploye } from '../lib/acces';
 
 export function CreerEntreprise() {
-  const { rechargerOrganisations, choisirOrganisation, deconnecter, organisations, plateforme, rechargerPlateforme, session, adminGeneral } =
+  const { rechargerOrganisations, choisirOrganisation, deconnecter, organisations, plateforme, rechargerPlateforme, adminGeneral, session } =
     useSession();
   const naviguer = useNavigate();
   const [f, setF] = useState({
@@ -41,14 +42,6 @@ export function CreerEntreprise() {
     naviguer('/administration');
   }
 
-  async function reessayer() {
-    setEnvoi(true);
-    await supabase.rpc('accepter_invitations').then(undefined, () => undefined);
-    await rechargerOrganisations().catch(() => undefined);
-    setEnvoi(false);
-    naviguer('/');
-  }
-
   // L'administrateur général sans entreprise travaille depuis sa console.
   if (adminGeneral && organisations.length === 0) return <Navigate to="/administration" replace />;
 
@@ -60,31 +53,24 @@ export function CreerEntreprise() {
     );
   }
 
-  if (!plateforme.creation_entreprise_possible) {
+  // Commercialisation : sans droit de création directe, la personne envoie une demande
+  // que l'administrateur général valide, refuse ou ajourne.
+  if (estAccesEmploye(session?.user.email)) {
     return (
       <div className="page-accueil-public">
         <section className="panneau-public">
           <div className="carte formulaire">
             <h1>Aucune entreprise active</h1>
-            <p>
-              Votre compte ({identifiantAffiche(session?.user.email)}) n’est rattaché à aucune entreprise active. Votre accès est créé par le gérant de
-              votre entreprise ou par l’administrateur : vérifiez avec lui l’adresse e-mail qu’il a utilisée, ou si l’entreprise
-              est suspendue.
-            </p>
-            <Alerte>{erreur}</Alerte>
-            <button type="button" className="bouton bouton-principal bouton-plein" disabled={envoi} onClick={() => void reessayer()}>
-              Réessayer
+            <p>Votre accès n’est rattaché à aucune entreprise active : votre gérant l’a peut-être désactivé, ou l’entreprise est suspendue.</p>
+            <button type="button" className="bouton bouton-principal bouton-plein" onClick={() => void deconnecter()}>
+              Se déconnecter
             </button>
-            <div className="liens-formulaire">
-              <button type="button" className="bouton-lien" onClick={() => void deconnecter()}>
-                Se déconnecter
-              </button>
-            </div>
           </div>
         </section>
       </div>
     );
   }
+  if (!plateforme.creation_entreprise_possible) return <DemandeEntreprise />;
 
   async function soumettre(e: FormEvent) {
     e.preventDefault();

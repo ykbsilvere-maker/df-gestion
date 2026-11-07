@@ -11,6 +11,7 @@ import { PaveCode } from '../components/PaveCode';
 import {
   codeEntrepriseMemorise,
   connexionParCode,
+  creerMonAcces,
   emailEmploye,
   identifiantAffiche,
   lireAccesEmploye,
@@ -60,6 +61,7 @@ export function Connexion() {
   const [matricule, setMatricule] = useState(() => lireAccesEmploye(lireRecents()[0])?.matricule ?? '');
   const [voirMotDePasse, setVoirMotDePasse] = useState(false);
   const [motDePasse, setMotDePasse] = useState('');
+  const [confirmation, setConfirmation] = useState('');
   const [nom, setNom] = useState('');
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
@@ -68,7 +70,6 @@ export function Connexion() {
   const naviguer = useNavigate();
   // Première installation : aucun administrateur général encore désigné.
   const premiere = plateforme?.admin_existe === false;
-  const fermee = !!plateforme && plateforme.admin_existe && !plateforme.inscription_libre;
   useEffect(() => {
     if (premiere) {
       setMode('inscription');
@@ -126,6 +127,27 @@ export function Connexion() {
         naviguer('/');
       } else if (mode === 'inscription') {
         if (motDePasse.length < 8) throw new Error('Le mot de passe doit contenir au moins 8 caractères.');
+        if (motDePasse !== confirmation) throw new Error('Les deux mots de passe sont différents.');
+        if (!premiere) {
+          // Accès créé tout de suite, puis connexion : la personne remplit la fiche de son entreprise.
+          const r = await creerMonAcces(nom.trim(), email.trim(), motDePasse);
+          if (r.ok) {
+            const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: motDePasse });
+            if (error) throw error;
+            memoriser(email.trim().toLowerCase());
+            marquerVerrou(false);
+            await apresConnexion();
+            naviguer('/');
+            return;
+          }
+          if (r.existe) {
+            setMode('connexion');
+            setType('email');
+            throw new Error(r.message ?? 'Un compte existe déjà avec cette adresse : connectez-vous.');
+          }
+          if (!r.absente) throw new Error(r.message ?? 'Création impossible, réessayez.');
+          // Fonction serveur pas encore installée : création classique (avec e-mail de confirmation).
+        }
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password: motDePasse,
@@ -164,7 +186,7 @@ export function Connexion() {
 
   const titres: Record<Mode, string> = {
     connexion: 'Connexion',
-    inscription: premiere ? 'Créer le compte administrateur' : 'Créer un compte',
+    inscription: premiere ? 'Créer le compte administrateur' : 'Créer mes accès',
     oubli: 'Mot de passe oublié',
   };
 
@@ -258,6 +280,12 @@ export function Connexion() {
               </button>
             </div>
           )}
+          {mode === 'inscription' && !premiere && (
+            <p className="secondaire petit-texte">
+              Première connexion ? Créez vos accès, puis présentez votre entreprise : Décodeur Financier étudie votre demande
+              et vous ouvre l’application.
+            </p>
+          )}
           {mode === 'inscription' && (
             <Champ label="Nom et prénoms">
               <input value={nom} onChange={(e) => setNom(e.target.value)} required autoComplete="name" />
@@ -342,6 +370,18 @@ export function Connexion() {
               </div>
             </Champ>
           )}
+          {mode === 'inscription' && (
+            <Champ label="Confirmer le mot de passe">
+              <input
+                type={voirMotDePasse ? 'text' : 'password'}
+                value={confirmation}
+                onChange={(e) => setConfirmation(e.target.value)}
+                required
+                minLength={8}
+                autoComplete="new-password"
+              />
+            </Champ>
+          )}
 
           {!(parMatricule && etape === 'code') && (
           <button className="bouton bouton-principal bouton-plein" disabled={envoi}>
@@ -352,22 +392,23 @@ export function Connexion() {
                 : mode === 'connexion'
                 ? 'Se connecter'
                 : mode === 'inscription'
-                  ? 'Créer mon compte'
+                  ? 'Créer mes accès'
                   : 'Recevoir le lien'}
           </button>
           )}
 
+          {mode === 'connexion' && !(parMatricule && etape === 'code') && (
+            <button type="button" className="bouton bouton-discret bouton-plein bouton-creer-acces" onClick={() => setMode('inscription')}>
+              Pas encore d’accès ? <strong>Créer mes accès</strong>
+            </button>
+          )}
           <div className="liens-formulaire">
             {mode !== 'connexion' && (
               <button type="button" className="bouton-lien" onClick={() => setMode('connexion')}>
                 J’ai déjà un compte
               </button>
             )}
-            {mode !== 'inscription' && !parMatricule && (
-              <button type="button" className="bouton-lien" onClick={() => setMode('inscription')}>
-                {fermee ? 'J’ai été invité : créer mon compte' : 'Créer un compte'}
-              </button>
-            )}
+
             {mode === 'connexion' && !parMatricule && (
               <button type="button" className="bouton-lien" onClick={() => setMode('oubli')}>
                 Mot de passe oublié
@@ -377,9 +418,9 @@ export function Connexion() {
           </div>
         </form>
         <p className="note-publique">
-          {fermee
-            ? 'Votre accès est créé par votre gérant ou par l’administrateur : connectez-vous avec l’identifiant et le mot de passe reçus.'
-            : 'Invité par votre employeur ? Créez votre compte avec l’adresse e-mail communiquée : vous serez rattaché automatiquement à l’entreprise.'}
+          {type === 'employe' && mode === 'connexion'
+            ? 'Employé : votre code établissement, votre matricule et votre code d’entrée vous sont donnés par votre gérant.'
+            : 'Vous avez une entreprise ? Créez vos accès et envoyez votre demande. Invité par votre employeur avec votre e-mail ? Créez vos accès avec cette adresse : vous serez rattaché automatiquement.'}
           {sourceConfiguration === 'appareil' && (
             <>
               {' '}

@@ -11,6 +11,7 @@ import { REGIMES, type RegimeFiscal } from '../lib/types';
 import { Alerte, Champ, EnTetePage, Fenetre, Ico, MontantFort, Pastille, Vide } from '../components/ui';
 import { ChoixModules } from '../components/ChoixModules';
 import { Identifiants } from '../components/Identifiants';
+import { DemandesAdmin } from './DemandesAdmin';
 
 interface LigneEntreprise {
   organisation_id: string;
@@ -117,6 +118,10 @@ export function Administration() {
       />
       <Alerte>{erreur}</Alerte>
       <Alerte type="succes">{info}</Alerte>
+
+      <DemandesAdmin onEntrepriseCreee={async () => {
+        await Promise.all([charger(), rechargerOrganisations().catch(() => undefined)]);
+      }} />
 
       <section className="tuiles">
         <div className="tuile">

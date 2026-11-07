@@ -1659,3 +1659,42 @@ input:not([type='checkbox']):not([type='radio']), select, textarea { font-size: 
 .acces-gerant p { margin: 0 0 8px; }
 .acces-gerant-grille { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: baseline; margin-bottom: 8px; }
 .acces-gerant-grille span { color: var(--encre-douce); font-size: 0.85rem; }
+
+/* =====================================================================
+   1.9 — Demandes d'ouverture : demandeur et administrateur général
+   ===================================================================== */
+.bouton-creer-acces { margin-top: 10px; font-weight: 500; }
+.bouton-creer-acces strong { color: var(--accent); margin-left: 4px; }
+.petit-texte { font-size: 0.82rem; }
+.nav-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; margin-left: auto; border-radius: 99px; background: var(--accent); color: #fff; font-size: 0.72rem; font-weight: 700; line-height: 1; }
+h2 .nav-badge { margin-left: 8px; vertical-align: middle; }
+.logo-demande { display: flex; gap: 14px; align-items: center; padding: 10px 12px; border: 1px dashed var(--trait); border-radius: 14px; margin: 6px 0 12px; }
+.logo-demande .logo-apercu, .detail-demande .logo-apercu { width: 84px; height: 84px; flex: none; border-radius: 14px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; overflow: hidden; font-size: 0.72rem; color: var(--encre-douce); text-align: center; }
+.logo-demande .logo-apercu img, .detail-demande .logo-apercu img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.logo-demande p { margin: 2px 0 6px; }
+.actions-demande { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.suivi-demande-entete { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.suivi-demande-entete h1 { margin: 0; }
+.etapes-demande { list-style: none; padding: 0; margin: 14px 0; display: flex; flex-direction: column; gap: 10px; counter-reset: etape; }
+.etapes-demande li { position: relative; padding-left: 38px; min-height: 26px; color: var(--encre-douce); counter-increment: etape; }
+.etapes-demande li::before { content: counter(etape); position: absolute; left: 0; top: -2px; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; background: var(--surface-2); color: var(--encre-douce); }
+.etapes-demande li.faite { color: var(--encre); }
+.etapes-demande li.faite::before { content: '✓'; background: #1f9f6a; color: #fff; }
+.etapes-demande li.encours { color: var(--encre); font-weight: 600; }
+.etapes-demande li.encours::before { background: var(--accent); color: #fff; }
+.liste-demandes { display: flex; flex-direction: column; gap: 8px; }
+.demande-ligne { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--trait); border-radius: 14px; background: var(--surface); }
+.demande-ligne.demande-en_attente { border-color: color-mix(in srgb, var(--accent) 45%, var(--trait)); }
+.demande-corps { display: flex; flex-direction: column; gap: 2px; text-align: left; background: none; border: 0; padding: 0; flex: 1 1 260px; min-width: 0; cursor: pointer; color: inherit; font: inherit; }
+.demande-titre { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.demande-actions { display: flex; gap: 6px; }
+.detail-demande { display: flex; flex-direction: column; gap: 12px; }
+.detail-demande-entete { display: flex; gap: 14px; align-items: center; }
+.detail-demande-entete > div:last-child { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.detail-nom { font-size: 1.15rem; }
+.detail-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 16px; }
+.detail-ligne { display: flex; flex-direction: column; gap: 1px; padding: 6px 0; border-bottom: 1px solid var(--trait); min-width: 0; }
+.detail-ligne span { font-size: 0.76rem; color: var(--encre-douce); }
+.detail-ligne strong { font-weight: 600; overflow-wrap: anywhere; }
+.decision-demande { display: flex; flex-wrap: wrap; gap: 8px; }
+.decision-demande .bouton-principal { flex: 1 1 220px; }

@@ -11,6 +11,8 @@ export interface InfoPlateforme {
   inscription_libre: boolean;
   je_suis_admin: boolean;
   creation_entreprise_possible: boolean;
+  /** Demandes d'ouverture d'entreprise à traiter (administrateur général seulement). */
+  demandes_en_attente?: number | null;
 }
 
 interface EtatSession {

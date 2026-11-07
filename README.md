@@ -3,7 +3,14 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 1.8.** **Le gérant principal se connecte partout comme sur Wave** : code établissement + matricule
+**Version 1.9.** **Demandes d'ouverture en libre-service** : sur le site ou l'application, « Créer mes accès »
+(nom, e-mail, mot de passe confirmé, sans attendre d'e-mail), puis fiche de l'entreprise (nom, activité, logo, RCCM,
+NCC, date de création, régime, gérant principal, téléphone, modules souhaités). L'administrateur général reçoit la
+demande (pastille sur « Administration »), appelle le demandeur, puis **valide** (entreprise créée, le demandeur en
+devient gérant principal, logo repris), **ajourne** (correction demandée, le demandeur corrige et renvoie) ou
+**refuse** (motif visible). Fonction serveur `inscription` (sans « Verify JWT »), quota de 40 créations par heure.
+
+Version 1.8 : **Le gérant principal se connecte partout comme sur Wave** : code établissement + matricule
 **0000** + son code d'entrée (créé dans « Mon compte »), sur n'importe quelle tablette ou ordinateur, avec tous ses
 accès. 0000 est réservé et ne peut pas être donné à un employé. La connexion par e-mail reste possible.
 

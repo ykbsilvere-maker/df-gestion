@@ -69,6 +69,28 @@ export interface ResultatConnexion {
   message?: string;
 }
 
+/**
+ * Création libre d'un accès (nom, e-mail, mot de passe) par la fonction serveur « inscription » :
+ * compte prêt tout de suite, sans e-mail de confirmation. Il ne donne aucun droit tant que
+ * l'administrateur général n'a pas validé la demande d'entreprise.
+ */
+export async function creerMonAcces(nom: string, email: string, motDePasse: string): Promise<{ ok: boolean; message?: string; existe?: boolean; absente?: boolean }> {
+  const { supabase } = await import('./supabase');
+  const { data, error } = await supabase.functions.invoke('inscription', { body: { nom, email, mot_de_passe: motDePasse } });
+  if (error) {
+    const statut = (error as { context?: Response }).context?.status;
+    if (statut === 404) return { ok: false, absente: true };
+    try {
+      const corps = (await (error as { context: Response }).context.json()) as { message?: string };
+      if (corps.message) return { ok: false, message: corps.message };
+    } catch {
+      /* pas de corps lisible */
+    }
+    return { ok: false, message: navigator.onLine ? 'Service indisponible, réessayez.' : 'Pas de réseau : la création des accès demande Internet.' };
+  }
+  return data as { ok: boolean; message?: string; existe?: boolean };
+}
+
 export async function connexionParCode(code: string, matricule: string, pin: string): Promise<ResultatConnexion> {
   const { supabase } = await import('./supabase');
   const { data, error } = await supabase.functions.invoke('connexion', {
