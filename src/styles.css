@@ -1702,3 +1702,14 @@ h2 .nav-badge { margin-left: 8px; vertical-align: middle; }
    (un centrage strict rendait le haut de la page inaccessible au défilement). */
 .page-accueil-public { place-items: start center; }
 .page-accueil-public > * { margin-block: auto; }
+
+/* =====================================================================
+   2.0 — Journée : ouverture et clôture
+   ===================================================================== */
+.bandeau-journee { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; margin-bottom: 12px; border-left: 4px solid var(--trait); }
+.bandeau-journee.journee-ouverte { border-left-color: #1f9f6a; }
+.bandeau-journee.journee-fermee { border-left-color: var(--accent); background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 6%, var(--surface)), var(--surface)); }
+.bandeau-journee-ligne { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+.bandeau-journee-date { display: flex; flex-direction: column; line-height: 1.25; }
+.bandeau-journee-date strong { font-size: 1.05rem; text-transform: capitalize; }
+.bandeau-journee-texte { margin: 0; }

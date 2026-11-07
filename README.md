@@ -3,7 +3,15 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
-**Version 1.9.** **Demandes d'ouverture en libre-service** : sur le site ou l'application, « Créer mes accès »
+**Version 2.0.** **Ouverture et clôture de la journée** : la date est celle du serveur (Abidjan). Le gérant ouvre la
+journée (proposé dès l'accueil : « Ouvrir la journée du samedi 7 novembre ? »), puis les caisses ; une fois toutes les
+caisses clôturées, il clôture la journée (bilan : ventes, tickets, caisses, écart, règlements). Ensuite plus aucune
+opération n'est acceptée par le serveur (ouverture de caisse, stock, dépenses, encaissements, paiements, virements,
+réceptions, inventaires, annulations) jusqu'à la prochaine ouverture ; les ventes faites hors ligne pendant la journée
+restent synchronisables. Le gérant principal peut rouvrir la journée du jour. La règle s'applique dès la première
+journée ouverte. Alerte si l'horloge de l'appareil est fausse.
+
+Version 1.9 : **Demandes d'ouverture en libre-service** : sur le site ou l'application, « Créer mes accès »
 (nom, e-mail, mot de passe confirmé, sans attendre d'e-mail), puis fiche de l'entreprise (nom, activité, logo, RCCM,
 NCC, date de création, régime, gérant principal, téléphone, modules souhaités). L'administrateur général reçoit la
 demande (pastille sur « Administration »), appelle le demandeur, puis **valide** (entreprise créée, le demandeur en

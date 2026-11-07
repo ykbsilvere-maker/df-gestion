@@ -15,6 +15,7 @@ import { useImpressionCaisse } from './impressionCaisse';
 import { Paiement } from './Paiement';
 import { Cloture } from './Cloture';
 import { RapportProvisoire } from './RapportProvisoire';
+import { BandeauJournee, journeeFermee, useJournee } from './Journee';
 import { Billetage, totalBilletage, versLignes } from './Billetage';
 import { identifiantAffiche } from '../lib/acces';
 import {
@@ -277,6 +278,8 @@ function OuvrirCaisse({
   const [cloture, setCloture] = useState<CaisseEtat | null>(null);
   const [rapport, setRapport] = useState<CaisseEtat | null>(null);
   const [info, setInfo] = useState('');
+  const { etat: jour, recharger: rechargerJour } = useJournee(org);
+  const fermee = journeeFermee(jour);
   const visibles = etat.responsable ? etat.caisses : etat.caisses.filter((c) => c.accessible);
   const mienne = etat.caisses.find((c) => c.session?.mienne);
   // Solde des ventes en cours (responsable) : total de toutes les caisses ouvertes et part de chacune.
@@ -298,6 +301,15 @@ function OuvrirCaisse({
       </div>
       {horsLigne && <Alerte>Pas de connexion : l’ouverture et la clôture se font connecté.</Alerte>}
       <Alerte type="succes">{info}</Alerte>
+      <BandeauJournee
+        org={org}
+        etat={jour}
+        horsLigne={horsLigne}
+        onChange={() => {
+          void rechargerJour();
+          onActualiser();
+        }}
+      />
 
       {etat.responsable && ouvertes.length > 0 && (
         <div className="carte solde-ventes">
@@ -381,7 +393,7 @@ function OuvrirCaisse({
                 </button>
               )}
               {etat.responsable && !c.session && (
-                <button type="button" className="bouton bouton-principal bouton-plein" disabled={horsLigne || c.caissiers.length === 0} onClick={() => setOuverture(c)}>
+                <button type="button" className="bouton bouton-principal bouton-plein" disabled={horsLigne || fermee || c.caissiers.length === 0} onClick={() => setOuverture(c)}>
                   🔓 Ouvrir
                 </button>
               )}
@@ -411,6 +423,7 @@ function OuvrirCaisse({
             onOuverte={(nom, pourMoi) => {
               setOuverture(null);
               setInfo(`${ouverture.nom} est ouverte pour ${nom}.`);
+              void rechargerJour();
               if (pourMoi) onEntrer(ouverture.id);
               else onActualiser();
             }}
@@ -440,6 +453,7 @@ function OuvrirCaisse({
               setInfo(`${cloture.nom} clôturée : rapport Z n° ${z.numero_z ?? ''}.`);
               setCloture(null);
               onActualiser();
+              void rechargerJour();
             }}
           />
         )}

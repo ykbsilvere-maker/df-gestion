@@ -1,3 +1,4 @@
+import { BandeauJournee, useJournee } from '../caisse/Journee';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -134,6 +135,8 @@ export function Accueil() {
         )}
       </section>
 
+      {peut('caisse.valider') && <JourneeAccueil org={organisation.organisation_id} />}
+
       <ActionsRapides peut={peut} gerantPrincipal={organisation.role_code === 'proprietaire'} />
 
       {(peut('rapports.consulter') || peut('ventes.exporter')) && <TableauDeBord />}
@@ -248,4 +251,11 @@ export function Accueil() {
       </div>
     </>
   );
+}
+
+/** Le gérant arrive sur l'accueil : on lui propose d'ouvrir la journée si ce n'est pas fait. */
+function JourneeAccueil({ org }: { org: string }) {
+  const { etat, recharger } = useJournee(org);
+  if (!etat || (etat.ouverte && etat.ouverte.date === etat.aujourdhui)) return null;
+  return <BandeauJournee org={org} etat={etat} horsLigne={!navigator.onLine} onChange={() => void recharger()} />;
 }
