@@ -1711,5 +1711,6 @@ h2 .nav-badge { margin-left: 8px; vertical-align: middle; }
 .bandeau-journee.journee-fermee { border-left-color: var(--accent); background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 6%, var(--surface)), var(--surface)); }
 .bandeau-journee-ligne { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
 .bandeau-journee-date { display: flex; flex-direction: column; line-height: 1.25; }
-.bandeau-journee-date strong { font-size: 1.05rem; text-transform: capitalize; }
+.bandeau-journee-date strong { font-size: 1.05rem; }
+.bandeau-journee-date strong::first-letter { text-transform: uppercase; }
 .bandeau-journee-texte { margin: 0; }
