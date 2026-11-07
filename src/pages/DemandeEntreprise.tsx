@@ -9,7 +9,7 @@ import { Alerte, Champ, Pastille } from '../components/ui';
 import { ChoixDevise } from '../components/ChoixDevise';
 import { ChoixModules } from '../components/ChoixModules';
 import { MarqueDecodeur } from '../components/Marque';
-import { transfererLogoDemande } from '../lib/demande';
+import { transfererLogoDemande } from '../lib/demandeOuverture';
 
 export interface Demande {
   id: string;

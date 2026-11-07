@@ -5,7 +5,7 @@ import { FiletSecurite } from './FiletSecurite';
 import { useSession } from '../lib/session';
 import { useIdentite } from '../lib/identite';
 import { identifiantAffiche } from '../lib/acces';
-import { reprendreLogoDemande } from '../lib/demande';
+import { reprendreLogoDemande } from '../lib/demandeOuverture';
 
 type Groupe = 'vendre' | 'stock' | 'pilotage' | 'reglages';
 const GROUPES: Record<Groupe, string> = { vendre: 'Vendre', stock: 'Stock et achats', pilotage: 'Pilotage', reglages: 'Réglages' };
