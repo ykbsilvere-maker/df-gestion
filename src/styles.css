@@ -1698,3 +1698,7 @@ h2 .nav-badge { margin-left: 8px; vertical-align: middle; }
 .detail-ligne strong { font-weight: 600; overflow-wrap: anywhere; }
 .decision-demande { display: flex; flex-wrap: wrap; gap: 8px; }
 .decision-demande .bouton-principal { flex: 1 1 220px; }
+/* Pages publiques longues (fiche entreprise) : centrées si elles tiennent, sinon lisibles depuis le haut
+   (un centrage strict rendait le haut de la page inaccessible au défilement). */
+.page-accueil-public { place-items: start center; }
+.page-accueil-public > * { margin-block: auto; }
