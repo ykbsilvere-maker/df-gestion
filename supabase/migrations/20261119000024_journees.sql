@@ -46,14 +46,16 @@ end $$;
 
 create function prive.tg_exiger_journee() returns trigger
 language plpgsql security definer set search_path = '' as $$
+declare
+  n jsonb := to_jsonb(new);  -- lecture générique : toutes les tables n'ont pas les mêmes colonnes
 begin
-  if tg_table_name = 'mouvements_stock' and new.type in ('vente', 'retour_client') then
+  if tg_table_name = 'mouvements_stock' and n ->> 'type' in ('vente', 'retour_client') then
     return new; -- ventes (même synchronisées plus tard) et retours : couverts par la caisse
   end if;
-  if tg_table_name = 'ventes' and new.statut is distinct from 'annulee' then
+  if tg_table_name = 'ventes' and (n ->> 'statut') is distinct from 'annulee' then
     return new; -- une vente vit dans une session de caisse, elle-même ouverte dans la journée
   end if;
-  if tg_op = 'UPDATE' and tg_table_name <> 'ventes' and to_jsonb(new) ->> 'statut' is not distinct from to_jsonb(old) ->> 'statut' then
+  if tg_op = 'UPDATE' and tg_table_name <> 'ventes' and (n ->> 'statut') is not distinct from (to_jsonb(old) ->> 'statut') then
     return new;
   end if;
   perform prive.exiger_journee(new.organisation_id);
