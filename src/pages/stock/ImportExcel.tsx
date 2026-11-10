@@ -320,10 +320,10 @@ function EtapeImport({ org, type }: { org: string; type: TypeImport }) {
           <button
             type="button"
             className="bouton bouton-principal bouton-plein"
-            disabled={!!envoi || analyse.lignes.length === 0 || analyse.manquantes.length > 0 || (type === 'approvisionnement' && !magasin)}
+            disabled={!!envoi || !!bilan || analyse.lignes.length === 0 || analyse.manquantes.length > 0 || (type === 'approvisionnement' && !magasin)}
             onClick={() => void importer()}
           >
-            {envoi ? `Import en cours… ${envoi.fait} / ${envoi.total}` : `Importer ${analyse.lignes.length} ligne${analyse.lignes.length > 1 ? 's' : ''}`}
+            {envoi ? `Import en cours… ${envoi.fait} / ${envoi.total}` : bilan ? 'Import terminé — choisissez un autre fichier pour recommencer' : `Importer ${analyse.lignes.length} ligne${analyse.lignes.length > 1 ? 's' : ''}`}
           </button>
         </>
       )}
@@ -344,7 +344,7 @@ function EtapeImport({ org, type }: { org: string; type: TypeImport }) {
               {bilan.receptions.map((r) => (
                 <div key={r.id} className="rapport-ligne">
                   <span>
-                    {r.fournisseur ?? 'Sans fournisseur'} · {r.lignes} ligne{Number(r.lignes) > 1 ? 's' : ''}
+                    {r.fournisseur ?? (type === 'catalogue' ? 'Stock de départ' : 'Sans fournisseur')} · {r.lignes} ligne{Number(r.lignes) > 1 ? 's' : ''}
                   </span>
                   <Link className="bouton bouton-discret" to={`/stock/receptions/${r.id}`}>
                     Vérifier et valider →
