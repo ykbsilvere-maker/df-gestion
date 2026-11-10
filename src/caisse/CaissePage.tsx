@@ -9,6 +9,7 @@ import { nouvelleCle, quantite } from '../lib/stock';
 import type { Caisse } from '../lib/types';
 import { Alerte, Champ, Fenetre, Ico, Pastille, Vide } from '../components/ui';
 import { Scanner } from '../components/Scanner';
+import { useDouchette } from '../lib/douchette';
 import { ChoixCase, Recu, type VenteRecu } from '../impression/Recu';
 import { RapportCaisse, type RapportSession } from '../impression/RapportCaisse';
 import { useImpressionCaisse } from './impressionCaisse';
@@ -777,6 +778,15 @@ function PointDeVente({
   const modifierLigne = (i: number, l: Partial<LigneVente>) => setPanier((ls) => ls.map((x, j) => (j === i ? { ...x, ...l } : x)));
   const retirerLigne = (i: number) => setPanier((ls) => ls.filter((_, j) => j !== i));
 
+  // Lecteur de codes-barres (douchette) : l'article passe au panier même si le curseur est
+  // ailleurs (panier, bouton, quantité). Dans la case de recherche, l'Entrée habituelle s'en charge.
+  useDouchette((code) => {
+    const { exact } = chercherLocal(produits, code);
+    if (exact) ajouter(exact);
+    else if (!articlesPrets) setMessage({ type: 'info', texte: 'Chargement des articles en cours… rescannez dans un instant.' });
+    else setMessage({ type: 'erreur', texte: `Code ${code} inconnu dans le catalogue de ce magasin.` });
+  }, !fenetre);
+
   // Raccourcis : F2 recherche, F9 encaisser.
   useEffect(() => {
     const touche = (e: KeyboardEvent) => {
@@ -982,6 +992,7 @@ function PointDeVente({
             <div className="champ-avec-bouton">
               <input
                 ref={champ}
+                data-douchette="champ"
                 autoFocus
                 value={terme}
                 onChange={(e) => {

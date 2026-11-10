@@ -3,6 +3,11 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 2.4.** **Lecteur de codes-barres (douchette)** USB, sans fil (dongle) ou Bluetooth, sans réglage : il se
+comporte comme un clavier. Un scan est reconnu **où que soit le curseur** (caisse, catalogue, réceptions, sorties,
+devis) : la rafale de touches suivie d'Entrée est interceptée, le champ touché par erreur est rétabli, et l'article
+passe au panier (ou est recherché). La saisie normale au clavier n'est pas affectée. La caméra reste disponible.
+
 **Version 2.3.** **Vérification avant import** : après le choix du fichier, chaque article s'affiche avec un menu
 **Fournisseur** et une case **📷** qui ouvre l'ordinateur (ou la galerie du téléphone) pour choisir sa photo ; bouton
 « Plusieurs photos d'un coup » (rattachées par nom). Désignation, prix et quantités restent modifiables. Chaque article

@@ -7,6 +7,7 @@ import { montant } from '../lib/argent';
 import type { Categorie, Produit } from '../lib/types';
 import { Alerte, Fenetre, Pastille, Vide } from '../components/ui';
 import { Scanner } from '../components/Scanner';
+import { useDouchette } from '../lib/douchette';
 import { FicheProduit } from './FicheProduit';
 import { Vignette } from '../components/PhotoProduit';
 import { useDemandeCreation } from '../lib/demande';
@@ -115,6 +116,13 @@ export function Catalogue() {
   }, [terme, page, avecArretes, filtreCategorie]);
 
   /** Traitement d'un code lu (lecteur USB/Bluetooth ou caméra) ou d'une saisie validée par Entrée. */
+  // Lecteur de codes-barres : un scan cherche l'article, où que soit le curseur.
+  useDouchette((code) => {
+    setTerme(code);
+    setPage(0);
+    void validerSaisie(code);
+  }, !edition && !scan);
+
   async function validerSaisie(saisie: string) {
     const t = saisie.trim();
     setCodeInconnu('');
@@ -147,6 +155,7 @@ export function Catalogue() {
         <div className="champ-avec-bouton">
           <input
             ref={champ}
+            data-douchette="champ"
             type="search"
             value={terme}
             onChange={(e) => {

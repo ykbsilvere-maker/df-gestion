@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { montant } from '../lib/argent';
 import { Fenetre } from './ui';
 import { Scanner } from './Scanner';
+import { useDouchette } from '../lib/douchette';
 
 export interface ProduitTrouve {
   id: string;
@@ -55,6 +56,13 @@ export function RechercheProduit({
     return r;
   }
 
+  // Lecteur de codes-barres : le scan est pris même si le curseur n'est pas dans la case.
+  useDouchette((code) => {
+    setTerme(code);
+    setMessage('');
+    void valider(code);
+  }, !scan);
+
   useEffect(() => {
     const t = setTimeout(() => void chercher(terme), 200);
     return () => clearTimeout(t);
@@ -85,6 +93,7 @@ export function RechercheProduit({
       <div className="champ-avec-bouton">
         <input
           ref={champ}
+          data-douchette="champ"
           type="search"
           value={terme}
           placeholder={placeholder}
