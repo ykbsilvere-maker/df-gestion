@@ -169,7 +169,7 @@ export function Catalogue() {
             📷
           </button>
           {(peut('catalogue.creer') || peut('catalogue.modifier')) && (
-            <button className="bouton bouton-discret" onClick={() => naviguer('/import?type=catalogue')} aria-label="Importer depuis Excel" title="Importer depuis Excel (articles, prix, photos)">
+            <button className="bouton bouton-discret" onClick={() => naviguer('/import')} aria-label="Importer depuis Excel" title="Importer depuis Excel (articles, prix, photos)">
               📥
             </button>
           )}

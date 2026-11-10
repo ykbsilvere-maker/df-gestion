@@ -3,6 +3,13 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 2.2.** **Classeur complet** : un seul fichier Excel avec trois onglets, *Fournisseurs*, *Catalogue* et
+*Approvisionnement*, importé d'un coup (Catalogue › 📥 › « Classeur complet » › Tout importer), dans l'ordre
+fournisseurs → articles et photos → livraisons. Les **photos se collent directement dans le classeur**, sur la ligne de
+l'article : image placée dans la cellule (Excel 365), image WPS Office (DISPIMG) ou image posée sur la ligne. Elles sont
+réduites puis rattachées à l'article. Onglets reconnus par leur nom, sinon par leurs colonnes ; dans l'approvisionnement,
+les lignes sans quantité sont laissées de côté (bon de livraison réutilisable). Même import sur l'application et le site.
+
 **Version 2.1.** **Import depuis Excel** (menu Catalogue 📥, Réceptions et Fournisseurs « Importer Excel ») : deux
 façons de remplir l'application, la saisie une par une ou le fichier. Modèles Excel téléchargeables (avec mode
 d'emploi) pour le **catalogue** (code, code-barres, désignation, catégorie, prix d'achat et de vente, TVA, unité,

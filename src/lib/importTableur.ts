@@ -87,6 +87,8 @@ export interface LigneImport {
   /** Numéro de la ligne dans le fichier (comme dans Excel). */
   numero: number;
   valeurs: Record<string, string | number | null>;
+  /** Photo collée sur la ligne dans le classeur. */
+  image?: { octets: Uint8Array; type: string };
 }
 
 export interface Analyse {
@@ -96,6 +98,10 @@ export interface Analyse {
   manquantes: string[];
   ignorees: string[];
   lignes: LigneImport[];
+  /** Nombre de lignes portant une photo collée dans le classeur. */
+  images: number;
+  /** Lignes laissées de côté (approvisionnement sans quantité). */
+  sansQuantite: number;
 }
 
 function versDate(v: Valeur): string | null {
@@ -119,7 +125,7 @@ export function analyser(feuilles: FeuilleLue[], type: TypeImport): Analyse {
   const attendues = COLONNES[type];
   let meilleure: { score: number; f: FeuilleLue; ligne: number } | null = null;
   for (const f of feuilles) {
-    if (/aide|mode d.?emploi|notice|instructions/i.test(f.nom)) continue;
+    if (FEUILLE_AIDE.test(normaliserEntete(f.nom))) continue;
     for (let i = 0; i < Math.min(f.lignes.length, 20); i++) {
       const score = (f.lignes[i] ?? []).reduce<number>((s, cell) => s + Math.max(0, ...attendues.map((c) => correspond(String(cell ?? ''), c))), 0);
       if (!meilleure || score > meilleure.score) meilleure = { score, f, ligne: i };
@@ -147,8 +153,14 @@ export function analyser(feuilles: FeuilleLue[], type: TypeImport): Analyse {
   const ignorees = entetes.map((e, i) => (prises.has(i) || e === null ? null : String(e))).filter((e): e is string => !!e);
   const genres = new Map(attendues.map((c) => [c.cle, c.genre ?? 'texte']));
   const lignes: LigneImport[] = [];
+  const colPhoto = colonnes.find((c) => c.cle === 'photo')?.index;
+  const parLigne = new Map<number, NonNullable<FeuilleLue['images']>>();
+  for (const im of meilleure.f.images ?? []) parLigne.set(im.ligne, [...(parLigne.get(im.ligne) ?? []), im]);
   meilleure.f.lignes.slice(meilleure.ligne + 1).forEach((l, k) => {
-    if (!l || l.every((v) => v === null || v === '')) return;
+    const ims = parLigne.get(meilleure!.ligne + 1 + k);
+    const im = ims && (ims.find((x) => x.colonne === colPhoto) ?? ims[0]);
+    if ((!l || l.every((v) => v === null || v === '')) && !im) return;
+    l = l ?? [];
     const valeurs: LigneImport['valeurs'] = {};
     for (const c of colonnes) {
       const v = l[c.index] ?? null;
@@ -156,9 +168,78 @@ export function analyser(feuilles: FeuilleLue[], type: TypeImport): Analyse {
       valeurs[c.cle] = g === 'date' ? versDate(v) : typeof v === 'number' && g === 'texte' ? String(v) : v;
     }
     if (Object.values(valeurs).every((v) => v === null || v === '')) return;
-    lignes.push({ numero: meilleure!.ligne + 2 + k, valeurs });
+    lignes.push({ numero: meilleure!.ligne + 2 + k, valeurs, ...(im ? { image: { octets: im.octets, type: im.type } } : {}) });
   });
-  return { feuille: meilleure.f.nom, ligneEntete: meilleure.ligne + 1, colonnes, manquantes, ignorees, lignes };
+  let sansQuantite = 0;
+  let gardees = lignes;
+  // Bon d'approvisionnement : on peut lister tous les articles et ne remplir que ceux reçus.
+  if (type === 'approvisionnement' && !manquantes.length) {
+    gardees = lignes.filter((l) => Number(String(l.valeurs.quantite ?? '').replace(/\s/g, '').replace(',', '.')) > 0);
+    sansQuantite = lignes.length - gardees.length;
+  }
+  return {
+    feuille: meilleure.f.nom,
+    ligneEntete: meilleure.ligne + 1,
+    colonnes,
+    manquantes,
+    ignorees,
+    lignes: gardees,
+    images: gardees.filter((l) => l.image).length,
+    sansQuantite,
+  };
+}
+
+const FEUILLE_AIDE = /^(aide|a savoir|mode d ?emploi|notice|instructions|lisez moi|lisezmoi)/;
+const NOMS_FEUILLES: Record<TypeImport, RegExp> = {
+  fournisseurs: /fournisseur/,
+  catalogue: /catalogue|article|produit/,
+  approvisionnement: /approvision|reception|livraison|arrivage|entree|achat/,
+};
+export const ORDRE_CLASSEUR: TypeImport[] = ['fournisseurs', 'catalogue', 'approvisionnement'];
+
+/**
+ * Classeur complet : chaque onglet est rattaché à un type d'import, d'abord par son nom
+ * (« Fournisseurs », « Catalogue », « Approvisionnement »…), sinon par ses colonnes.
+ */
+export function analyserClasseur(feuilles: FeuilleLue[]): Partial<Record<TypeImport, Analyse>> {
+  const res: Partial<Record<TypeImport, Analyse>> = {};
+  const utiles = feuilles.filter((f) => !FEUILLE_AIDE.test(normaliserEntete(f.nom)));
+  const prises = new Set<string>();
+  const essai = (fs: FeuilleLue[], t: TypeImport) => {
+    try {
+      return analyser(fs, t);
+    } catch {
+      return null;
+    }
+  };
+  // 1. Par le nom de l'onglet (approvisionnement avant catalogue : « Articles reçus »…).
+  for (const t of ['fournisseurs', 'approvisionnement', 'catalogue'] as TypeImport[]) {
+    const candidates = utiles.filter((f) => !prises.has(f.nom) && NOMS_FEUILLES[t].test(normaliserEntete(f.nom)));
+    const a = candidates.length ? essai(candidates, t) : null;
+    if (a) {
+      res[t] = a;
+      prises.add(a.feuille);
+    }
+  }
+  // 2. Onglets restants : le type dont toutes les colonnes obligatoires sont présentes et qui en reconnaît le plus.
+  for (const f of utiles) {
+    if (prises.has(f.nom)) continue;
+    let choix: Analyse | null = null;
+    let type: TypeImport | null = null;
+    for (const t of ['catalogue', 'approvisionnement', 'fournisseurs'] as TypeImport[]) {
+      if (res[t]) continue;
+      const a = essai([f], t);
+      if (a && !a.manquantes.length && (!choix || a.colonnes.length > choix.colonnes.length)) {
+        choix = a;
+        type = t;
+      }
+    }
+    if (choix && type) {
+      res[type] = choix;
+      prises.add(f.nom);
+    }
+  }
+  return res;
 }
 
 const EXEMPLES: Record<TypeImport, Cellule[][]> = {
@@ -198,6 +279,38 @@ export function modeleImport(type: TypeImport): Uint8Array {
       entetes: ['Colonne', 'Obligatoire', 'À savoir'],
       lignes: cols.map((c) => [c.libelle, c.obligatoire ? 'oui' : '', c.aide]),
       largeurs: [26, 12, 80],
+    },
+  ]);
+}
+
+/** Classeur complet à remplir : un onglet par type, plus le mode d'emploi. */
+export function modeleClasseur(): Uint8Array {
+  const feuille = (type: TypeImport, nom: string) => {
+    const cols = COLONNES[type];
+    return {
+      nom,
+      entetes: cols.map((c) => (c.obligatoire ? `${c.libelle} *` : c.libelle)),
+      lignes: EXEMPLES[type],
+      largeurs: cols.map((c) => Math.max(12, Math.min(34, c.libelle.length + 6))),
+    };
+  };
+  const aide = (type: TypeImport, onglet: string) => COLONNES[type].map((c) => [onglet, c.libelle, c.obligatoire ? 'oui' : '', c.aide] as Cellule[]);
+  return classeurXlsx([
+    feuille('fournisseurs', 'Fournisseurs'),
+    feuille('catalogue', 'Catalogue'),
+    feuille('approvisionnement', 'Approvisionnement'),
+    {
+      nom: 'Mode d’emploi',
+      titre: [
+        'DF Gestion — classeur complet : fournisseurs, catalogue, approvisionnement',
+        'Remplissez les trois onglets (ou seulement ceux qui vous servent) en remplaçant les exemples, sans changer les titres de colonnes.',
+        'Photos : dans l’onglet Catalogue, collez l’image sur la ligne de l’article (Insertion > Image > Placer dans la cellule, ou image posée sur la colonne Photo).',
+        'Approvisionnement : seules les lignes avec une quantité sont importées ; le nom du fournisseur doit être celui de l’onglet Fournisseurs.',
+        'Dans DF Gestion : Catalogue > 📥 > onglet « Classeur complet » > Choisir le fichier > Tout importer.',
+      ],
+      entetes: ['Onglet', 'Colonne', 'Obligatoire', 'À savoir'],
+      lignes: [...aide('fournisseurs', 'Fournisseurs'), ...aide('catalogue', 'Catalogue'), ...aide('approvisionnement', 'Approvisionnement')],
+      largeurs: [18, 26, 12, 80],
     },
   ]);
 }

@@ -1740,3 +1740,8 @@ h2 .nav-badge { margin-left: 8px; vertical-align: middle; }
 .import-erreurs { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: 0.88rem; max-height: 280px; overflow-y: auto; }
 .import-photos { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.88rem; max-height: 320px; overflow-y: auto; }
 .import-photos li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.classeur-parties { display: grid; gap: 8px; }
+.classeur-partie { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; background: #eef6f1; }
+.classeur-partie.absente { background: var(--surface-2); opacity: .75; }
+.classeur-partie p { margin: 2px 0 0; }
+.classeur-icone { font-size: 1.5rem; line-height: 1; margin-top: 2px; }

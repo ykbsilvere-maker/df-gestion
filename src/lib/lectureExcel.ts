@@ -6,9 +6,121 @@
  */
 
 export type Valeur = string | number | null;
+export interface ImageFeuille {
+  /** Ligne et colonne (à partir de 0) de la cellule où l'image est posée. */
+  ligne: number;
+  colonne: number;
+  octets: Uint8Array;
+  type: string;
+}
 export interface FeuilleLue {
   nom: string;
   lignes: Valeur[][];
+  /** Images collées dans la feuille (posées sur une cellule ou placées dans la cellule). */
+  images?: ImageFeuille[];
+}
+
+const TYPES_IMAGE: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp' };
+
+/** Chemin d'une cible de relation, relatif au fichier qui la déclare. */
+function resoudre(source: string, cible: string): string {
+  if (cible.startsWith('/')) return cible.slice(1);
+  const parties = source.split('/').slice(0, -1);
+  for (const p of cible.split('/')) {
+    if (p === '..') parties.pop();
+    else if (p !== '.') parties.push(p);
+  }
+  return parties.join('/');
+}
+
+/** Relations d'un fichier de l'archive : identifiant → chemin complet. */
+function relations(f: Map<string, Uint8Array>, fichier: string): Map<string, string> {
+  const i = fichier.lastIndexOf('/');
+  const chemin = `${fichier.slice(0, i)}/_rels/${fichier.slice(i + 1)}.rels`;
+  const res = new Map<string, string>();
+  const xml = f.get(chemin);
+  if (!xml) return res;
+  for (const m of decodeur.decode(xml).matchAll(/<Relationship\s[^>]*>/g)) {
+    const id = attribut(m[0], 'Id');
+    const cible = attribut(m[0], 'Target');
+    if (id && cible && attribut(m[0], 'TargetMode') !== 'External') res.set(id, resoudre(fichier, cible));
+  }
+  return res;
+}
+
+function image(f: Map<string, Uint8Array>, chemin: string | undefined): { octets: Uint8Array; type: string } | null {
+  if (!chemin) return null;
+  const octets = f.get(chemin);
+  const type = TYPES_IMAGE[(chemin.split('.').pop() ?? '').toLowerCase()];
+  return octets && type ? { octets, type } : null;
+}
+
+/** Images « dans la cellule » d'Excel 365 : index de métadonnée (vm, à partir de 1) → image. */
+function imagesDansCellule(f: Map<string, Uint8Array>): (vm: number) => { octets: Uint8Array; type: string } | null {
+  const lire = (n: string) => (f.has(n) ? decodeur.decode(f.get(n)) : '');
+  const valeurs = lire('xl/richData/rdrichvalue.xml');
+  if (!valeurs) return () => null;
+  // Position de la clé « image locale » dans chaque structure de valeur.
+  const positions: number[] = [];
+  for (const s of lire('xl/richData/rdrichvaluestructure.xml').matchAll(/<s\s[^>]*>([\s\S]*?)<\/s>/g)) {
+    const cles = [...s[1]!.matchAll(/<k\s[^>]*>/g)].map((k) => attribut(k[0], 'n') ?? '');
+    positions.push(Math.max(0, cles.indexOf('_rvRel:LocalImageIdentifier')));
+  }
+  const rv = [...valeurs.matchAll(/<rv\s([^>]*)>([\s\S]*?)<\/rv>/g)].map((m) => {
+    const vs = [...m[2]!.matchAll(/<v(?:\s[^>]*)?>([\s\S]*?)<\/v>/g)].map((v) => v[1]!);
+    return Number(vs[positions[Number(attribut(` ${m[1]}`, 's') ?? 0)] ?? 0]);
+  });
+  const liens = relations(f, 'xl/richData/richValueRel.xml');
+  const rels = [...lire('xl/richData/richValueRel.xml').matchAll(/<rel\s[^>]*>/g)].map((m) => liens.get(attribut(m[0], 'r:id') ?? ''));
+  // metadata.xml : valueMetadata[vm-1] → futureMetadata[v] → rvb i (index de la valeur enrichie).
+  const meta = lire('xl/metadata.xml');
+  const futur = /<futureMetadata\s[^>]*name="XLRICHVALUE"[^>]*>([\s\S]*?)<\/futureMetadata>/.exec(meta)?.[1] ?? '';
+  const rvb = [...futur.matchAll(/<bk>([\s\S]*?)<\/bk>/g)].map((b) => Number(/rvb\s[^>]*i="(\d+)"/.exec(b[1]!)?.[1] ?? -1));
+  const vmeta = /<valueMetadata[^>]*>([\s\S]*?)<\/valueMetadata>/.exec(meta)?.[1] ?? '';
+  const vers = [...vmeta.matchAll(/<bk>([\s\S]*?)<\/bk>/g)].map((b) => Number(/<rc\s[^>]*v="(\d+)"/.exec(b[1]!)?.[1] ?? -1));
+  return (vm) => {
+    const iv = vers.length ? rvb[vers[vm - 1] ?? -1] ?? -1 : vm - 1;
+    return image(f, rels[rv[iv] ?? -1]);
+  };
+}
+
+/** Images de WPS Office (fonction DISPIMG) : identifiant → image. */
+function imagesWps(f: Map<string, Uint8Array>): Map<string, { octets: Uint8Array; type: string }> {
+  const res = new Map<string, { octets: Uint8Array; type: string }>();
+  const xml = f.get('xl/cellimages.xml');
+  if (!xml) return res;
+  const liens = relations(f, 'xl/cellimages.xml');
+  for (const m of decodeur.decode(xml).matchAll(/<(?:\w+:)?cellImage>([\s\S]*?)<\/(?:\w+:)?cellImage>/g)) {
+    const nom = /<(?:\w+:)?cNvPr\s[^>]*name="([^"]+)"/.exec(m[1]!)?.[1];
+    const rid = /<(?:\w+:)?blip\s[^>]*r:embed="([^"]+)"/.exec(m[1]!)?.[1];
+    const im = image(f, liens.get(rid ?? ''));
+    if (nom && im) res.set(nom, im);
+  }
+  return res;
+}
+
+/** Images posées sur la feuille (dessin) : ancrées à la cellule de leur coin haut-gauche. */
+function imagesDessin(f: Map<string, Uint8Array>, feuille: string, xml: string): ImageFeuille[] {
+  const rid = /<drawing\s[^>]*r:id="([^"]+)"/.exec(xml)?.[1];
+  const dessin = rid && relations(f, feuille).get(rid);
+  const contenu = dessin && f.get(dessin);
+  if (!dessin || !contenu) return [];
+  const liens = relations(f, dessin);
+  const res: ImageFeuille[] = [];
+  for (const a of decodeur.decode(contenu).matchAll(/<(?:\w+:)?(twoCellAnchor|oneCellAnchor)[\s>][\s\S]*?<\/(?:\w+:)?\1>/g)) {
+    const de = /<(?:\w+:)?from>([\s\S]*?)<\/(?:\w+:)?from>/.exec(a[0])?.[1] ?? '';
+    const col = Number(/<(?:\w+:)?col>(\d+)</.exec(de)?.[1] ?? NaN);
+    const ligne = Number(/<(?:\w+:)?row>(\d+)</.exec(de)?.[1] ?? NaN);
+    const decalage = Number(/<(?:\w+:)?rowOff>(\d+)</.exec(de)?.[1] ?? 0);
+    const vers = /<(?:\w+:)?to>([\s\S]*?)<\/(?:\w+:)?to>/.exec(a[0])?.[1];
+    const ligneFin = vers ? Number(/<(?:\w+:)?row>(\d+)</.exec(vers)?.[1] ?? ligne) : ligne;
+    const im = image(f, liens.get(/<(?:\w+:)?blip\s[^>]*r:embed="([^"]+)"/.exec(a[0])?.[1] ?? ''));
+    if (!im || !Number.isFinite(col) || !Number.isFinite(ligne)) continue;
+    // Image commencée tout en bas d'une ligne (plus de 2/3 de sa hauteur) : on la rattache à la suivante.
+    const surLaSuivante = ligneFin > ligne && decalage > 0.66 * 190500;
+    res.push({ ligne: surLaSuivante ? ligne + 1 : ligne, colonne: col, ...im });
+  }
+  return res;
 }
 
 const decodeur = new TextDecoder('utf-8');
@@ -107,7 +219,9 @@ export function dateExcel(n: number): string {
 }
 
 export async function lireXlsx(donnees: Uint8Array): Promise<FeuilleLue[]> {
-  const f = await lireZip(donnees, (n) => /^xl\/(workbook\.xml|_rels\/workbook\.xml\.rels|sharedStrings\.xml|styles\.xml|worksheets\/[^/]+\.xml)$/.test(n));
+  const f = await lireZip(donnees, (n) =>
+    /^xl\/(workbook\.xml|_rels\/(workbook|cellimages)\.xml\.rels|sharedStrings\.xml|styles\.xml|metadata\.xml|cellimages\.xml|worksheets\/(_rels\/)?[^/]+\.xml(\.rels)?|drawings\/(_rels\/)?[^/]+\.xml(\.rels)?|richData\/(_rels\/)?[^/]+\.xml(\.rels)?|media\/[^/]+)$/.test(n),
+  );
   const lire = (n: string) => (f.has(n) ? decodeur.decode(f.get(n)) : undefined);
   const classeur = lire('xl/workbook.xml');
   if (!classeur) throw new Error('Fichier illisible : ce n’est pas un classeur Excel (.xlsx).');
@@ -120,6 +234,8 @@ export async function lireXlsx(donnees: Uint8Array): Promise<FeuilleLue[]> {
     const cible = attribut(m[0], 'Target');
     if (id && cible) liens.set(id, cible.replace(/^\/?(xl\/)?/, 'xl/'));
   }
+  const dansCellule = imagesDansCellule(f);
+  const wps = imagesWps(f);
   const feuilles: FeuilleLue[] = [];
   for (const m of classeur.matchAll(/<sheet\s[^>]*>/g)) {
     const nom = attribut(m[0], 'name') ?? `Feuille${feuilles.length + 1}`;
@@ -128,6 +244,7 @@ export async function lireXlsx(donnees: Uint8Array): Promise<FeuilleLue[]> {
     const xml = lire(chemin);
     if (!xml) continue;
     const lignes: Valeur[][] = [];
+    const images = imagesDessin(f, chemin, xml);
     for (const r of xml.matchAll(/<row\s([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
       const num = Number(attribut(` ${r[1]}`, 'r') ?? lignes.length + 1) - 1;
       const ligne: Valeur[] = [];
@@ -139,6 +256,14 @@ export async function lireXlsx(donnees: Uint8Array): Promise<FeuilleLue[]> {
         const corps = c[2] ?? '';
         const v = /<v>([\s\S]*?)<\/v>/.exec(corps)?.[1];
         let val: Valeur = null;
+        const vm = Number(attribut(att, 'vm') ?? 0);
+        const dispimg = /DISPIMG\(\s*(?:&quot;|")([^"&]+)/.exec(corps)?.[1];
+        const im = (vm > 0 && dansCellule(vm)) || (dispimg && wps.get(dispimg)) || null;
+        if (im) {
+          images.push({ ligne: num, colonne: col, ...im });
+          ligne[col] = null;
+          continue;
+        }
         if (type === 's') val = partages[Number(v)] ?? null;
         else if (type === 'inlineStr') val = texte(corps);
         else if (type === 'str' || type === 'e') val = v !== undefined ? entites(v) : null;
@@ -153,7 +278,7 @@ export async function lireXlsx(donnees: Uint8Array): Promise<FeuilleLue[]> {
       lignes[num] = ligne;
     }
     for (let i = 0; i < lignes.length; i++) if (!lignes[i]) lignes[i] = [];
-    feuilles.push({ nom, lignes });
+    feuilles.push({ nom, lignes, images });
   }
   return feuilles;
 }
