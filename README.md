@@ -3,6 +3,16 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 2.1.** **Import depuis Excel** (menu Catalogue 📥, Réceptions et Fournisseurs « Importer Excel ») : deux
+façons de remplir l'application, la saisie une par une ou le fichier. Modèles Excel téléchargeables (avec mode
+d'emploi) pour le **catalogue** (code, code-barres, désignation, catégorie, prix d'achat et de vente, TVA, unité,
+seuil, stock initial, photo), les **fournisseurs** et l'**approvisionnement** (articles reçus, quantités, prix,
+fournisseur par ligne). Votre propre fichier .xlsx ou .csv convient aussi : les colonnes sont reconnues par leur nom.
+Aperçu avant import, articles retrouvés par code, code-barres ou désignation (pas de doublon en réimportant), erreurs
+indiquées avec le numéro de ligne Excel. L'approvisionnement et le stock initial créent des réceptions en brouillon à
+vérifier puis valider. **Photos en lot** : choisissez plusieurs images nommées comme les articles (code, code-barres ou
+désignation), elles sont réduites et rattachées automatiquement.
+
 **Version 2.0.** **Ouverture et clôture de la journée** : la date est celle du serveur (Abidjan). Le gérant ouvre la
 journée (proposé dès l'accueil : « Ouvrir la journée du samedi 7 novembre ? »), puis les caisses ; une fois toutes les
 caisses clôturées, il clôture la journée (bilan : ventes, tickets, caisses, écart, règlements). Ensuite plus aucune

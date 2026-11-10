@@ -41,7 +41,7 @@ export function Vignette({ chemin, taille = 44, alt = '' }: { chemin: string | n
   );
 }
 
-async function reduire(source: Blob | HTMLCanvasElement, cote = 800): Promise<Blob> {
+export async function reduire(source: Blob | HTMLCanvasElement, cote = 800): Promise<Blob> {
   let canvas: HTMLCanvasElement;
   if (source instanceof HTMLCanvasElement) canvas = source;
   else {

@@ -1714,3 +1714,29 @@ h2 .nav-badge { margin-left: 8px; vertical-align: middle; }
 .bandeau-journee-date strong { font-size: 1.05rem; }
 .bandeau-journee-date strong::first-letter { text-transform: uppercase; }
 .bandeau-journee-texte { margin: 0; }
+
+/* ---- 2.1 : import depuis Excel ---- */
+.actions-entete { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.onglets-import { margin-bottom: 12px; }
+.import-etape { display: grid; gap: 14px; }
+.import-pas { margin: 0; padding-left: 1.2em; display: grid; gap: 14px; }
+.import-pas li > .actions-demande { margin-top: 8px; }
+.import-analyse { display: grid; gap: 8px; }
+.import-analyse p { margin: 0; }
+.import-colonnes { display: flex; flex-wrap: wrap; gap: 6px; }
+.pastille-colonne { font-size: 0.8rem; padding: 3px 10px; border-radius: 999px; background: #e6f2ec; color: var(--foret); font-weight: 600; }
+.pastille-colonne.ignoree { background: var(--surface-2); color: var(--encre-douce); font-weight: 400; text-decoration: line-through; }
+.import-apercu .tableau { font-size: 0.84rem; }
+.import-apercu td { white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.import-options { display: grid; gap: 10px; }
+.import-options .case { align-items: flex-start; }
+.import-options .case input { margin-top: 2px; flex: none; }
+.import-bilan { display: grid; gap: 12px; border-top: 1px solid var(--trait, #e4e0d6); padding-top: 12px; }
+.import-bilan h2 { margin: 0; font-size: 1.1rem; }
+.import-bilan h3 { margin: 0 0 6px; font-size: 0.95rem; }
+.import-bilan .rapport-chiffres { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.chiffre-alerte { background: #fdecea !important; }
+.chiffre-alerte strong { color: #b42318; }
+.import-erreurs { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: 0.88rem; max-height: 280px; overflow-y: auto; }
+.import-photos { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.88rem; max-height: 320px; overflow-y: auto; }
+.import-photos li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }

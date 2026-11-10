@@ -124,9 +124,14 @@ export function ListeReceptions() {
         sousTitre="Entrées de marchandises fournisseurs. Le brouillon se complète au scan, puis la validation met le stock à jour."
         actions={
           peutCreer && (
-            <button className="bouton bouton-principal" onClick={() => void nouvelle()} disabled={!magasin}>
-              Nouvelle réception
-            </button>
+            <div className="actions-entete">
+              <button className="bouton bouton-discret" onClick={() => naviguer('/import?type=approvisionnement')} title="Préparer les réceptions depuis un fichier Excel">
+                📥 Importer Excel
+              </button>
+              <button className="bouton bouton-principal" onClick={() => void nouvelle()} disabled={!magasin}>
+                Nouvelle réception
+              </button>
+            </div>
           )
         }
       />

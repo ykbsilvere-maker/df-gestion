@@ -25,6 +25,7 @@ import { Sorties } from './pages/stock/Sorties';
 import { FicheInventaire, ListeInventaires } from './pages/stock/Inventaires';
 import { Mouvements } from './pages/stock/Mouvements';
 import { Fournisseurs } from './pages/stock/Fournisseurs';
+import { ImportExcel } from './pages/stock/ImportExcel';
 import { CaissePage } from './caisse/CaissePage';
 import { SuiviCaisse } from './caisse/SuiviCaisse';
 import { ExtractionVentes } from './pages/rapports/ExtractionVentes';
@@ -128,6 +129,7 @@ function Routes_() {
         <Route path="utilisateurs" element={<AvecDroit permission="utilisateurs.consulter"><Utilisateurs /></AvecDroit>} />
         <Route path="journal" element={<AvecDroit permission="audit.consulter"><Journal /></AvecDroit>} />
         <Route path="catalogue" element={<AvecDroit permission="catalogue.consulter"><Catalogue /></AvecDroit>} />
+        <Route path="import" element={<AvecDroit permission={['catalogue.creer', 'catalogue.modifier', 'fournisseurs.creer', 'achats.creer', 'stock.creer']}><ImportExcel /></AvecDroit>} />
         <Route path="catalogue/etiquettes" element={<AvecDroit permission="catalogue.consulter"><EtiquettesPage /></AvecDroit>} />
         <Route path="stock" element={<AvecDroit permission="stock.consulter"><StockPage /></AvecDroit>}>
           <Route index element={<EtatStock />} />

@@ -168,6 +168,11 @@ export function Catalogue() {
           <button className="bouton bouton-discret" onClick={() => setScan(true)} aria-label="Scanner un code-barres">
             📷
           </button>
+          {(peut('catalogue.creer') || peut('catalogue.modifier')) && (
+            <button className="bouton bouton-discret" onClick={() => naviguer('/import?type=catalogue')} aria-label="Importer depuis Excel" title="Importer depuis Excel (articles, prix, photos)">
+              📥
+            </button>
+          )}
           {peut('catalogue.creer') && (
             <button className="bouton bouton-principal" onClick={() => setEdition({})} aria-label="Nouveau produit" title="Nouveau produit">
               + Nouveau

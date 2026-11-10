@@ -107,9 +107,16 @@ export function Fournisseurs() {
         sousTitre="Fiches, achats, dettes et paiements. Touchez un fournisseur pour voir son historique et le payer."
         actions={
           (peut('fournisseurs.creer') || peut('stock.creer') || peut('achats.creer')) && (
-            <button className="bouton bouton-principal" onClick={() => setEdition({ actif: true })}>
-              Nouveau fournisseur
-            </button>
+            <div className="actions-entete">
+              {(peut('fournisseurs.creer') || peut('achats.creer')) && (
+                <button className="bouton bouton-discret" onClick={() => naviguer('/import?type=fournisseurs')} title="Ajouter la liste des fournisseurs depuis Excel">
+                  📥 Importer Excel
+                </button>
+              )}
+              <button className="bouton bouton-principal" onClick={() => setEdition({ actif: true })}>
+                Nouveau fournisseur
+              </button>
+            </div>
           )
         }
       />

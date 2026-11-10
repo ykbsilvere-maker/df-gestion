@@ -197,7 +197,20 @@ public class MainActivity extends Activity {
             if (rappelFichiers != null) rappelFichiers.onReceiveValue(null);
             rappelFichiers = rappel;
             try {
-                startActivityForResult(parametres.createIntent(), CODE_FICHIERS);
+                Intent choix = parametres.createIntent();
+                // Plusieurs fichiers d'un coup (photos du catalogue) : Android ne l'active pas tout seul.
+                if (parametres.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE) {
+                    choix.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                }
+                // Tableurs : certains gestionnaires de fichiers ne connaissent pas le type .xlsx.
+                String[] types = parametres.getAcceptTypes();
+                if (types != null && types.length > 1) {
+                    choix.setType("*/*");
+                    java.util.ArrayList<String> mimes = new java.util.ArrayList<>();
+                    for (String t : types) if (t != null && t.contains("/")) mimes.add(t);
+                    if (!mimes.isEmpty()) choix.putExtra(Intent.EXTRA_MIME_TYPES, mimes.toArray(new String[0]));
+                }
+                startActivityForResult(choix, CODE_FICHIERS);
             } catch (ActivityNotFoundException e) {
                 rappelFichiers = null;
                 rappel.onReceiveValue(null);
@@ -224,7 +237,15 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int code, int resultat, Intent donnees) {
         super.onActivityResult(code, resultat, donnees);
         if (code == CODE_FICHIERS && rappelFichiers != null) {
-            rappelFichiers.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultat, donnees));
+            Uri[] choisis = null;
+            if (resultat == RESULT_OK && donnees != null && donnees.getClipData() != null) {
+                android.content.ClipData clip = donnees.getClipData();
+                choisis = new Uri[clip.getItemCount()];
+                for (int i = 0; i < clip.getItemCount(); i++) choisis[i] = clip.getItemAt(i).getUri();
+            } else {
+                choisis = WebChromeClient.FileChooserParams.parseResult(resultat, donnees);
+            }
+            rappelFichiers.onReceiveValue(choisis);
             rappelFichiers = null;
         }
     }
