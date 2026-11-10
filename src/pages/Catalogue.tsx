@@ -115,7 +115,6 @@ export function Catalogue() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terme, page, avecArretes, filtreCategorie]);
 
-  /** Traitement d'un code lu (lecteur USB/Bluetooth ou caméra) ou d'une saisie validée par Entrée. */
   // Lecteur de codes-barres : un scan cherche l'article, où que soit le curseur.
   useDouchette((code) => {
     setTerme(code);
@@ -123,6 +122,7 @@ export function Catalogue() {
     void validerSaisie(code);
   }, !edition && !scan);
 
+  /** Traitement d'un code lu (lecteur USB/Bluetooth ou caméra) ou d'une saisie validée par Entrée. */
   async function validerSaisie(saisie: string) {
     const t = saisie.trim();
     setCodeInconnu('');
