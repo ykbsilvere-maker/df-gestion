@@ -6,7 +6,7 @@ import { useSession } from '../../lib/session';
 import { messageErreur } from '../../lib/format';
 import { montant } from '../../lib/argent';
 import { quantite, useMagasins } from '../../lib/stock';
-import { TYPES_COMPTE, type TypeCompte } from '../../lib/tresorerie';
+import { type TypeCompte } from '../../lib/tresorerie';
 import { Alerte, Champ, EnTetePage, MontantFort, Pastille, Vide } from '../../components/ui';
 
 interface Ligne {
