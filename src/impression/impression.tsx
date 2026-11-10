@@ -77,6 +77,36 @@ export function FournisseurImpression({ children }: { children: ReactNode }) {
   );
 }
 
+/** Imprime la page affichée (liste, état, journal) sur A4, sans le menu ni les filtres. */
+export async function imprimerPageA4(titre?: string) {
+  document.getElementById('regle-page-impression')?.remove();
+  const style = document.createElement('style');
+  style.id = 'regle-page-impression';
+  style.textContent = '@page { size: A4 portrait; margin: 12mm; }';
+  document.head.appendChild(style);
+  document.body.classList.add('impression-page');
+  const ancien = document.title;
+  if (titre) document.title = titre;
+  const fin = () => {
+    document.body.classList.remove('impression-page');
+    document.title = ancien;
+  };
+  const android = pontAndroid();
+  if (android) {
+    android.imprimer(titre || ancien || 'DF Gestion');
+    setTimeout(fin, 1500);
+    return;
+  }
+  window.addEventListener('afterprint', fin, { once: true });
+  window.print();
+  setTimeout(fin, 60000);
+}
+
+/** Feuille A4 entière pour un ticket ou un rapport de caisse (au lieu du rouleau). */
+export function PageA4({ children }: { children: ReactNode }) {
+  return <div className="page-a4-pleine">{children}</div>;
+}
+
 export function useImpression(): EtatImpression {
   return useContext(Contexte);
 }

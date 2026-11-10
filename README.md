@@ -3,6 +3,14 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 2.6.** **Code pour ouvrir et clôturer la caisse** : le code d'entrée de la personne connectée (ou son mot de
+passe) est demandé avant chaque ouverture et chaque clôture. **Logos des moyens de règlement** (Wave, Orange Money, MTN
+MoMo, Moov Money, carte, virement, espèces) à l'encaissement. **Piste d'audit** : libellés en clair, résumé de chaque
+opération, appareil et navigateur des connexions, raccourcis (aujourd'hui, 7 jours, connexions, caisses), export Excel
+et impression A4. **Impressions A4** : bouton 🖨️ dans l'en-tête pour imprimer n'importe quelle page, reçu et rapports
+X / Z sur feuille A4 entière. **Comptabilité guidée** : « Saisir une opération » en langage courant (apport, prêt,
+remboursement, achat de matériel, facture à payer…), sans connaître débit ni crédit.
+
 **Version 2.5.** **Dynamisme façon macOS** : boutons, tuiles et onglets qui s'enfoncent au clic puis reviennent avec
 un léger rebond, icônes du menu qui grossissent au survol (effet Dock), pages qui glissent à l'ouverture, fenêtres à
 ressort sur fond flouté, barres en verre dépoli, halo de sélection sur les champs. Les animations se coupent si

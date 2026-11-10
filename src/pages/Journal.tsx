@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
-import { dateHeure, differences, libelleAction, messageErreur } from '../lib/format';
+import { appareilLisible, dateHeure, differences, iconeAction, libelleAction, libelleChamp, messageErreur } from '../lib/format';
+import { imprimerPageA4 } from '../impression/impression';
+import { classeurXlsx, telechargerFichier, TYPE_XLSX } from '../lib/excel';
 import type { LigneAudit, Profil } from '../lib/types';
 import { Alerte, Champ, EnTetePage, Vide } from '../components/ui';
 
@@ -10,6 +12,14 @@ const PAR_PAGE = 50;
 const FAMILLES: { valeur: string; libelle: string }[] = [
   { valeur: '', libelle: 'Toutes les opérations' },
   { valeur: 'session.', libelle: 'Connexions et déconnexions' },
+  { valeur: 'connexion.', libelle: 'Connexions par code d’entrée' },
+  { valeur: 'journee.', libelle: 'Ouverture et clôture de la journée' },
+  { valeur: 'sessions_caisse.', libelle: 'Ouverture et clôture des caisses' },
+  { valeur: 'ventes.', libelle: 'Ventes annulées' },
+  { valeur: 'produits.', libelle: 'Articles du catalogue' },
+  { valeur: 'receptions.', libelle: 'Réceptions de marchandises' },
+  { valeur: 'inventaires.', libelle: 'Inventaires' },
+  { valeur: 'import.', libelle: 'Imports Excel' },
   { valeur: 'membres.', libelle: 'Utilisateurs' },
   { valeur: 'membre_', libelle: 'Périmètres et droits individuels' },
   { valeur: 'invitations.', libelle: 'Invitations' },
@@ -22,8 +32,27 @@ function valeurLisible(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
   if (typeof v === 'boolean') return v ? 'oui' : 'non';
   if (typeof v === 'object') return JSON.stringify(v);
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:/.test(v)) return dateHeure(v);
   return String(v);
 }
+
+/** Résumé en une ligne, lisible sans ouvrir le détail. */
+function resume(l: LigneAudit): string {
+  const c = l.contexte ?? {};
+  if (/^(session|connexion)\./.test(l.action)) {
+    const appareil = typeof c.appareil === 'string' ? c.appareil : '';
+    return [appareil, appareilLisible(c.navigateur as string | undefined)].filter((x) => x && x !== 'Navigateur').join(' — ') || (l.action.includes('code_entree') ? 'Code établissement + matricule' : '');
+  }
+  if (typeof c.motif === 'string') return `Motif : ${c.motif}`;
+  const etat = l.apres ?? l.avant ?? {};
+  const nom = etat.designation ?? etat.nom ?? etat.libelle ?? etat.nom_complet ?? etat.entreprise ?? etat.reference;
+  if (l.action === 'import.catalogue') return `${etat.crees ?? 0} créés · ${etat.mis_a_jour ?? 0} mis à jour · ${etat.erreurs ?? 0} erreurs`;
+  if (l.action === 'journee.cloturee') return `${etat.nombre_ventes ?? 0} ventes · ${Number(etat.total_ventes ?? 0).toLocaleString('fr-FR')} F`;
+  const diff = l.avant && l.apres ? differences(l.avant, l.apres).map((d) => libelleChamp(d.champ)).slice(0, 3).join(', ') : '';
+  return [typeof nom === 'string' ? nom : '', diff && `modifié : ${diff}`].filter(Boolean).join(' — ');
+}
+
+const isoJour = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 export function Journal() {
   const { organisation } = useSession();
@@ -77,13 +106,52 @@ export function Journal() {
     fn();
     setPage(0);
   };
+  const periode = (jours: number) =>
+    filtre(() => {
+      const fin = new Date();
+      const debut = new Date(fin.getTime() - (jours - 1) * 86400000);
+      setDu(isoJour(debut));
+      setAu(isoJour(fin));
+    });
+
+  /** Export de la page affichée (avec les filtres) pour l'archiver ou la remettre à un contrôleur. */
+  function exporter() {
+    telechargerFichier(
+      `Piste-audit-${isoJour(new Date())}.xlsx`,
+      TYPE_XLSX,
+      classeurXlsx([
+        {
+          nom: 'Piste d’audit',
+          entetes: ['Date et heure', 'Opération', 'Utilisateur', 'Détail', 'Référence'],
+          lignes: lignes.map((l) => [dateHeure(l.created_at), libelleAction(l.action), nom(l.user_id), resume(l), `#${l.id}`]),
+          largeurs: [20, 36, 26, 60, 12],
+        },
+      ]),
+    );
+  }
 
   return (
     <>
       <EnTetePage
-        icone="📜" titre="Journal d’audit"
-        sousTitre="Toutes les opérations sensibles, horodatées (heure d’Abidjan). Ce journal ne peut être ni modifié ni effacé."
+        icone="📜" titre="Piste d’audit"
+        sousTitre="Qui a fait quoi, quand et depuis quel appareil : connexions, caisses, journées, articles, stock, utilisateurs. Horodaté (heure d’Abidjan), ni modifiable ni effaçable."
+        actions={
+          <div className="actions-entete">
+            <button type="button" className="bouton bouton-discret" onClick={exporter} disabled={!lignes.length}>⬇️ Excel</button>
+            <button type="button" className="bouton bouton-discret" onClick={() => void imprimerPageA4('Piste d’audit')} disabled={!lignes.length}>🖨️ Imprimer (A4)</button>
+          </div>
+        }
       />
+      <div className="audit-raccourcis">
+        <button type="button" className="bouton bouton-discret bouton-petit" onClick={() => periode(1)}>Aujourd’hui</button>
+        <button type="button" className="bouton bouton-discret bouton-petit" onClick={() => periode(7)}>7 jours</button>
+        <button type="button" className="bouton bouton-discret bouton-petit" onClick={() => periode(30)}>30 jours</button>
+        <button type="button" className={`bouton bouton-petit ${famille === 'session.' ? 'bouton-principal' : 'bouton-discret'}`} onClick={() => filtre(() => setFamille(famille === 'session.' ? '' : 'session.'))}>🔑 Connexions</button>
+        <button type="button" className={`bouton bouton-petit ${famille === 'sessions_caisse.' ? 'bouton-principal' : 'bouton-discret'}`} onClick={() => filtre(() => setFamille(famille === 'sessions_caisse.' ? '' : 'sessions_caisse.'))}>🛒 Caisses</button>
+        {(famille || utilisateur || du || au) && (
+          <button type="button" className="bouton-lien" onClick={() => filtre(() => { setFamille(''); setUtilisateur(''); setDu(''); setAu(''); })}>Tout afficher</button>
+        )}
+      </div>
       <Alerte>{erreur}</Alerte>
 
       <section className="carte filtres">
@@ -131,7 +199,11 @@ export function Journal() {
                     aria-expanded={ouverte === l.id}
                   >
                     <time>{dateHeure(l.created_at)}</time>
-                    <span className="journal-action">{libelleAction(l.action)}</span>
+                    <span className="journal-action">
+                      <span aria-hidden>{iconeAction(l.action)} </span>
+                      {libelleAction(l.action)}
+                      {resume(l) && <small>{resume(l)}</small>}
+                    </span>
                     <span className="journal-auteur">{nom(l.user_id)}</span>
                   </button>
                   {ouverte === l.id && (
@@ -144,7 +216,7 @@ export function Journal() {
                       {l.contexte && !motif && (
                         <p className="secondaire">
                           {Object.entries(l.contexte)
-                            .map(([k, v]) => `${k} : ${valeurLisible(v)}`)
+                            .map(([k, v]) => `${libelleChamp(k)} : ${k === 'navigateur' ? appareilLisible(String(v)) || valeurLisible(v) : valeurLisible(v)}`)
                             .join(' · ')}
                         </p>
                       )}
@@ -160,7 +232,7 @@ export function Journal() {
                           <tbody>
                             {diff.map((c) => (
                               <tr key={c.champ}>
-                                <td>{c.champ}</td>
+                                <td>{libelleChamp(c.champ)}</td>
                                 <td>{valeurLisible(c.avant)}</td>
                                 <td>{valeurLisible(c.apres)}</td>
                               </tr>

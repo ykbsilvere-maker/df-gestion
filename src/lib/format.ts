@@ -72,10 +72,66 @@ const LIBELLES_ACTIONS: Record<string, string> = {
   'compte.mot_de_passe_reinitialise': 'Mot de passe réinitialisé',
   'plateforme.admin_general': 'Administrateur général désigné',
   'plateforme.inscription_libre': 'Règle d’inscription modifiée',
+  'connexion.code_entree': 'Connexion avec le code d’entrée',
+  'connexion.code_entree_refuse': 'Code d’entrée refusé (plusieurs essais)',
+  'journee.ouverte': 'Ouverture de la journée',
+  'journee.cloturee': 'Clôture de la journée',
+  'journee.reouverte': 'Réouverture de la journée',
+  'import.catalogue': 'Import d’articles depuis Excel',
+  'demande.soumise': 'Demande d’ouverture envoyée',
+  'demande.valider': 'Demande d’ouverture validée',
+  'demande.refuser': 'Demande d’ouverture refusée',
+  'demande.ajourner': 'Demande d’ouverture ajournée',
+  'depenses.insert': 'Dépense enregistrée',
+  'depenses.update': 'Dépense modifiée ou annulée',
+  'virements.insert': 'Virement entre comptes',
+  'clients.insert': 'Création de client',
+  'clients.update': 'Modification de client',
 };
 
+const VERBES: Record<string, string> = { insert: 'Création', update: 'Modification', delete: 'Suppression' };
+
 export function libelleAction(code: string): string {
-  return LIBELLES_ACTIONS[code] ?? code;
+  if (LIBELLES_ACTIONS[code]) return LIBELLES_ACTIONS[code]!;
+  // Opération sans libellé prévu : « ventes_lignes.insert » → « Création — ventes lignes ».
+  const [objet = '', verbe = ''] = code.split('.');
+  const nom = objet.replace(/_/g, ' ');
+  return VERBES[verbe] ? `${VERBES[verbe]} — ${nom}` : `${nom.charAt(0).toUpperCase()}${nom.slice(1)}${verbe ? ` : ${verbe.replace(/_/g, ' ')}` : ''}`;
+}
+
+/** Icône de la famille d'une opération du journal. */
+export function iconeAction(code: string): string {
+  if (/refuse/.test(code)) return '⛔';
+  if (/^(session|connexion)\./.test(code)) return code.includes('deconnexion') ? '🚪' : '🔑';
+  if (/^journee\./.test(code)) return '📅';
+  if (/^(sessions_caisse|caisses|ventes|moyens_paiement)/.test(code)) return '🛒';
+  if (/^(membres|membre_|invitations|compte)/.test(code)) return '👤';
+  if (/^(produits|categories|codes_barres|import)/.test(code)) return '🛍️';
+  if (/^(receptions|transferts|inventaires|fournisseurs)/.test(code)) return '📦';
+  if (/^(depenses|virements|encaissements|paiements)/.test(code)) return '💰';
+  return '⚙️';
+}
+
+/** « Android · Chrome », « Windows · Edge »… à partir de la signature du navigateur. */
+export function appareilLisible(ua: string | undefined | null): string {
+  if (!ua) return '';
+  const systeme = /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iPhone / iPad' : /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : '';
+  const appli = /DFGestion|; wv\)/.test(ua) ? 'Application DF Gestion' : /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Navigateur';
+  return [systeme, appli].filter(Boolean).join(' · ');
+}
+
+const LIBELLES_CHAMPS: Record<string, string> = {
+  nom: 'Nom', designation: 'Désignation', prix_vente: 'Prix de vente', prix_achat: 'Prix d’achat', actif: 'Actif', statut: 'Statut',
+  role_code: 'Rôle', telephone: 'Téléphone', email: 'E-mail', adresse: 'Adresse', taux_tva: 'TVA (%)', seuil_min: 'Stock minimum',
+  seuil_max: 'Stock maximum', categorie_id: 'Catégorie', fournisseur_id: 'Fournisseur', libelle: 'Libellé', code: 'Code', unite: 'Unité',
+  fond_initial: 'Fond de caisse', especes_comptees: 'Espèces comptées', ecart: 'Écart', motif_ecart: 'Motif de l’écart', total: 'Total',
+  cloturee_le: 'Clôturée le', ouverte_le: 'Ouverte le', caissier_id: 'Caissier', magasin_id: 'Magasin', caisse_id: 'Caisse', montant: 'Montant',
+  motif: 'Motif', note: 'Note', reference: 'Référence', photo_path: 'Photo', marque: 'Marque', gere_peremption: 'Suivi de péremption',
+  date_reception: 'Date de réception', derniere_connexion: 'Dernière connexion', crees: 'Créés', mis_a_jour: 'Mis à jour', erreurs: 'Erreurs',
+  appareil: 'Appareil', navigateur: 'Navigateur', entreprise: 'Entreprise', nombre_ventes: 'Nombre de ventes', total_ventes: 'Total des ventes',
+};
+export function libelleChamp(c: string): string {
+  return LIBELLES_CHAMPS[c] ?? c.replace(/_id$/, '').replace(/_/g, ' ').replace(/^./, (x) => x.toUpperCase());
 }
 
 /** Champs modifiés entre deux états d'une ligne (pour le détail du journal). */

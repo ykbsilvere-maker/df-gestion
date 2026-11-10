@@ -1,3 +1,4 @@
+import { SaisieGuidee } from './SaisieGuidee';
 import { Fragment, useCallback, useEffect, useState, type FormEvent } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
@@ -62,6 +63,7 @@ export function Comptabilite() {
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
+  const [guide, setGuide] = useState(false);
   const [saisie, setSaisie] = useState<{ date: string; journal: string; libelle: string; piece: string; justificatif: string; lignes: { compte: string; debit: string; credit: string }[] } | null>(null);
 
   const charger = useCallback(async () => {
@@ -198,11 +200,16 @@ export function Comptabilite() {
           <>
             {['journal', 'balance', 'grand_livre'].includes(onglet) && <button className="bouton bouton-discret" onClick={exporter}>Excel</button>}
             {peut('comptabilite.creer') && (
+              <button className="bouton bouton-principal" onClick={() => setGuide(true)}>
+                ✨ Saisir une opération
+              </button>
+            )}
+            {peut('comptabilite.creer') && (
               <button
-                className="bouton bouton-principal"
+                className="bouton bouton-discret"
                 onClick={() => setSaisie({ date: aujourdhui(), journal: 'OD', libelle: '', piece: '', justificatif: '', lignes: [{ compte: '', debit: '', credit: '' }, { compte: '', debit: '', credit: '' }] })}
               >
-                Écriture manuelle
+                Écriture (débit / crédit)
               </button>
             )}
           </>
@@ -465,6 +472,23 @@ export function Comptabilite() {
           </table>
         </section>
       )}
+
+      <Fenetre titre="Saisir une opération (sans débit ni crédit)" ouverte={guide} onFermer={() => setGuide(false)} large>
+        {guide && (
+          <SaisieGuidee
+            org={org}
+            onFaite={() => {
+              setGuide(false);
+              setInfo('Opération enregistrée dans la comptabilité.');
+              void charger();
+            }}
+            onExpert={() => {
+              setGuide(false);
+              setSaisie({ date: aujourdhui(), journal: 'OD', libelle: '', piece: '', justificatif: '', lignes: [{ compte: '', debit: '', credit: '' }, { compte: '', debit: '', credit: '' }] });
+            }}
+          />
+        )}
+      </Fenetre>
 
       <Fenetre titre="Écriture manuelle" ouverte={!!saisie} onFermer={() => setSaisie(null)} large>
         {saisie && (

@@ -87,7 +87,7 @@ export function SuiviCaisse() {
   const [saisie, setSaisie] = useState<{ type: 'depense' | 'sortie' | 'apport'; montant: string; motif: string; poste: string; compte: string; reference: string } | null>(null);
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
-  const { imprimerTicket, format } = useImpressionCaisse();
+  const { imprimerTicket, imprimerA4, format } = useImpressionCaisse();
   const { identite } = useIdentite();
 
   // Sans session indiquée : la session ouverte de la caisse choisie sur cet appareil.
@@ -146,12 +146,12 @@ export function SuiviCaisse() {
     await charger();
   }
 
-  async function reimprimerZ(c: Cloture) {
+  async function reimprimerZ(c: Cloture, a4 = false) {
     const { data, error } = await supabase.rpc('rapport_session', { p_session: c.id });
     if (error) return setErreur(messageErreur(error));
     if (!identite) return;
-    await imprimerTicket(
-      <RapportCaisse identite={identite} rapport={data as RapportSession} format={format} caisse={c.caisse} caissier={c.caissier ?? undefined} ouverteLe={c.ouverte_le} />,
+    await (a4 ? imprimerA4 : imprimerTicket)(
+      <RapportCaisse identite={identite} rapport={data as RapportSession} format={a4 ? 'thermique_80' : format} caisse={c.caisse} caissier={c.caissier ?? undefined} ouverteLe={c.ouverte_le} />,
     );
   }
 
@@ -391,7 +391,8 @@ export function SuiviCaisse() {
                         {c.motif_ecart && <div className="secondaire">{c.motif_ecart}</div>}
                       </td>
                       <td>
-                        <button className="bouton-lien" onClick={() => void reimprimerZ(c)}>Réimprimer</button>
+                        <button className="bouton-lien" onClick={() => void reimprimerZ(c)}>Réimprimer</button>{' · '}
+                        <button className="bouton-lien" onClick={() => void reimprimerZ(c, true)}>A4</button>
                       </td>
                     </tr>
                   ))}

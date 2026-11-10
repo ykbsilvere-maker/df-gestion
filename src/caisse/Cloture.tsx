@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { clavierMontant, deviseCourante, libelleCoupure, lireMontant, montant } from '../lib/argent';
 import { messageErreur } from '../lib/format';
 import { Alerte, Champ } from '../components/ui';
+import { ConfirmerCode } from '../components/ConfirmerCode';
 import type { RapportSession } from '../impression/RapportCaisse';
 
 /**
@@ -45,6 +46,7 @@ export function Cloture({
   const bloque = enAttente > 0;
   const possible = !!rapport && compte != null && (!motifRequis || motif.trim().length >= 3) && !bloque && !enCours;
 
+  const [confirmation, setConfirmation] = useState(false);
   async function cloturer() {
     if (!possible || compte == null) return;
     setEnCours(true);
@@ -155,11 +157,21 @@ export function Cloture({
             </Champ>
           )}
 
-          <button type="button" className="bouton bouton-principal bouton-plein" disabled={!possible} onClick={() => void cloturer()}>
+          <button type="button" className="bouton bouton-principal bouton-plein" disabled={!possible} onClick={() => setConfirmation(true)}>
             {enCours ? 'Clôture…' : 'Clôturer et imprimer le rapport Z'}
           </button>
         </>
       )}
+      <ConfirmerCode
+        ouverte={confirmation}
+        titre="Clôturer la caisse"
+        consigne="Saisissez votre code d’entrée pour confirmer la clôture de la caisse."
+        onFermer={() => setConfirmation(false)}
+        onValide={() => {
+          setConfirmation(false);
+          void cloturer();
+        }}
+      />
     </div>
   );
 }

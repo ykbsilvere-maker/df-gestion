@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { messageErreur } from '../lib/format';
 import { Alerte } from '../components/ui';
 import type { MoyenPaiement } from './local';
+import { LogoMoyen } from '../components/LogoMoyen';
 
 /** Réglage des moyens de règlement proposés à la caisse (actif, référence obligatoire). */
 export function MoyensReglement({ org, modifiable }: { org: string; modifiable: boolean }) {
@@ -46,7 +47,7 @@ export function MoyensReglement({ org, modifiable }: { org: string; modifiable: 
         <tbody>
           {moyens.map((m) => (
             <tr key={m.id} className={m.actif ? '' : 'ligne-inactive'}>
-              <td>{m.libelle}</td>
+              <td><LogoMoyen moyen={m} />{m.libelle}</td>
               <td>
                 <label className="case">
                   <input

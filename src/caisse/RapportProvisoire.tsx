@@ -27,7 +27,7 @@ export function RapportProvisoire({
   const [rapport, setRapport] = useState<RapportSession | null>(null);
   const [erreur, setErreur] = useState('');
   const { identite } = useIdentite();
-  const { imprimerTicket, format } = useImpressionCaisse();
+  const { imprimerTicket, imprimerA4, format } = useImpressionCaisse();
 
   useEffect(() => {
     let actif = true;
@@ -121,6 +121,19 @@ export function RapportProvisoire({
         }
       >
         🖨 Imprimer le rapport X
+      </button>
+      <button
+        type="button"
+        className="bouton bouton-discret bouton-plein"
+        disabled={!identite}
+        onClick={() =>
+          identite &&
+          void imprimerA4(
+            <RapportCaisse identite={identite} rapport={rapport} format="thermique_80" caisse={caisse} magasin={magasin} caissier={caissier} ouverteLe={ouverteLe} />,
+          )
+        }
+      >
+        📄 Rapport X sur page A4
       </button>
     </div>
   );

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useIdentite } from '../lib/identite';
 import { useSession } from '../lib/session';
 import { FeuilleA4Six } from '../impression/Recu';
-import { caseSuivante, definirCaseSuivante, memoriserCaseSuivante, useImpression } from '../impression/impression';
+import { caseSuivante, definirCaseSuivante, memoriserCaseSuivante, PageA4, useImpression } from '../impression/impression';
 
 /**
  * Impression des tickets et rapports au format choisi par l'entreprise :
@@ -44,6 +44,14 @@ export function useImpressionCaisse() {
     [identite, format, org, imprimer],
   );
 
+  /** Même document sur une feuille A4 entière (imprimante de bureau, archivage, PDF). */
+  const imprimerA4 = useCallback(
+    async (contenu: ReactNode) => {
+      await imprimer(<PageA4>{contenu}</PageA4>, 'a4');
+    },
+    [imprimer],
+  );
+
   const choisirCase = useCallback(
     (n: number) => {
       definirCaseSuivante(org, n);
@@ -52,5 +60,5 @@ export function useImpressionCaisse() {
     [org],
   );
 
-  return { imprimerTicket, format, caseA4, choisirCase };
+  return { imprimerTicket, imprimerA4, format, caseA4, choisirCase };
 }

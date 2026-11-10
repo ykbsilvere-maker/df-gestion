@@ -1884,3 +1884,44 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* ---- 2.6 : logos des moyens de règlement ---- */
+.logo-moyen { width: 22px; height: 22px; border-radius: 6px; object-fit: cover; vertical-align: middle; margin-right: 6px; box-shadow: 0 0 0 1px rgba(0,0,0,.08); flex: none; }
+.logo-moyen.grand { width: 30px; height: 30px; border-radius: 8px; }
+.paiement-moyens .bouton { display: inline-flex; align-items: center; }
+.confirmer-code { display: grid; gap: 12px; justify-items: center; } .confirmer-code form { width: 100%; }
+
+/* ---- 2.6 : piste d'audit ---- */
+.audit-raccourcis { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+.journal-action small { display: block; font-weight: 400; color: var(--encre-douce); font-size: 0.8rem; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; }
+@media print {
+  /* Impression directe d'une page de l'application (piste d'audit, états) sur A4. */
+  body.impression-page > #root { display: block !important; }
+  body.impression-page .app { display: block; height: auto; overflow: visible; }
+  body.impression-page .app-menu, body.impression-page .app-entete, body.impression-page .app-onglets, body.impression-page .filtres,
+  body.impression-page .audit-raccourcis, body.impression-page .pagination, body.impression-page .actions-entete, body.impression-page #zone-impression { display: none !important; }
+  body.impression-page .app-contenu { overflow: visible; height: auto; padding: 0; }
+  body.impression-page .carte { box-shadow: none; border: 0; padding: 0; }
+  body.impression-page * { animation: none !important; }
+  body.impression-page .bouton, body.impression-page .bouton-lien, body.impression-page .onglets, body.impression-page .barre-figee,
+  body.impression-page dialog:not([open]) { display: none !important; }
+  body.impression-page, body.impression-page #root, body.impression-page .app-contenu > * { height: auto !important; overflow: visible !important; }
+  body.impression-page table { font-size: 9.5pt; } body.impression-page tr { break-inside: avoid; }
+  body.impression-page .defilement-horizontal { overflow: visible !important; }
+}
+/* Ticket ou rapport de caisse agrandi sur une feuille A4 entière. */
+.page-a4-pleine { width: 210mm; min-height: 296mm; padding: 16mm 18mm; box-sizing: border-box; background: #fff; }
+.page-a4-pleine .recu { width: 100% !important; max-width: none !important; font-size: 12pt !important; padding: 0 !important; }
+.page-a4-pleine .recu img { max-height: 28mm; }
+
+/* ---- 2.6 : saisie comptable guidée ---- */
+.guide-compta { display: grid; gap: 12px; }
+.guide-compta h3 { margin: 0; font-size: 1.1rem; }
+.guide-choix { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.guide-carte { display: flex; gap: 12px; align-items: flex-start; text-align: left; padding: 12px 14px; border: 1px solid var(--trait); border-radius: 16px; background: var(--surface); cursor: pointer; font: inherit; transition: transform .28s var(--ressort), box-shadow .25s, border-color .2s; }
+.guide-carte:hover { border-color: var(--accent); box-shadow: 0 8px 22px rgba(16,24,40,.08); transform: translateY(-2px); }
+.guide-carte:active { transform: scale(.97); }
+.guide-carte small { display: block; color: var(--encre-douce); font-size: 0.8rem; margin-top: 2px; }
+.guide-icone { font-size: 1.6rem; line-height: 1; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: var(--accent-clair); flex: none; }
+.guide-resume { background: var(--vert-clair); border-radius: 14px; padding: 10px 14px; }
+.guide-resume details { margin-top: 6px; } .guide-resume summary { cursor: pointer; font-size: 0.85rem; color: var(--encre-douce); }

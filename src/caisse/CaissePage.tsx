@@ -10,6 +10,7 @@ import type { Caisse } from '../lib/types';
 import { Alerte, Champ, Fenetre, Ico, Pastille, Vide } from '../components/ui';
 import { Scanner } from '../components/Scanner';
 import { useDouchette } from '../lib/douchette';
+import { ConfirmerCode } from '../components/ConfirmerCode';
 import { ChoixCase, Recu, type VenteRecu } from '../impression/Recu';
 import { RapportCaisse, type RapportSession } from '../impression/RapportCaisse';
 import { useImpressionCaisse } from './impressionCaisse';
@@ -470,6 +471,7 @@ function FormulaireOuverture({ org, caisse, onOuverte }: { org: string; caisse: 
   const [erreur, setErreur] = useState('');
   const [enCours, setEnCours] = useState(false);
   const [verifie, setVerifie] = useState(false);
+  const [confirmation, setConfirmation] = useState(false);
   const fond = totalBilletage(nombres);
   const choisi = caisse.caissiers.find((c) => c.user_id === caissier);
 
@@ -516,9 +518,19 @@ function FormulaireOuverture({ org, caisse, onOuverte }: { org: string; caisse: 
           Nous avons compté ensemble : <strong>{montant(fond)}</strong> remis à {choisi ? (choisi.moi ? 'moi-même' : choisi.nom) : '…'}.
         </span>
       </label>
-      <button type="button" className="bouton bouton-principal bouton-plein bouton-ouvrir" disabled={!verifie || enCours || !choisi} onClick={() => void ouvrir()}>
+      <button type="button" className="bouton bouton-principal bouton-plein bouton-ouvrir" disabled={!verifie || enCours || !choisi} onClick={() => setConfirmation(true)}>
         {enCours ? 'Ouverture…' : `Valider et ouvrir ${caisse.nom}`}
       </button>
+      <ConfirmerCode
+        ouverte={confirmation}
+        titre={`Ouvrir ${caisse.nom}`}
+        consigne="Saisissez votre code d’entrée pour confirmer l’ouverture de la caisse."
+        onFermer={() => setConfirmation(false)}
+        onValide={() => {
+          setConfirmation(false);
+          void ouvrir();
+        }}
+      />
     </div>
   );
 }
@@ -594,7 +606,7 @@ function PointDeVente({
   const { peut } = useSession();
   const { identite } = useIdentite();
   const enLigne = useEnLigne();
-  const { imprimerTicket, format, caseA4, choisirCase } = useImpressionCaisse();
+  const { imprimerTicket, imprimerA4, format, caseA4, choisirCase } = useImpressionCaisse();
 
   const [produits, setProduits] = useState<ProduitCaisse[]>([]);
   const [catalogueHorsLigne, setCatalogueHorsLigne] = useState<string | null>(null);
@@ -1106,6 +1118,13 @@ function PointDeVente({
                   ))}
                   <button type="button" className="bouton-lien" onClick={() => void imprimerVente(derniere)}>
                     Réimprimer le ticket
+                  </button>
+                  <button
+                    type="button"
+                    className="bouton-lien"
+                    onClick={() => identite && void imprimerA4(<Recu identite={identite} vente={versRecu(derniere)} format="thermique_80" />)}
+                  >
+                    Reçu sur page A4
                   </button>
                 </div>
               )}

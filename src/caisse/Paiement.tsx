@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { clavierMontant, deviseCourante, lireMontant, montant, saisieMontant } from '../lib/argent';
-import { Alerte, Ico } from '../components/ui';
+import { Alerte } from '../components/ui';
+import { LogoMoyen } from '../components/LogoMoyen';
 import type { MoyenPaiement, ReglementVente } from './local';
 
 interface Saisie {
@@ -139,7 +140,7 @@ export function Paiement({
           <div key={i} className="paiement-ligne">
             <div className="paiement-moyen">
               <strong>
-                <Ico>{iconeMoyen(l.moyen)}</Ico>
+                <LogoMoyen moyen={l.moyen} grand />
                 {l.moyen.libelle}
               </strong>
               <button type="button" className="bouton-lien lien-danger" onClick={() => retirer(i)}>
@@ -199,7 +200,7 @@ export function Paiement({
       <div className="paiement-moyens" aria-label="Ajouter un moyen de règlement">
         {actifs.map((m) => (
           <button key={m.id} type="button" className="bouton bouton-discret" onClick={() => ajouter(m)}>
-            + <Ico>{iconeMoyen(m)}</Ico>
+            <LogoMoyen moyen={m} />
             {m.libelle}
           </button>
         ))}

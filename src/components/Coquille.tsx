@@ -1,3 +1,4 @@
+import { imprimerPageA4 } from '../impression/impression';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { VerrouInactivite, verrouillerMaintenant } from './VerrouInactivite';
@@ -152,6 +153,11 @@ export function Coquille() {
           {page?.libelle}
         </div>
         <div className="app-entete-actions">
+          {!pleinEcran && (
+            <button type="button" className="entete-bouton" onClick={() => void imprimerPageA4()} title="Imprimer cette page (A4)" aria-label="Imprimer cette page sur A4">
+              🖨️
+            </button>
+          )}
           <button type="button" className="entete-bouton" onClick={verrouillerMaintenant} title="Verrouiller (code d’entrée)" aria-label="Verrouiller">
             🔒
           </button>
