@@ -10,6 +10,8 @@ export function messageErreur(e: unknown): string {
   if (/row-level security|permission denied/i.test(brut)) return 'Vous n’avez pas les droits pour cette opération.';
   if (/duplicate key.*code/i.test(brut)) return 'Ce code est déjà utilisé.';
   if (/check constraint.*code/i.test(brut)) return 'Code invalide : 2 à 20 caractères, majuscules, chiffres, - ou _.';
+  if (/Could not find the function|schema cache/i.test(brut))
+    return 'Le serveur n’est pas encore à jour pour cette fonction : la base de données doit être mise à jour (contactez l’administrateur).';
   if (/Failed to fetch|NetworkError/i.test(brut)) return 'Connexion Internet indisponible. Réessayez.';
   if (/organisations_devise_check/.test(brut)) return 'Monnaie non prise en charge.';
   // Montants renvoyés par le serveur en plus petite unité (« 1250 F ») : affichés dans la monnaie de l'entreprise.
