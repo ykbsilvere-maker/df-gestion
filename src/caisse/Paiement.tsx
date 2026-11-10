@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { clavierMontant, deviseCourante, lireMontant, montant, saisieMontant } from '../lib/argent';
-import { Alerte } from '../components/ui';
+import { Alerte, Ico } from '../components/ui';
 import { LogoMoyen } from '../components/LogoMoyen';
 import type { MoyenPaiement, ReglementVente } from './local';
 
