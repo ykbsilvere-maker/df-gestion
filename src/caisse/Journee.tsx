@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase';
 import { messageErreur } from '../lib/format';
 import { montant } from '../lib/argent';
 import { Alerte, Fenetre, Pastille } from '../components/ui';
+import { ConfirmerCode } from '../components/ConfirmerCode';
+import { useSession } from '../lib/session';
+import { annoncer } from '../lib/alertes';
 
 interface FicheJournee {
   id: string;
@@ -80,6 +83,8 @@ export function BandeauJournee({ org, etat, horsLigne, onChange }: { org: string
   const [envoi, setEnvoi] = useState(false);
   const [confirmer, setConfirmer] = useState(false);
   const [bilan, setBilan] = useState<FicheJournee | null>(null);
+  const [aConfirmer, setAConfirmer] = useState<null | 'ouvrir_journee' | 'cloturer_journee'>(null);
+  const { session } = useSession();
   if (!etat) return null;
 
   // Horloge de l'appareil faussée de plus de 5 minutes : on prévient.
@@ -97,12 +102,25 @@ export function BandeauJournee({ org, etat, horsLigne, onChange }: { org: string
     if (error) return setErreur(messageErreur(error));
     setConfirmer(false);
     if (fn === 'cloturer_journee') setBilan(data as FicheJournee);
+    const auteur = (session?.user.user_metadata?.nom_complet as string | undefined) || 'Un responsable';
+    annoncer(org, '📅', fn === 'cloturer_journee' ? 'La journée vient d’être clôturée : plus aucune opération jusqu’à la prochaine ouverture.' : 'La journée est ouverte : les caisses peuvent démarrer.', auteur);
     onChange();
   }
 
   const ton = o ? (enRetard ? 'or' : 'vert') : 'gris';
   return (
     <section className={`carte bandeau-journee ${o ? 'journee-ouverte' : 'journee-fermee'}`}>
+      <ConfirmerCode
+        ouverte={!!aConfirmer}
+        titre={aConfirmer === 'cloturer_journee' ? 'Clôturer la journée' : 'Ouvrir la journée'}
+        consigne="Saisissez votre code d’entrée (ou votre mot de passe) pour confirmer."
+        onFermer={() => setAConfirmer(null)}
+        onValide={() => {
+          const fn = aConfirmer;
+          setAConfirmer(null);
+          if (fn) void action(fn);
+        }}
+      />
       <div className="bandeau-journee-ligne">
         <div className="bandeau-journee-date">
           <span className="secondaire">Aujourd’hui</span>
@@ -149,7 +167,7 @@ export function BandeauJournee({ org, etat, horsLigne, onChange }: { org: string
       {etat.peut_gerer && (
         <div className="actions-demande">
           {!o && !clotureeAujourdhui && (
-            <button type="button" className="bouton bouton-principal" disabled={envoi || horsLigne} onClick={() => void action('ouvrir_journee')}>
+            <button type="button" className="bouton bouton-principal" disabled={envoi || horsLigne} onClick={() => setAConfirmer('ouvrir_journee')}>
               ☀️ Ouvrir la journée du {new Date(`${etat.aujourdhui}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: ZONE })}
             </button>
           )}
@@ -163,7 +181,7 @@ export function BandeauJournee({ org, etat, horsLigne, onChange }: { org: string
               type="button"
               className="bouton-lien"
               disabled={envoi || horsLigne}
-              onClick={() => window.confirm('Rouvrir la journée d’aujourd’hui ? Les opérations seront de nouveau possibles.') && void action('ouvrir_journee')}
+              onClick={() => window.confirm('Rouvrir la journée d’aujourd’hui ? Les opérations seront de nouveau possibles.') && setAConfirmer('ouvrir_journee')}
             >
               Rouvrir la journée
             </button>
@@ -191,7 +209,7 @@ export function BandeauJournee({ org, etat, horsLigne, onChange }: { org: string
               type="button"
               className="bouton bouton-principal bouton-plein"
               disabled={envoi || etat.caisses_ouvertes.length > 0}
-              onClick={() => void action('cloturer_journee')}
+              onClick={() => setAConfirmer('cloturer_journee')}
             >
               {envoi ? 'Clôture…' : 'Confirmer la clôture de la journée'}
             </button>

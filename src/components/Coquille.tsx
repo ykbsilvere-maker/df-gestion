@@ -1,6 +1,7 @@
 import { imprimerPageA4 } from '../impression/impression';
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { AlertesEquipe } from '../lib/alertes';
 import { VerrouInactivite, verrouillerMaintenant } from './VerrouInactivite';
 import { FiletSecurite } from './FiletSecurite';
 import { useSession } from '../lib/session';
@@ -56,6 +57,17 @@ export function Coquille() {
   );
   const [menuMobile, setMenuMobile] = useState(false);
   const emplacement = useLocation();
+  const naviguer = useNavigate();
+  // Fenêtres façon Windows (ordinateur) : modules ouverts dans la barre des tâches, fenêtre réduite ou agrandie.
+  const [ouvertes, setOuvertes] = useState<string[]>(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('dfg_fenetres') ?? '[]') as string[];
+    } catch {
+      return [];
+    }
+  });
+  const [reduite, setReduite] = useState(false);
+  const [agrandie, setAgrandie] = useState(false);
   useEffect(() => {
     setMenuMobile(false);
   }, [emplacement.pathname]);
@@ -75,6 +87,27 @@ export function Coquille() {
   const autres = ordreMobile.length > MAX_MOBILE + 1 ? ordreMobile.slice(MAX_MOBILE) : [];
   const logo = identite?.logoUrl;
   const page = [...liens].reverse().find((l) => (l.vers === '/' ? emplacement.pathname === '/' : emplacement.pathname.startsWith(l.vers)));
+  const versPage = page?.vers ?? '/';
+  useEffect(() => {
+    setReduite(false);
+    setOuvertes((l) => (l.includes(versPage) ? l : [...l, versPage].slice(-8)));
+  }, [versPage, emplacement.key]);
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('dfg_fenetres', JSON.stringify(ouvertes));
+    } catch {
+      /* stockage indisponible */
+    }
+  }, [ouvertes]);
+  const fenetresOuvertes = ouvertes.map((v) => liens.find((l) => l.vers === v)).filter((l): l is (typeof liens)[number] => !!l);
+  const fermerFenetre = (vers: string) => {
+    const reste = ouvertes.filter((v) => v !== vers);
+    setOuvertes(reste);
+    if (vers !== versPage) return;
+    const suivante = reste[reste.length - 1];
+    if (suivante) naviguer(suivante);
+    else setReduite(true);
+  };
   const nomUtilisateur = (session?.user.user_metadata?.nom_complet as string | undefined) || identifiantAffiche(session?.user.email);
 
   const lien = (l: (typeof liens)[number]) => (
@@ -92,7 +125,7 @@ export function Coquille() {
   );
 
   return (
-    <div className={`app ${pleinEcran ? 'app-plein' : ''}`}>
+    <div className={`app ${pleinEcran ? 'app-plein' : ''} ${agrandie ? 'app-agrandie' : ''}`}>
       <aside className="app-menu">
         <div className="app-marque">
           {logo ? (
@@ -174,12 +207,71 @@ export function Coquille() {
         </div>
       </header>
 
-      <main ref={cadre} className={`app-contenu ${pleinEcran ? 'contenu-plein' : ''}`}>
-        {/* Une erreur dans un module n'emporte plus le menu ni l'en-tête. */}
-        <FiletSecurite key={emplacement.pathname} niveau="page">
-          <Outlet />
-        </FiletSecurite>
-      </main>
+      <div className="bureau">
+        <div className={`fenetre-app ${reduite ? 'fenetre-reduite' : ''}`}>
+          <div className="fenetre-app-barre" onDoubleClick={() => setAgrandie(!agrandie)}>
+            <span className="fenetre-app-titre">
+              <span aria-hidden>{page?.icone} </span>
+              {page?.libelle ?? 'DF Gestion'}
+            </span>
+            <span className="fenetre-app-boutons">
+              <button type="button" onClick={() => setReduite(true)} title="Réduire" aria-label="Réduire la fenêtre">—</button>
+              <button type="button" onClick={() => setAgrandie(!agrandie)} title={agrandie ? 'Restaurer' : 'Agrandir'} aria-label={agrandie ? 'Restaurer la fenêtre' : 'Agrandir la fenêtre'}>
+                {agrandie ? '❐' : '▢'}
+              </button>
+              <button type="button" className="fermer" onClick={() => fermerFenetre(versPage)} title="Fermer" aria-label="Fermer la fenêtre">✕</button>
+            </span>
+          </div>
+          <main ref={cadre} className={`app-contenu ${pleinEcran ? 'contenu-plein' : ''}`}>
+            {/* Une erreur dans un module n'emporte plus le menu ni l'en-tête. */}
+            <FiletSecurite key={emplacement.pathname} niveau="page">
+              <Outlet />
+            </FiletSecurite>
+          </main>
+        </div>
+        {reduite && (
+          <div className="bureau-icones">
+            {liens.map((l) => (
+              <button
+                key={l.vers}
+                type="button"
+                className="bureau-icone"
+                onClick={() => {
+                  setReduite(false);
+                  if (l.vers !== versPage) naviguer(l.vers);
+                }}
+              >
+                <span aria-hidden>{l.icone}</span>
+                {l.libelle}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="barre-taches" role="toolbar" aria-label="Fenêtres ouvertes">
+          <button type="button" className="tache tache-bureau" onClick={() => setReduite(!reduite)} title="Afficher le bureau">
+            ⊞
+          </button>
+          {fenetresOuvertes.map((l) => (
+            <span key={l.vers} className={`tache ${!reduite && l.vers === versPage ? 'active' : ''}`}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (l.vers === versPage) return setReduite(!reduite);
+                  setReduite(false);
+                  naviguer(l.vers);
+                }}
+              >
+                <span aria-hidden>{l.icone} </span>
+                {l.libelle}
+              </button>
+              <button type="button" className="tache-fermer" onClick={() => fermerFenetre(l.vers)} aria-label={`Fermer ${l.libelle}`}>
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+      <AlertesEquipe org={organisation?.organisation_id} />
 
       <nav className="app-onglets">
         {principaux.map((l) => lien(l))}

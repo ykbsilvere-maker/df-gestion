@@ -1926,3 +1926,52 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .guide-resume { background: var(--vert-clair); border-radius: 14px; padding: 10px 14px; }
 .guide-resume details { margin-top: 6px; } .guide-resume summary { cursor: pointer; font-size: 0.85rem; color: var(--encre-douce); }
 .carte-compte-tete { display: flex; align-items: center; gap: 4px; }
+
+/* ---- 2.7 : fenêtres façon Windows (ordinateur) et alertes d'équipe ---- */
+.bureau { grid-area: contenu; min-height: 0; min-width: 0; display: flex; flex-direction: column; position: relative; }
+.fenetre-app { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.fenetre-app > .app-contenu { flex: 1; min-height: 0; }
+.fenetre-app-barre, .barre-taches, .bureau-icones { display: none; }
+@media (min-width: 861px) {
+  .bureau { background: linear-gradient(160deg, #e9e6df, #f4f4f3 45%, #f1e3e3); padding: 10px 12px 0; gap: 8px; }
+  .fenetre-app { background: var(--fond); border-radius: 14px; overflow: hidden; border: 1px solid rgba(0,0,0,.1); box-shadow: 0 18px 50px rgba(20,20,20,.16); animation: fenetre-ouvre .32s var(--ressort); transform-origin: 50% 100%; }
+  .fenetre-app.fenetre-reduite { display: none; }
+  .fenetre-app-barre { display: flex; align-items: center; justify-content: space-between; height: 34px; flex: none; padding-left: 14px; background: color-mix(in srgb, var(--surface) 85%, transparent); border-bottom: 1px solid var(--trait); user-select: none; }
+  .fenetre-app-titre { font-weight: 700; font-size: 0.86rem; }
+  .fenetre-app-boutons { display: flex; height: 100%; }
+  .fenetre-app-boutons button { width: 46px; height: 100%; border: 0; background: none; cursor: pointer; font-size: 0.82rem; color: var(--encre); transition: background-color .15s, color .15s; }
+  .fenetre-app-boutons button:hover { background: rgba(0,0,0,.08); }
+  .fenetre-app-boutons button.fermer:hover { background: #e81123; color: #fff; }
+  .app-agrandie { grid-template-columns: 0 minmax(0, 1fr); }
+  .app-agrandie .app-menu, .app-agrandie .app-entete { display: none; }
+  .app-agrandie { grid-template-rows: 0 minmax(0, 1fr); }
+  .app-agrandie .bureau { padding: 0; gap: 0; }
+  .app-agrandie .fenetre-app { border-radius: 0; border: 0; box-shadow: none; }
+  .bureau-icones { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, 104px); grid-auto-rows: 96px; gap: 10px; align-content: start; padding: 18px 8px; }
+  .bureau-icone { border: 0; background: none; border-radius: 12px; cursor: pointer; font: inherit; font-size: 0.8rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--encre); transition: transform .28s var(--ressort), background-color .2s; animation: pop .4s var(--ressort) backwards; }
+  .bureau-icone span { font-size: 2.1rem; line-height: 1; }
+  .bureau-icone:hover { background: rgba(255,255,255,.7); transform: translateY(-3px); }
+  .bureau-icone:active { transform: scale(.92); }
+  .barre-taches { display: flex; align-items: center; gap: 6px; height: 44px; flex: none; padding: 0 4px; margin: 0 -12px; padding-inline: 12px; background: color-mix(in srgb, var(--surface) 78%, transparent); backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px); border-top: 1px solid var(--trait); overflow-x: auto; }
+  .app-agrandie .barre-taches { margin: 0; }
+  .tache { display: inline-flex; align-items: center; height: 32px; border-radius: 9px; background: transparent; border: 1px solid transparent; white-space: nowrap; transition: background-color .2s, transform .28s var(--ressort); position: relative; }
+  .tache button { border: 0; background: none; font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; height: 100%; padding: 0 4px 0 10px; color: var(--encre); }
+  .tache .tache-fermer { padding: 0 8px 0 4px; font-size: 0.65rem; color: var(--encre-douce); opacity: 0; transition: opacity .15s; }
+  .tache:hover .tache-fermer, .tache.active .tache-fermer { opacity: 1; }
+  .tache:hover { background: rgba(0,0,0,.06); }
+  .tache.active { background: var(--surface); border-color: var(--trait); box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .tache.active::after { content: ''; position: absolute; left: 30%; right: 30%; bottom: -1px; height: 3px; border-radius: 3px; background: var(--accent); }
+  .tache:not(.active)::after { content: ''; position: absolute; left: 44%; right: 44%; bottom: -1px; height: 3px; border-radius: 3px; background: var(--encre-douce); opacity: .5; }
+  .tache-bureau { width: 38px; justify-content: center; font-size: 1.1rem; cursor: pointer; border: 0; color: var(--accent); }
+  .tache-bureau::after { display: none; }
+  .tache:active { transform: scale(.94); }
+}
+@media print { .fenetre-app-barre, .barre-taches, .bureau-icones, .alertes-equipe { display: none !important; } .bureau { display: block; padding: 0; background: none; } .fenetre-app { display: block !important; border: 0; box-shadow: none; overflow: visible; } }
+
+.alertes-equipe { position: fixed; top: 12px; right: 12px; z-index: 60; display: grid; gap: 8px; width: min(360px, calc(100vw - 24px)); }
+.alerte-equipe { display: flex; gap: 10px; align-items: flex-start; padding: 12px 8px 12px 14px; border-radius: 16px; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px); border: 1px solid var(--trait); box-shadow: 0 16px 40px rgba(20,20,20,.2); animation: alerte-glisse .45s var(--ressort); }
+.alerte-equipe > div { flex: 1; min-width: 0; }
+.alerte-equipe strong { display: block; font-size: 0.9rem; line-height: 1.3; }
+.alerte-equipe small { color: var(--encre-douce); font-size: 0.78rem; }
+.alerte-equipe-icone { font-size: 1.5rem; line-height: 1; }
+@keyframes alerte-glisse { from { opacity: 0; transform: translateX(40px) scale(.95); } to { opacity: 1; transform: none; } }

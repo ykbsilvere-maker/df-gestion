@@ -4,6 +4,8 @@ import { clavierMontant, deviseCourante, libelleCoupure, lireMontant, montant } 
 import { messageErreur } from '../lib/format';
 import { Alerte, Champ } from '../components/ui';
 import { ConfirmerCode } from '../components/ConfirmerCode';
+import { useSession } from '../lib/session';
+import { annoncer } from '../lib/alertes';
 import type { RapportSession } from '../impression/RapportCaisse';
 
 /**
@@ -47,6 +49,7 @@ export function Cloture({
   const possible = !!rapport && compte != null && (!motifRequis || motif.trim().length >= 3) && !bloque && !enCours;
 
   const [confirmation, setConfirmation] = useState(false);
+  const { session, organisation } = useSession();
   async function cloturer() {
     if (!possible || compte == null) return;
     setEnCours(true);
@@ -63,7 +66,9 @@ export function Cloture({
     });
     setEnCours(false);
     if (error) return setErreur(messageErreur(error));
-    onCloturee(data as RapportSession);
+    const z = data as RapportSession;
+    annoncer(organisation?.organisation_id, '🛒', `Caisse clôturée${z.numero_z ? ` (rapport Z n° ${z.numero_z})` : ''}.`, (session?.user.user_metadata?.nom_complet as string | undefined) || 'Un caissier');
+    onCloturee(z);
   }
 
   return (

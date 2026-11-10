@@ -11,6 +11,7 @@ import { Alerte, Champ, Fenetre, Ico, Pastille, Vide } from '../components/ui';
 import { Scanner } from '../components/Scanner';
 import { useDouchette } from '../lib/douchette';
 import { ConfirmerCode } from '../components/ConfirmerCode';
+import { annoncer } from '../lib/alertes';
 import { ChoixCase, Recu, type VenteRecu } from '../impression/Recu';
 import { RapportCaisse, type RapportSession } from '../impression/RapportCaisse';
 import { useImpressionCaisse } from './impressionCaisse';
@@ -472,6 +473,8 @@ function FormulaireOuverture({ org, caisse, onOuverte }: { org: string; caisse: 
   const [enCours, setEnCours] = useState(false);
   const [verifie, setVerifie] = useState(false);
   const [confirmation, setConfirmation] = useState(false);
+  const { session: sessionUtilisateur } = useSession();
+  const auteurAlerte = (sessionUtilisateur?.user.user_metadata?.nom_complet as string | undefined) || 'Un responsable';
   const fond = totalBilletage(nombres);
   const choisi = caisse.caissiers.find((c) => c.user_id === caissier);
 
@@ -488,6 +491,7 @@ function FormulaireOuverture({ org, caisse, onOuverte }: { org: string; caisse: 
     });
     setEnCours(false);
     if (error) return setErreur(messageErreur(error));
+    annoncer(org, '🛒', `${caisse.nom} vient d’être ouverte${choisi.moi ? '' : ` pour ${choisi.nom}`}.`, auteurAlerte);
     onOuverte(choisi.moi ? 'vous' : choisi.nom, choisi.moi);
   }
 

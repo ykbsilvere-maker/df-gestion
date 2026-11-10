@@ -3,6 +3,12 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 2.7.** **Fenêtres façon Windows** (ordinateur) : chaque module s'ouvre dans une fenêtre avec Réduire,
+Agrandir et Fermer ; une barre des tâches en bas garde les modules ouverts, et le bouton ⊞ affiche le bureau avec les
+icônes. **Alertes d'équipe** en direct : à l'ouverture ou à la clôture d'une caisse ou de la journée, les autres
+personnes connectées voient un message. Le **code d'entrée (ou mot de passe)** est demandé pour la journée aussi.
+**Logos** des réseaux et des caisses sur les comptes de trésorerie.
+
 **Version 2.6.** **Code pour ouvrir et clôturer la caisse** : le code d'entrée de la personne connectée (ou son mot de
 passe) est demandé avant chaque ouverture et chaque clôture. **Logos des moyens de règlement** (Wave, Orange Money, MTN
 MoMo, Moov Money, carte, virement, espèces) à l'encaissement. **Piste d'audit** : libellés en clair, résumé de chaque
