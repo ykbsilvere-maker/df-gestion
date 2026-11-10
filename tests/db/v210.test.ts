@@ -91,4 +91,17 @@ describe('Import d’un approvisionnement', () => {
     const stock = await enTantQue(pool, alice, (q) => q(`select * from stocks where organisation_id = $1 and quantite <> 0`, [org]));
     expect(stock).toHaveLength(0);
   });
+  it('2.2 : le fournisseur habituel de l’article est repris quand la ligne n’en donne pas', async () => {
+    const c = await importer(alice, [{ code: 'BIS-01', designation: 'Biscuits secs 200 g', prix_vente: 300, prix_achat: 250, fournisseur: 'Grossiste Konan' }]);
+    expect(c.crees).toBe(1);
+    const p = await enTantQue(pool, alice, (q) => un(q<{ nom: string }>(
+      `select f.nom from produits p join fournisseurs f on f.id = p.fournisseur_id where p.organisation_id = $1 and p.code = 'BIS-01'`, [org])));
+    expect(p.nom).toBe('Grossiste Konan');
+    const r = (await enTantQue(pool, alice, (q) => un(q<{ r: { receptions: { fournisseur: string }[] } }>(
+      `select public.importer_reception($1, $2::jsonb, $3::jsonb) r`, [org, JSON.stringify({ magasin_id: mag }), JSON.stringify([{ code: 'BIS-01', quantite: 24 }])])))).r;
+    expect(r.receptions.map((x) => x.fournisseur)).toEqual(['Grossiste Konan']);
+    const d = (await enTantQue(pool, alice, (q) => un(q<{ r: { receptions: { fournisseur: string | null }[] } }>(
+      `select public.importer_reception($1, $2::jsonb, $3::jsonb) r`, [org, JSON.stringify({ magasin_id: mag, fournisseur_habituel: false }), JSON.stringify([{ code: 'BIS-01', quantite: 10 }])])))).r;
+    expect(d.receptions.map((x) => x.fournisseur)).toEqual([null]);
+  });
 });

@@ -41,6 +41,24 @@ begin
   return v_id;
 end $$;
 
+-- Fournisseur habituel d'un article (2.2) : proposé à l'approvisionnement.
+alter table public.produits add column fournisseur_id uuid;
+alter table public.produits add constraint produits_fournisseur_fk foreign key (organisation_id, fournisseur_id)
+  references public.fournisseurs (organisation_id, id) on delete set null (fournisseur_id);
+create index produits_fournisseur_idx on public.produits (organisation_id, fournisseur_id) where fournisseur_id is not null;
+grant insert (fournisseur_id), update (fournisseur_id) on public.produits to authenticated;
+
+-- Fournisseur cité dans une ligne de catalogue : créé seulement si l'utilisateur a le droit d'en créer.
+create function prive.fournisseur_catalogue(p_org uuid, p_nom text) returns uuid
+language plpgsql security definer set search_path = '' as $$
+begin
+  if nullif(btrim(coalesce(p_nom, '')), '') is null then return null; end if;
+  if prive.a_permission(p_org, 'fournisseurs.creer') or prive.a_permission(p_org, 'achats.creer') then
+    return prive.fournisseur_par_nom(p_org, p_nom);
+  end if;
+  return (select id from public.fournisseurs where organisation_id = p_org and prive.normaliser(nom) = prive.normaliser(btrim(p_nom)));
+end $$;
+
 -- Montant lu dans une cellule : « 5 000 », « 5000 F », « 5 000,00 » → 5000.
 create function prive.montant_import(p text) returns bigint
 language sql immutable set search_path = '' as $$
@@ -106,12 +124,13 @@ begin
           taux_tva = case when nullif(l ->> 'taux_tva', '') is null then taux_tva else v_tva end,
           seuil_min = coalesce(prive.nombre_import(l ->> 'seuil_min')::int, seuil_min),
           seuil_max = coalesce(prive.nombre_import(l ->> 'seuil_max')::int, seuil_max),
-          gere_peremption = coalesce(prive.oui_non(l ->> 'gere_peremption'), gere_peremption)
+          gere_peremption = coalesce(prive.oui_non(l ->> 'gere_peremption'), gere_peremption),
+          fournisseur_id = coalesce(prive.fournisseur_catalogue(p_org, l ->> 'fournisseur'), fournisseur_id)
         where id = v_id returning code into v_code;
         v_maj := v_maj + 1;
       else
         insert into public.produits (organisation_id, code, designation, categorie_id, marque, unite, prix_vente, prix_achat,
-                                     taux_tva, seuil_min, seuil_max, gere_peremption, cree_par)
+                                     taux_tva, seuil_min, seuil_max, gere_peremption, fournisseur_id, cree_par)
         values (p_org, nullif(btrim(coalesce(l ->> 'code', '')), ''), btrim(l ->> 'designation'),
                 prive.categorie_par_nom(p_org, l ->> 'categorie'),
                 nullif(btrim(coalesce(l ->> 'marque', '')), ''),
@@ -122,6 +141,7 @@ begin
                 prive.nombre_import(l ->> 'seuil_min')::int,
                 prive.nombre_import(l ->> 'seuil_max')::int,
                 coalesce(prive.oui_non(l ->> 'gere_peremption'), false),
+                prive.fournisseur_catalogue(p_org, l ->> 'fournisseur'),
                 auth.uid())
         returning id, code into v_id, v_code;
         v_crees := v_crees + 1;
@@ -274,6 +294,9 @@ begin
       v_prix := coalesce(prive.montant_import(l ->> 'prix_achat'),
                          (select prix_achat from public.produits where id = v_prod), 0);
       v_fourn := prive.fournisseur_par_nom(p_org, coalesce(nullif(btrim(coalesce(l ->> 'fournisseur', '')), ''), p_entete ->> 'fournisseur'));
+      if v_fourn is null and coalesce((p_entete ->> 'fournisseur_habituel')::boolean, true) then
+        v_fourn := (select fournisseur_id from public.produits where id = v_prod);
+      end if;
       v_cle := coalesce(v_fourn::text, 'aucun');
       v_rec := nullif(v_receptions ->> v_cle, '')::uuid;
       if v_rec is null then

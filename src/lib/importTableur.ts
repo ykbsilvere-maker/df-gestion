@@ -33,7 +33,8 @@ export const COLONNES: Record<TypeImport, Colonne[]> = {
     { cle: 'seuil_max', libelle: 'Stock maximum', synonymes: ['stock maximum', 'stock max', 'maximum', 'seuil maximum'], genre: 'nombre', aide: 'Facultatif.' },
     { cle: 'gere_peremption', libelle: 'Suivi péremption', synonymes: ['suivi peremption', 'peremption', 'perissable', 'dlc'], aide: 'oui / non.' },
     { cle: 'stock_initial', libelle: 'Stock initial', synonymes: ['stock initial', 'stock de depart', 'quantite en stock', 'stock', 'quantite', 'qte'], genre: 'nombre', aide: 'Facultatif : une réception « Stock de départ » est préparée en brouillon, à valider.' },
-    { cle: 'photo', libelle: 'Photo (nom du fichier)', synonymes: ['photo', 'image', 'photo nom du fichier', 'fichier photo', 'nom de la photo'], aide: 'Facultatif : nom de l’image, ex. riz-5kg.jpg, à choisir ensuite.' },
+    { cle: 'photo', libelle: 'Photo', synonymes: ['photo', 'image', 'photo nom du fichier', 'fichier photo', 'nom de la photo'], aide: 'Facultatif : collez l’image dans la case (ou écrivez le nom du fichier, ex. riz-5kg.jpg), ou choisissez-la dans DF Gestion avant l’import.' },
+    { cle: 'fournisseur', libelle: 'Fournisseur', synonymes: ['fournisseur', 'fournisseur habituel', 'fournisseur principal', 'nom du fournisseur'], aide: 'Facultatif : fournisseur habituel, repris à l’approvisionnement.' },
   ],
   fournisseurs: [
     { cle: 'nom', libelle: 'Nom du fournisseur', synonymes: ['nom', 'fournisseur', 'raison sociale', 'societe', 'nom du fournisseur', 'entreprise'], obligatoire: true, aide: 'Un fournisseur déjà présent est complété, pas dupliqué.' },
@@ -244,9 +245,9 @@ export function analyserClasseur(feuilles: FeuilleLue[]): Partial<Record<TypeImp
 
 const EXEMPLES: Record<TypeImport, Cellule[][]> = {
   catalogue: [
-    ['', 'Riz parfumé 5 kg', 'Épicerie', 'Uncle Sam', 'sac', 4500, 3800, 0, '6151100000017', 10, 60, 'non', 25, 'riz-5kg.jpg'],
-    ['', 'Huile Dinor 1 L', 'Épicerie', 'Dinor', 'bouteille', 1600, 1300, 0, '', 24, '', 'non', 48, ''],
-    ['LAIT-400', 'Lait en poudre 400 g', 'Produits laitiers', '', 'boîte', 2650, 2200, 0, '', 12, '', 'oui', 30, ''],
+    ['', 'Riz parfumé 5 kg', 'Épicerie', 'Uncle Sam', 'sac', 4500, 3800, 0, '6151100000017', 10, 60, 'non', 25, 'riz-5kg.jpg', 'SOCOCE Distribution'],
+    ['', 'Huile Dinor 1 L', 'Épicerie', 'Dinor', 'bouteille', 1600, 1300, 0, '', 24, '', 'non', 48, '', 'SOCOCE Distribution'],
+    ['LAIT-400', 'Lait en poudre 400 g', 'Produits laitiers', '', 'boîte', 2650, 2200, 0, '', 12, '', 'oui', 30, '', 'Grossiste du Plateau'],
   ],
   fournisseurs: [
     ['SOCOCE Distribution', '27 22 00 00 00', 'commandes@exemple.ci', 'Abidjan, Zone 4', '', 'Livraison le mardi'],

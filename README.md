@@ -3,6 +3,11 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 2.3.** **Vérification avant import** : après le choix du fichier, chaque article s'affiche avec un menu
+**Fournisseur** et une case **📷** qui ouvre l'ordinateur (ou la galerie du téléphone) pour choisir sa photo ; bouton
+« Plusieurs photos d'un coup » (rattachées par nom). Désignation, prix et quantités restent modifiables. Chaque article
+garde son **fournisseur habituel** (colonne Fournisseur du catalogue), repris automatiquement à l'approvisionnement.
+
 **Version 2.2.** **Classeur complet** : un seul fichier Excel avec trois onglets, *Fournisseurs*, *Catalogue* et
 *Approvisionnement*, importé d'un coup (Catalogue › 📥 › « Classeur complet » › Tout importer), dans l'ordre
 fournisseurs → articles et photos → livraisons. Les **photos se collent directement dans le classeur**, sur la ligne de

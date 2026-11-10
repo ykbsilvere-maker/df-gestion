@@ -53,7 +53,7 @@ describe('Lecture de fichiers Excel', () => {
     expect(feuilles.map((f) => f.nom)).toEqual(['Données', 'Mode d’emploi']);
     const a = analyser(feuilles, 'catalogue');
     expect(a.manquantes).toEqual([]);
-    expect(a.colonnes).toHaveLength(14);
+    expect(a.colonnes).toHaveLength(15);
     expect(a.lignes).toHaveLength(3);
     expect(a.lignes[0]!.valeurs).toMatchObject({ designation: 'Riz parfumé 5 kg', prix_vente: 4500, code_barres: '6151100000017', stock_initial: 25, photo: 'riz-5kg.jpg' });
     expect(a.lignes[0]!.numero).toBe(2);

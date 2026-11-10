@@ -20,6 +20,7 @@ import {
 import { useMagasinCourant, useMagasins } from '../../lib/stock';
 import { useFournisseurs } from './Fournisseurs';
 import { reduire } from '../../components/PhotoProduit';
+import { RevueLignes } from './RevueImport';
 import { Alerte, Champ, EnTetePage, Pastille } from '../../components/ui';
 
 type Onglet = 'classeur' | TypeImport | 'photos';
@@ -140,7 +141,7 @@ async function executerImport(org: string, type: TypeImport, analyse: Analyse, o
         progres(0, depart.length, 'Stock de départ');
         const { data, error } = await supabase.rpc('importer_reception', {
           p_org: org,
-          p_entete: { magasin_id: o.magasin, note: 'Stock de départ (import du catalogue)' },
+          p_entete: { magasin_id: o.magasin, note: 'Stock de départ (import du catalogue)', fournisseur_habituel: false },
           p_lignes: depart,
           p_creer_articles: false,
         });
@@ -268,6 +269,11 @@ function ClasseurComplet({ org, permis }: { org: string; permis: (t: TypeImport)
   const [envoi, setEnvoi] = useState<{ fait: number; total: number; etape: string } | null>(null);
   const [bilans, setBilans] = useState<Partial<Record<TypeImport, Bilan>> | null>(null);
   const o = useOptionsImport(org);
+  const { fournisseurs } = useFournisseurs(org);
+  const nomsFournisseurs = useMemo(
+    () => [...(parties?.fournisseurs?.lignes.map((l) => String(l.valeurs.nom ?? '')) ?? []), ...fournisseurs.map((f) => f.nom)],
+    [parties?.fournisseurs, fournisseurs],
+  );
 
   async function choisir(f: File) {
     setFichier(f);
@@ -345,6 +351,24 @@ function ClasseurComplet({ org, permis }: { org: string; permis: (t: TypeImport)
               );
             })}
           </div>
+
+          {parties.catalogue && permis('catalogue') && !bilans && (
+            <details className="revue-bloc" open>
+              <summary>🛍️ Vérifier les articles : photo (📷 = choisir sur l’appareil) et fournisseur</summary>
+              <RevueLignes analyse={parties.catalogue} type="catalogue" fournisseurs={nomsFournisseurs} onChange={(a) => setParties({ ...parties, catalogue: a })} />
+            </details>
+          )}
+          {parties.approvisionnement && permis('approvisionnement') && !bilans && parties.approvisionnement.lignes.length > 0 && (
+            <details className="revue-bloc">
+              <summary>📥 Vérifier la livraison : quantités et fournisseur ({parties.approvisionnement.lignes.length} lignes)</summary>
+              <RevueLignes
+                analyse={parties.approvisionnement}
+                type="approvisionnement"
+                fournisseurs={nomsFournisseurs}
+                onChange={(a) => setParties({ ...parties, approvisionnement: a })}
+              />
+            </details>
+          )}
 
           <div className="import-options">
             {parties.catalogue && (
@@ -489,6 +513,9 @@ function EtapeImport({ org, type }: { org: string; type: TypeImport }) {
             {analyse.manquantes.length > 0 && <Alerte>{`Colonne obligatoire absente : ${analyse.manquantes.join(', ')}.`}</Alerte>}
           </div>
 
+          {type !== 'fournisseurs' && !bilan ? (
+            <RevueLignes analyse={analyse} type={type} fournisseurs={fournisseurs.map((f) => f.nom)} onChange={setAnalyse} />
+          ) : (
           <div className="defilement-horizontal import-apercu">
             <table className="tableau">
               <thead>
@@ -512,6 +539,7 @@ function EtapeImport({ org, type }: { org: string; type: TypeImport }) {
             </table>
             {analyse.lignes.length > 8 && <p className="secondaire petit-texte">… et {analyse.lignes.length - 8} autres lignes.</p>}
           </div>
+          )}
 
           <div className="import-options">
             {type === 'catalogue' && (
