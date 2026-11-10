@@ -14,7 +14,7 @@ export interface FeuilleLue {
 const decodeur = new TextDecoder('utf-8');
 
 async function inflater(octets: Uint8Array): Promise<Uint8Array> {
-  const flux = new Blob([octets]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  const flux = new Blob([octets.slice().buffer as ArrayBuffer]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   return new Uint8Array(await new Response(flux).arrayBuffer());
 }
 
