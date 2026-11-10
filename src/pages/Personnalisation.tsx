@@ -1,3 +1,4 @@
+import { choisirRouleau, imprimeSurRouleau } from '../caisse/impressionCaisse';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
@@ -19,6 +20,7 @@ const FORMATS: { code: FormatRecu; libelle: string; aide: string }[] = [
 ];
 
 export function Personnalisation() {
+  const [rouleau, setRouleau] = useState(imprimeSurRouleau());
   const { organisation: membre, peut, rechargerOrganisations, session } = useSession();
   const { identite, recharger } = useIdentite();
   const { imprimer } = useImpression();
@@ -278,6 +280,10 @@ export function Personnalisation() {
                   </label>
                 ))}
               </div>
+              <label className="case">
+                <input type="checkbox" checked={rouleau} onChange={(e) => { choisirRouleau(e.target.checked); setRouleau(e.target.checked); }} />
+                Cet appareil imprime les tickets sur un rouleau (imprimante thermique). Sans cette case, tout sort sur une feuille A4 entière.
+              </label>
               <Champ label="Phrase sous le nom" aide="Ex. « Le meilleur prix du quartier »">
                 <input value={p.entete ?? ''} onChange={(e) => majP('entete', e.target.value)} maxLength={160} />
               </Champ>

@@ -8,6 +8,24 @@ import { caseSuivante, definirCaseSuivante, memoriserCaseSuivante, PageA4, useIm
  * Impression des tickets et rapports au format choisi par l'entreprise :
  * A4 ÷ 6 (une case par ticket, la suivante est retenue) ou rouleau thermique.
  */
+const CLE_ROULEAU = 'dfg_impression_rouleau';
+/** Réglage de l'appareil : ticket sur rouleau thermique au lieu de la feuille A4 (par défaut : A4). */
+export function imprimeSurRouleau(): boolean {
+  try {
+    return localStorage.getItem(CLE_ROULEAU) === '1';
+  } catch {
+    return false;
+  }
+}
+export function choisirRouleau(oui: boolean) {
+  try {
+    if (oui) localStorage.setItem(CLE_ROULEAU, '1');
+    else localStorage.removeItem(CLE_ROULEAU);
+  } catch {
+    /* stockage indisponible */
+  }
+}
+
 export function useImpressionCaisse() {
   const { identite } = useIdentite();
   const { imprimer } = useImpression();
@@ -37,8 +55,11 @@ export function useImpressionCaisse() {
         );
         memoriserCaseSuivante(org, n, double);
         setCaseA4(caseSuivante(org));
-      } else {
+      } else if (imprimeSurRouleau()) {
         await imprimer(contenu, 'thermique');
+      } else {
+        // Par défaut, tout s'imprime sur une feuille A4 entière.
+        await imprimer(<PageA4>{contenu}</PageA4>, 'a4');
       }
     },
     [identite, format, org, imprimer],

@@ -1975,3 +1975,10 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .alerte-equipe small { color: var(--encre-douce); font-size: 0.78rem; }
 .alerte-equipe-icone { font-size: 1.5rem; line-height: 1; }
 @keyframes alerte-glisse { from { opacity: 0; transform: translateX(40px) scale(.95); } to { opacity: 1; transform: none; } }
+/* Rapport de clôture : les deux personnes qui clôturent signent. */
+.rapport-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; margin: 5mm 0 3mm; break-inside: avoid; }
+.rapport-signatures > div { border: 1px solid #000; border-radius: 2mm; padding: 2mm; min-height: 26mm; display: flex; flex-direction: column; gap: 1mm; }
+.rapport-signatures span { font-size: .9em; }
+.rapport-signatures i { margin-top: auto; font-size: .75em; color: #444; }
+.page-a4-pleine .rapport-signatures > div { min-height: 38mm; padding: 4mm; }
+.recu-thermique_58 .rapport-signatures { grid-template-columns: 1fr; }
