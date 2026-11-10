@@ -32,3 +32,13 @@ export function LogoMoyen({ moyen, grand }: { moyen: { nature: string; code?: st
     );
   return <img className={`logo-moyen${grand ? ' grand' : ''}`} src={src} alt="" aria-hidden />;
 }
+
+const EMOJIS_COMPTE: Record<string, string> = { caisse: '💵', caisse_centrale: '🏦', mobile_money: '📱', banque: '🏛️', autre: '💼' };
+
+/** Logo d'un compte de trésorerie : billets pour les caisses, réseau reconnu par le nom pour le Mobile Money. */
+export function LogoCompte({ compte }: { compte: { type: string; nom: string } }) {
+  const nature = compte.type === 'caisse' || compte.type === 'caisse_centrale' ? 'especes' : compte.type === 'mobile_money' ? 'mobile' : 'compte';
+  const src = imageMoyen({ nature, libelle: compte.type === 'banque' || compte.type === 'autre' ? '' : compte.nom });
+  if (!src) return <span aria-hidden>{EMOJIS_COMPTE[compte.type] ?? '💼'}</span>;
+  return <img className="logo-moyen grand" src={src} alt="" aria-hidden />;
+}

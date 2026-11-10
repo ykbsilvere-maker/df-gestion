@@ -1,3 +1,4 @@
+import { LogoCompte } from '../../components/LogoMoyen';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
@@ -133,7 +134,7 @@ export function Approvisionnement() {
           <div className="grille-comptes">
             {treso.comptes.filter((c) => c.actif).map((c) => (
               <div key={c.id} className="carte-compte">
-                <span className="carte-compte-tete"><span aria-hidden>{TYPES_COMPTE[c.type].icone}</span><strong>{c.nom}</strong></span>
+                <span className="carte-compte-tete"><LogoCompte compte={c} /><strong>{c.nom}</strong></span>
                 <span className={`carte-compte-solde ${c.solde < 0 ? 'texte-negatif' : ''}`}>{montant(c.solde)}</span>
               </div>
             ))}

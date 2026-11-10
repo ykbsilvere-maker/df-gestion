@@ -1925,3 +1925,4 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .guide-icone { font-size: 1.6rem; line-height: 1; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: var(--accent-clair); flex: none; }
 .guide-resume { background: var(--vert-clair); border-radius: 14px; padding: 10px 14px; }
 .guide-resume details { margin-top: 6px; } .guide-resume summary { cursor: pointer; font-size: 0.85rem; color: var(--encre-douce); }
+.carte-compte-tete { display: flex; align-items: center; gap: 4px; }

@@ -1,3 +1,4 @@
+import { LogoCompte } from '../../components/LogoMoyen';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
@@ -210,7 +211,7 @@ export function Tresorerie() {
         {comptes.map((c) => (
           <button key={c.id} type="button" className={`carte-compte ${c.actif ? '' : 'carte-compte-inactive'} ${compteOuvert?.id === c.id ? 'carte-compte-active' : ''}`} onClick={() => setCompteOuvert(compteOuvert?.id === c.id ? null : c)}>
             <span className="carte-compte-tete">
-              <span aria-hidden>{TYPES_COMPTE[c.type].icone}</span>
+              <LogoCompte compte={c} />
               <strong>{c.nom}</strong>
             </span>
             <span className={`carte-compte-solde ${c.solde < 0 ? 'texte-negatif' : ''}`}>{montant(c.solde)}</span>
@@ -228,7 +229,7 @@ export function Tresorerie() {
         <section className="carte">
           <div className="entete-section">
             <h2>
-              {TYPES_COMPTE[compteOuvert.type].icone} {compteOuvert.nom}
+              <LogoCompte compte={compteOuvert} /> {compteOuvert.nom}
             </h2>
             <div className="actions-ligne">
               {peut('tresorerie.valider') && (
