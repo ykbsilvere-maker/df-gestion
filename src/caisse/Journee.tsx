@@ -25,6 +25,8 @@ interface FicheJournee {
 export interface EtatJournee {
   aujourdhui: string;
   maintenant: string;
+  /** Écart (ms) entre l'horloge de l'appareil et celle du serveur, mesuré à la réception. */
+  decalageHorloge?: number;
   suivie: boolean;
   ouverte: FicheJournee | null;
   derniere: FicheJournee | null;
@@ -44,11 +46,24 @@ export function useJournee(org: string | undefined) {
   const [etat, setEtat] = useState<EtatJournee | null>(null);
   const recharger = useCallback(async () => {
     if (!org) return;
+    const depart = Date.now();
     const { data, error } = await supabase.rpc('ma_journee', { p_org: org });
-    if (!error) setEtat(data as EtatJournee);
+    if (error || !data) return;
+    const e = data as EtatJournee;
+    // Heure de l'appareil au moment où le serveur a répondu (milieu de l'aller-retour).
+    const milieu = (depart + Date.now()) / 2;
+    setEtat({ ...e, decalageHorloge: milieu - new Date(e.maintenant).getTime() });
   }, [org]);
   useEffect(() => {
     void recharger();
+    // Page laissée ouverte : on se recale régulièrement (passage de minuit, journée ouverte ailleurs).
+    const t = window.setInterval(() => void recharger(), 5 * 60 * 1000);
+    const auRetour = () => document.visibilityState === 'visible' && void recharger();
+    document.addEventListener('visibilitychange', auRetour);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener('visibilitychange', auRetour);
+    };
   }, [recharger]);
   return { etat, recharger };
 }
@@ -68,8 +83,8 @@ export function BandeauJournee({ org, etat, horsLigne, onChange }: { org: string
   if (!etat) return null;
 
   // Horloge de l'appareil faussée de plus de 5 minutes : on prévient.
-  const decalage = Math.abs(Date.now() - new Date(etat.maintenant).getTime());
-  const horlogeFausse = decalage > 5 * 60 * 1000;
+  // (mesuré au chargement : une page restée ouverte longtemps ne déclenche pas d'alerte).
+  const horlogeFausse = Math.abs(etat.decalageHorloge ?? 0) > 5 * 60 * 1000;
   const o = etat.ouverte;
   const enRetard = !!o && o.date !== etat.aujourdhui;
   const clotureeAujourdhui = !o && etat.derniere?.date === etat.aujourdhui && etat.derniere.statut === 'cloturee' ? etat.derniere : null;
