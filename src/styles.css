@@ -1835,6 +1835,51 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .pastille-colonne, .rapport-chiffres > div { animation: pop .34s var(--ressort) backwards; }
 @keyframes pop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
 
+/* Accès : l'écran de connexion s'anime à l'arrivée (vitrine en cascade, carte à ressort, fond vivant). */
+.connexion-vitrine::after { animation: halo 9s ease-in-out infinite alternate; }
+@keyframes halo { from { transform: translate(0, 0) scale(1); } to { transform: translate(-70px, -50px) scale(1.25); } }
+.vitrine-contenu > *, .vitrine-points li { animation: page-entre .6s var(--glisse) backwards; }
+.vitrine-contenu > :nth-child(2) { animation-delay: .08s; }
+.vitrine-contenu > :nth-child(3) { animation-delay: .16s; }
+.vitrine-contenu > :nth-child(4) { animation-delay: .24s; }
+.vitrine-contenu > :nth-child(5) { animation-delay: .4s; }
+.vitrine-points li:nth-child(1) { animation-delay: .26s; }
+.vitrine-points li:nth-child(2) { animation-delay: .34s; }
+.vitrine-points li:nth-child(3) { animation-delay: .42s; }
+.vitrine-points li:nth-child(4) { animation-delay: .5s; }
+.vitrine-barres span { transform-origin: bottom; animation: barre-monte .7s var(--ressort) backwards; }
+.vitrine-barres span:nth-child(1) { animation-delay: .5s; } .vitrine-barres span:nth-child(2) { animation-delay: .56s; }
+.vitrine-barres span:nth-child(3) { animation-delay: .62s; } .vitrine-barres span:nth-child(4) { animation-delay: .68s; }
+.vitrine-barres span:nth-child(5) { animation-delay: .74s; } .vitrine-barres span:nth-child(6) { animation-delay: .8s; }
+.vitrine-barres span:nth-child(7) { animation-delay: .86s; }
+@keyframes barre-monte { from { transform: scaleY(0); } to { transform: none; } }
+.carte-connexion { animation: fenetre-ouvre .5s var(--ressort) backwards; animation-delay: .1s; }
+.carte-connexion > *, .carte-connexion form > * { animation: page-entre .45s var(--glisse) backwards; animation-delay: .22s; }
+.onglets-connexion button { transition: transform .28s var(--ressort), background-color .25s, box-shadow .25s, color .2s; }
+.onglets-connexion button:active { transform: scale(.95); }
+.compte-recent { transition: transform .28s var(--ressort), border-color .2s, background-color .2s; }
+.compte-recent:active { transform: scale(.95); }
+/* Pavé du code d'entrée : touches élastiques, points qui se remplissent en sautant. */
+.touche-pin, .pave-touches button { transition: transform .26s var(--ressort), background-color .18s, box-shadow .2s; }
+.touche-pin:active:not(:disabled), .pave-touches button:active:not(:disabled) { transform: scale(.9); transition-duration: .06s; }
+.touche-pin-valider.pret { animation: pret 1.6s ease-in-out infinite; }
+@keyframes pret { 50% { box-shadow: 0 8px 26px rgba(200, 22, 27, .5); transform: scale(1.03); } }
+
+/* Accueil : bandeau, raccourcis et tuiles arrivent en cascade. */
+.accueil-hero { animation: fenetre-ouvre .5s var(--ressort) backwards; }
+.actions-rapides > *, .tuiles > *, .grille-accueil > * { animation: pop .45s var(--ressort) backwards; }
+.actions-rapides > :nth-child(1), .tuiles > :nth-child(1) { animation-delay: .06s; }
+.actions-rapides > :nth-child(2), .tuiles > :nth-child(2) { animation-delay: .11s; }
+.actions-rapides > :nth-child(3), .tuiles > :nth-child(3) { animation-delay: .16s; }
+.actions-rapides > :nth-child(4), .tuiles > :nth-child(4) { animation-delay: .21s; }
+.actions-rapides > :nth-child(5), .tuiles > :nth-child(5) { animation-delay: .26s; }
+.actions-rapides > :nth-child(n + 6), .tuiles > :nth-child(n + 6) { animation-delay: .31s; }
+.grille-accueil > * { animation-delay: .3s; }
+.action-rapide { transition: transform .28s var(--ressort), background-color .2s, box-shadow .25s; }
+.action-rapide:active { transform: scale(.9); transition-duration: .07s; }
+@media (hover: hover) { .action-rapide:hover .action-icone { transform: scale(1.18) translateY(-2px); } }
+.action-icone { transition: transform .3s var(--ressort); }
+
 /* Respect du réglage « réduire les animations » de l'appareil. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
