@@ -1759,3 +1759,83 @@ h2 .nav-badge { margin-left: 8px; vertical-align: middle; }
 .revue-photo img { width: 100%; height: 100%; object-fit: cover; }
 .revue-tableau td:has(.revue-photo) { position: relative; }
 .revue-retirer { position: absolute; top: 0; right: -2px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: #b42318; color: #fff; font-size: 0.65rem; cursor: pointer; line-height: 20px; padding: 0; }
+
+/* ---- 2.5 : dynamisme façon macOS — appui élastique, fenêtres à ressort, verre dépoli ---- */
+:root {
+  --ressort: cubic-bezier(.2, .9, .25, 1.25);
+  --glisse: cubic-bezier(.22, 1, .36, 1);
+}
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Tout ce qui se clique s'enfonce légèrement puis revient avec un petit rebond. */
+.bouton, .bouton-icone, .bouton-plus, .entete-bouton, .entete-utilisateur, .tuile, .app-nav a, .app-onglets a,
+.onglets button, .revue-photo, .pastille-colonne, .recherche-resultats button, .classeur-partie, summary {
+  transition: transform .28s var(--ressort), box-shadow .25s var(--glisse), background-color .2s, border-color .2s, color .2s, opacity .2s, filter .2s;
+  will-change: transform;
+}
+.bouton:active:not(:disabled), .entete-bouton:active, .entete-utilisateur:active, .onglets button:active,
+.revue-photo:active, .recherche-resultats button:active { transform: scale(.955); transition-duration: .08s; }
+.bouton-icone:active, .bouton-plus:active, .app-onglets a:active { transform: scale(.88); transition-duration: .08s; }
+.app-nav a:active { transform: scale(.97); transition-duration: .08s; }
+.tuile:not(.tuile-fixe):active { transform: scale(.975); transition-duration: .08s; }
+
+@media (hover: hover) {
+  .bouton-principal:hover:not(:disabled), .bouton-danger:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(200, 22, 27, .22); filter: brightness(1.05); }
+  .bouton-discret:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 24, 40, .08); }
+  .bouton:active:not(:disabled) { transform: scale(.955); box-shadow: none; }
+  .tuile:not(.tuile-fixe):hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(16, 24, 40, .1); }
+  /* Menu : l'icône grossit sous le pointeur, comme dans le Dock. */
+  .app-nav a .nav-icone { display: inline-block; transition: transform .3s var(--ressort); }
+  .app-nav a:hover .nav-icone { transform: scale(1.28) translateX(1px); }
+  .ligne-cliquable td, .tableau tbody tr td { transition: background-color .18s; }
+}
+
+/* L'icône de l'onglet choisi rebondit (téléphone), le lien actif du menu glisse en place. */
+.app-onglets a.active .nav-icone, .bouton-plus.active .nav-icone { display: inline-block; animation: rebond-dock .5s var(--ressort); }
+.app-nav a.active { animation: lien-actif .32s var(--glisse); }
+@keyframes rebond-dock { 0% { transform: translateY(0) scale(1); } 40% { transform: translateY(-7px) scale(1.18); } 100% { transform: none; } }
+@keyframes lien-actif { from { transform: scale(.96); opacity: .7; } to { transform: none; opacity: 1; } }
+
+/* Changement de page : le contenu apparaît en glissant doucement. */
+.app-contenu:not(.contenu-plein) > * { animation: page-entre .34s var(--glisse); }
+.app-contenu.contenu-plein > * { animation: page-fondu .25s ease-out; }
+@keyframes page-entre { from { opacity: 0; transform: translateY(10px) scale(.995); } to { opacity: 1; transform: none; } }
+@keyframes page-fondu { from { opacity: 0; } to { opacity: 1; } }
+
+/* Fenêtres : ouverture à ressort depuis le centre, fond flouté. */
+.fenetre::backdrop { background: rgba(20, 20, 20, .32); backdrop-filter: blur(6px) saturate(140%); -webkit-backdrop-filter: blur(6px) saturate(140%); animation: page-fondu .25s ease-out; }
+.fenetre { box-shadow: 0 0 0 1px rgba(0, 0, 0, .06), 0 30px 80px rgba(20, 20, 20, .32); }
+@media (min-width: 861px) {
+  .fenetre[open] { animation: fenetre-ouvre .36s var(--ressort); border-radius: 18px; }
+}
+@media (max-width: 860px) {
+  .fenetre[open], .fenetre-large[open] { animation: feuille-monte .38s var(--glisse); }
+  .app-plus-feuille { animation: feuille-monte .38s var(--glisse); }
+}
+@keyframes fenetre-ouvre { from { opacity: 0; transform: scale(.9) translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* Verre dépoli sur les barres qui restent en place quand le contenu défile dessous. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .fenetre-entete, .barre-figee {
+    background: color-mix(in srgb, var(--surface) 72%, transparent);
+    backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px);
+  }
+}
+
+/* Champs : halo doux à la sélection, comme l'anneau de focus de macOS. */
+input:not([type='checkbox']):not([type='radio']):not([type='file']), select, textarea { transition: border-color .2s, box-shadow .25s var(--glisse); }
+input:not([type='checkbox']):not([type='radio']):not([type='file']):focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+input[type='checkbox'], input[type='radio'] { transition: transform .22s var(--ressort); }
+input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82); }
+
+/* Messages, résultats et lignes ajoutées : petite entrée animée. */
+.alerte, .recherche-resultats, .import-bilan, .classeur-parties { animation: page-entre .3s var(--glisse); }
+.pastille-colonne, .rapport-chiffres > div { animation: pop .34s var(--ressort) backwards; }
+@keyframes pop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+
+/* Respect du réglage « réduire les animations » de l'appareil. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

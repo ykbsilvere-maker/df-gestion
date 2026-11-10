@@ -3,6 +3,11 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 2.5.** **Dynamisme façon macOS** : boutons, tuiles et onglets qui s'enfoncent au clic puis reviennent avec
+un léger rebond, icônes du menu qui grossissent au survol (effet Dock), pages qui glissent à l'ouverture, fenêtres à
+ressort sur fond flouté, barres en verre dépoli, halo de sélection sur les champs. Les animations se coupent si
+l'appareil demande de les réduire.
+
 **Version 2.4.** **Lecteur de codes-barres (douchette)** USB, sans fil (dongle) ou Bluetooth, sans réglage : il se
 comporte comme un clavier. Un scan est reconnu **où que soit le curseur** (caisse, catalogue, réceptions, sorties,
 devis) : la rafale de touches suivie d'Entrée est interceptée, le champ touché par erreur est rétabli, et l'article
