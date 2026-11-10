@@ -77,6 +77,7 @@ function EtapeImport({ org, type }: { org: string; type: TypeImport }) {
   const [envoi, setEnvoi] = useState<{ fait: number; total: number } | null>(null);
   const [bilan, setBilan] = useState<Bilan | null>(null);
   const [miseAJour, setMiseAJour] = useState(true);
+  const [sansQuantite, setSansQuantite] = useState(0);
   const [creerArticles, setCreerArticles] = useState(true);
   const [stockDepart, setStockDepart] = useState(true);
   const magasins = useMagasins(org);
@@ -94,7 +95,14 @@ function EtapeImport({ org, type }: { org: string; type: TypeImport }) {
     setBilan(null);
     setErreur('');
     try {
-      setAnalyse(analyser(await lireFichierTableur(f), type));
+      const a = analyser(await lireFichierTableur(f), type);
+      // Bon d'approvisionnement : on peut lister tous les articles et ne remplir que ceux reçus.
+      if (type === 'approvisionnement' && !a.manquantes.length) {
+        const recues = a.lignes.filter((l) => Number(String(l.valeurs.quantite ?? '').replace(',', '.')) > 0);
+        setSansQuantite(a.lignes.length - recues.length);
+        a.lignes = recues;
+      } else setSansQuantite(0);
+      setAnalyse(a);
     } catch (e) {
       setErreur(messageErreur(e));
     }
@@ -222,6 +230,7 @@ function EtapeImport({ org, type }: { org: string; type: TypeImport }) {
           <div className="import-analyse">
             <p>
               Feuille « {analyse.feuille} » : <strong>{analyse.lignes.length}</strong> ligne{analyse.lignes.length > 1 ? 's' : ''} à importer.
+              {sansQuantite > 0 && <span className="secondaire"> ({sansQuantite} ligne{sansQuantite > 1 ? 's' : ''} sans quantité, laissée{sansQuantite > 1 ? 's' : ''} de côté)</span>}
             </p>
             <div className="import-colonnes">
               {analyse.colonnes.map((c) => (
