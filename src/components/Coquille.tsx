@@ -68,6 +68,16 @@ export function Coquille() {
   });
   const [reduite, setReduite] = useState(false);
   const [agrandie, setAgrandie] = useState(false);
+  // Animation de sortie (aspiration vers le Dock, ou fondu à la fermeture) avant d'agir.
+  const [sortie, setSortie] = useState<null | 'reduire' | 'fermer'>(null);
+  const animerPuis = (type: 'reduire' | 'fermer', suite: () => void) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce), (max-width: 860px)').matches) return suite();
+    setSortie(type);
+    window.setTimeout(() => {
+      setSortie(null);
+      suite();
+    }, type === 'reduire' ? 420 : 220);
+  };
   useEffect(() => {
     setMenuMobile(false);
   }, [emplacement.pathname]);
@@ -208,19 +218,24 @@ export function Coquille() {
       </header>
 
       <div className="bureau">
-        <div className={`fenetre-app ${reduite ? 'fenetre-reduite' : ''}`}>
+        <div className={`fenetre-app ${reduite ? 'fenetre-reduite' : ''} ${sortie ? `fenetre-sort-${sortie}` : ''}`}>
           <div className="fenetre-app-barre" onDoubleClick={() => setAgrandie(!agrandie)}>
+            <span className="feux" onDoubleClick={(e) => e.stopPropagation()}>
+              <button type="button" className="feu feu-rouge" onClick={() => animerPuis('fermer', () => fermerFenetre(versPage))} title="Fermer" aria-label="Fermer la fenêtre">
+                <span aria-hidden>×</span>
+              </button>
+              <button type="button" className="feu feu-jaune" onClick={() => animerPuis('reduire', () => setReduite(true))} title="Réduire" aria-label="Réduire la fenêtre">
+                <span aria-hidden>−</span>
+              </button>
+              <button type="button" className="feu feu-vert" onClick={() => setAgrandie(!agrandie)} title={agrandie ? 'Restaurer' : 'Agrandir'} aria-label={agrandie ? 'Restaurer la fenêtre' : 'Agrandir la fenêtre'}>
+                <span aria-hidden>{agrandie ? '↙' : '↗'}</span>
+              </button>
+            </span>
             <span className="fenetre-app-titre">
               <span aria-hidden>{page?.icone} </span>
               {page?.libelle ?? 'DF Gestion'}
             </span>
-            <span className="fenetre-app-boutons">
-              <button type="button" onClick={() => setReduite(true)} title="Réduire" aria-label="Réduire la fenêtre">—</button>
-              <button type="button" onClick={() => setAgrandie(!agrandie)} title={agrandie ? 'Restaurer' : 'Agrandir'} aria-label={agrandie ? 'Restaurer la fenêtre' : 'Agrandir la fenêtre'}>
-                {agrandie ? '❐' : '▢'}
-              </button>
-              <button type="button" className="fermer" onClick={() => fermerFenetre(versPage)} title="Fermer" aria-label="Fermer la fenêtre">✕</button>
-            </span>
+            <span className="feux-equilibre" aria-hidden />
           </div>
           <main ref={cadre} className={`app-contenu ${pleinEcran ? 'contenu-plein' : ''}`}>
             {/* Une erreur dans un module n'emporte plus le menu ni l'en-tête. */}
@@ -252,7 +267,7 @@ export function Coquille() {
             ⊞
           </button>
           {fenetresOuvertes.map((l) => (
-            <span key={l.vers} className={`tache ${!reduite && l.vers === versPage ? 'active' : ''}`}>
+            <span key={l.vers} data-nom={l.libelle} className={`tache ${!reduite && l.vers === versPage ? 'active' : ''}`}>
               <button
                 type="button"
                 onClick={() => {

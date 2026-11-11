@@ -1982,3 +1982,44 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .rapport-signatures i { margin-top: auto; font-size: .75em; color: #444; }
 .page-a4-pleine .rapport-signatures > div { min-height: 38mm; padding: 4mm; }
 .recu-thermique_58 .rapport-signatures { grid-template-columns: 1fr; }
+
+/* ---- 2.8 : fenêtres façon Mac — pastilles rouge, jaune, verte et Dock ---- */
+@media (min-width: 861px) {
+  .fenetre-app-barre { padding: 0 12px; height: 38px; justify-content: space-between; background: linear-gradient(#f7f6f4, #ecebe8); }
+  .fenetre-app-titre { flex: 1; text-align: center; color: #3c3c3c; }
+  .feux { display: flex; gap: 8px; align-items: center; width: 64px; }
+  .feux-equilibre { width: 64px; }
+  .feu { width: 13px; height: 13px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: grid; place-items: center; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.18); transition: transform .2s var(--ressort), filter .15s; }
+  .feu span { font-size: 10px; line-height: 1; font-weight: 800; color: rgba(0,0,0,.55); opacity: 0; transition: opacity .12s; transform: translateY(-.5px); }
+  .feux:hover .feu span { opacity: 1; }
+  .feu-rouge { background: #ff5f57; } .feu-jaune { background: #febc2e; } .feu-vert { background: #28c840; }
+  .feu:active { filter: brightness(.82); transform: scale(.88); }
+  .fenetre-app { transition: border-radius .35s var(--glisse), box-shadow .35s; border-radius: 12px; }
+  .bureau { transition: padding .38s var(--glisse); }
+  /* Réduire : la fenêtre est aspirée vers le Dock. Fermer : elle rétrécit en s'effaçant. */
+  .fenetre-app.fenetre-sort-reduire { animation: aspire .42s cubic-bezier(.5, 0, .9, .5) forwards; transform-origin: 50% 100%; }
+  .fenetre-app.fenetre-sort-fermer { animation: ferme .22s ease-in forwards; transform-origin: 50% 50%; }
+  @keyframes aspire { 0% { transform: none; opacity: 1; } 55% { transform: translateY(18%) scale(.45, .62); opacity: .9; border-radius: 40px; } 100% { transform: translateY(52%) scale(.04, .06); opacity: 0; } }
+  @keyframes ferme { to { transform: scale(.94); opacity: 0; } }
+  .fenetre-app { animation: surgit .4s var(--ressort); }
+  @keyframes surgit { from { opacity: 0; transform: translateY(40%) scale(.2); } 60% { opacity: 1; } to { transform: none; } }
+
+  /* Dock : barre flottante centrée, icônes qui grossissent sous le pointeur, point sous les modules ouverts. */
+  .barre-taches { align-self: center; margin: 0 0 8px; height: 52px; padding: 0 10px; gap: 4px; border-radius: 18px; border: 1px solid rgba(255,255,255,.6); background: rgba(255,255,255,.55); box-shadow: 0 10px 30px rgba(20,20,20,.18), inset 0 0 0 .5px rgba(0,0,0,.08); overflow: visible; max-width: calc(100% - 24px); }
+  .app-agrandie .barre-taches { display: none; }
+  .tache, .tache.active { background: none; border-color: transparent; box-shadow: none; height: 44px; transform-origin: 50% 100%; transition: transform .22s var(--ressort), margin .22s var(--ressort); }
+  .tache button:first-child { font-size: 0; padding: 0 5px; }
+  .tache button:first-child span { font-size: 1.75rem; line-height: 1; display: block; }
+  .tache:hover { background: none; transform: scale(1.38) translateY(-4px); margin: 0 8px; z-index: 2; }
+  .tache:hover + .tache, .tache:has(+ .tache:hover) { transform: scale(1.14) translateY(-1px); }
+  .tache .tache-fermer { position: absolute; top: -4px; right: -6px; width: 15px; height: 15px; padding: 0; border-radius: 50%; background: #ff5f57; color: rgba(0,0,0,.6); font-size: 8px; line-height: 15px; }
+  .tache.active .tache-fermer { opacity: 0; } .tache:hover .tache-fermer { opacity: 1; }
+  .tache.active::after, .tache:not(.active)::after { left: calc(50% - 2px); right: auto; width: 4px; height: 4px; border-radius: 50%; bottom: -3px; background: #333; opacity: .75; }
+  .tache.active::after { background: var(--accent); opacity: 1; width: 5px; height: 5px; }
+  .tache-bureau { width: 44px; font-size: 1.5rem; border-right: 1px solid rgba(0,0,0,.12); border-radius: 0; padding-right: 8px; margin-right: 4px; }
+  .tache-bureau:hover { margin: 0 4px 0 0; }
+  .tache:active { transform: scale(1.1) translateY(4px); }
+  .tache.active button:first-child span { animation: rebond-dock .6s var(--ressort); }
+  /* Nom du module au-dessus de l'icône survolée. */
+  .tache[data-nom]:hover::before { content: attr(data-nom); position: absolute; bottom: 118%; left: 50%; transform: translateX(-50%) scale(.72); background: rgba(40,40,40,.9); color: #fff; font-size: 0.74rem; font-weight: 600; padding: 3px 9px; border-radius: 7px; white-space: nowrap; pointer-events: none; }
+}
