@@ -213,8 +213,6 @@ export function RapportCaisse({
       )}
 
       <footer className="recu-pied">
-        {z && <div>Signature caissier : ____________</div>}
-        {z && <div>Signature responsable : ____________</div>}
         <div className="recu-logiciel">Logiciel Le Décodeur Financier</div>
       </footer>
     </div>
