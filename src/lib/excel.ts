@@ -230,6 +230,12 @@ function enBase64(octets: Uint8Array): string {
  * est trop ancien pour enregistrer un fichier binaire.
  */
 export function telechargerFichier(nom: string, type: string, octets: Uint8Array): boolean {
+  try {
+    // Consigné dans la piste d'audit (écouté par lib/trace, sans dépendance directe).
+    window.dispatchEvent(new CustomEvent('dfg-trace', { detail: { action: 'export', contexte: { fichier: nom } } }));
+  } catch {
+    /* hors navigateur */
+  }
   const android = pontAndroid();
   if (android) {
     if (!android.enregistrerBase64) return false;

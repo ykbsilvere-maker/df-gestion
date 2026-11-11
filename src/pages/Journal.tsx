@@ -20,6 +20,7 @@ const FAMILLES: { valeur: string; libelle: string }[] = [
   { valeur: 'receptions.', libelle: 'Réceptions de marchandises' },
   { valeur: 'inventaires.', libelle: 'Inventaires' },
   { valeur: 'import.', libelle: 'Imports Excel' },
+  { valeur: 'activite.', libelle: 'Activité : modules, impressions, exports' },
   { valeur: 'membres.', libelle: 'Utilisateurs' },
   { valeur: 'membre_', libelle: 'Périmètres et droits individuels' },
   { valeur: 'invitations.', libelle: 'Invitations' },
@@ -43,6 +44,7 @@ function resume(l: LigneAudit): string {
     const appareil = typeof c.appareil === 'string' ? c.appareil : '';
     return [appareil, appareilLisible(c.navigateur as string | undefined)].filter((x) => x && x !== 'Navigateur').join(' — ') || (l.action.includes('code_entree') ? 'Code établissement + matricule' : '');
   }
+  if (l.action.startsWith('activite.')) return String(c.module ?? c.document ?? c.fichier ?? '');
   if (typeof c.motif === 'string') return `Motif : ${c.motif}`;
   const etat = l.apres ?? l.avant ?? {};
   const nom = etat.designation ?? etat.nom ?? etat.libelle ?? etat.nom_complet ?? etat.entreprise ?? etat.reference;

@@ -2023,3 +2023,21 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
   /* Nom du module au-dessus de l'icône survolée. */
   .tache[data-nom]:hover::before { content: attr(data-nom); position: absolute; bottom: 118%; left: 50%; transform: translateX(-50%) scale(.72); background: rgba(40,40,40,.9); color: #fff; font-size: 0.74rem; font-weight: 600; padding: 3px 9px; border-radius: 7px; white-space: nowrap; pointer-events: none; }
 }
+
+/* ---- 2.9 : Dock — fermer sans ouvrir ; menu de gauche qui grossit sous le pointeur ---- */
+@media (min-width: 861px) {
+  /* La croix reste visible sur chaque module ouvert, plus grande et plus facile à viser. */
+  .tache .tache-fermer, .tache.active .tache-fermer { opacity: .92; top: -7px; right: -8px; width: 18px; height: 18px; line-height: 18px; font-size: 9px; font-weight: 800; z-index: 3; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s var(--ressort), opacity .15s; }
+  .tache .tache-fermer:hover { transform: scale(1.25); opacity: 1; background: #ff3b30; color: #fff; }
+  .tache:hover { margin: 0 10px; }
+  .barre-taches { padding: 0 14px; gap: 10px; }
+
+  /* Menu : l'élément survolé grossit, ses voisins un peu moins (effet loupe du Dock), défilement doux. */
+  .app-menu { scroll-behavior: smooth; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
+  .app-nav a { transform-origin: 0 50%; transition: transform .24s var(--ressort), background-color .2s, color .2s, padding .24s var(--ressort), box-shadow .2s; }
+  .app-nav a:hover { transform: scale(1.16); padding-block: 11px; z-index: 2; box-shadow: 0 8px 20px rgba(0,0,0,.28); }
+  .app-nav a:hover + a, .app-nav a:has(+ a:hover) { transform: scale(1.07); }
+  .app-nav a:hover .nav-icone { transform: scale(1.3) rotate(-4deg); }
+  .app-nav a.active:hover { transform: scale(1.1); }
+  .app-nav a:active { transform: scale(1.02); }
+}

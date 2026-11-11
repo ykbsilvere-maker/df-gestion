@@ -73,6 +73,15 @@ const LIBELLES_ACTIONS: Record<string, string> = {
   'plateforme.admin_general': 'Administrateur général désigné',
   'plateforme.inscription_libre': 'Règle d’inscription modifiée',
   'connexion.code_entree': 'Connexion avec le code d’entrée',
+  'activite.module_ouvert': 'Ouverture d’un module',
+  'activite.fenetre_fermee': 'Fermeture d’une fenêtre',
+  'activite.fenetre_reduite': 'Fenêtre réduite',
+  'activite.impression': 'Impression',
+  'activite.export': 'Export de fichier',
+  'activite.verrouillage': 'Verrouillage de l’écran',
+  'activite.deverrouillage': 'Déverrouillage de l’écran',
+  'activite.code_refuse': 'Code d’entrée refusé',
+  'activite.deconnexion': 'Déconnexion',
   'connexion.code_entree_refuse': 'Code d’entrée refusé (plusieurs essais)',
   'journee.ouverte': 'Ouverture de la journée',
   'journee.cloturee': 'Clôture de la journée',
@@ -102,6 +111,8 @@ export function libelleAction(code: string): string {
 /** Icône de la famille d'une opération du journal. */
 export function iconeAction(code: string): string {
   if (/refuse/.test(code)) return '⛔';
+  if (/^activite\.(impression|export)/.test(code)) return code.includes('export') ? '⬇️' : '🖨️';
+  if (/^activite\./.test(code)) return '🖱️';
   if (/^(session|connexion)\./.test(code)) return code.includes('deconnexion') ? '🚪' : '🔑';
   if (/^journee\./.test(code)) return '📅';
   if (/^(sessions_caisse|caisses|ventes|moyens_paiement)/.test(code)) return '🛒';
@@ -128,7 +139,7 @@ const LIBELLES_CHAMPS: Record<string, string> = {
   cloturee_le: 'Clôturée le', ouverte_le: 'Ouverte le', caissier_id: 'Caissier', magasin_id: 'Magasin', caisse_id: 'Caisse', montant: 'Montant',
   motif: 'Motif', note: 'Note', reference: 'Référence', photo_path: 'Photo', marque: 'Marque', gere_peremption: 'Suivi de péremption',
   date_reception: 'Date de réception', derniere_connexion: 'Dernière connexion', crees: 'Créés', mis_a_jour: 'Mis à jour', erreurs: 'Erreurs',
-  appareil: 'Appareil', navigateur: 'Navigateur', entreprise: 'Entreprise', nombre_ventes: 'Nombre de ventes', total_ventes: 'Total des ventes',
+  appareil: 'Appareil', navigateur: 'Navigateur', module: 'Module', document: 'Document', fichier: 'Fichier', entreprise: 'Entreprise', nombre_ventes: 'Nombre de ventes', total_ventes: 'Total des ventes',
 };
 export function libelleChamp(c: string): string {
   return LIBELLES_CHAMPS[c] ?? c.replace(/_id$/, '').replace(/_/g, ' ').replace(/^./, (x) => x.toUpperCase());

@@ -1,3 +1,4 @@
+import { tracer } from '../lib/trace';
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { pontAndroid } from '../lib/android';
@@ -36,6 +37,7 @@ export function FournisseurImpression({ children }: { children: ReactNode }) {
   const zone = useRef<HTMLDivElement | null>(null);
 
   const imprimer = useCallback(async (noeud: ReactNode, support: Support) => {
+    tracer('impression', { document: support === 'thermique' ? 'Ticket ou rapport (rouleau)' : 'Document A4' });
     setContenu(noeud);
     const style = document.createElement('style');
     style.id = 'regle-page-impression';
@@ -85,6 +87,7 @@ export async function imprimerPageA4(titre?: string) {
   style.textContent = '@page { size: A4 portrait; margin: 12mm; }';
   document.head.appendChild(style);
   document.body.classList.add('impression-page');
+  tracer('impression', { document: titre || document.title });
   const ancien = document.title;
   if (titre) document.title = titre;
   const fin = () => {

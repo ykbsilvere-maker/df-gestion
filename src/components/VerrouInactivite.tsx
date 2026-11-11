@@ -1,3 +1,4 @@
+import { tracer } from '../lib/trace';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
@@ -91,6 +92,7 @@ export function VerrouInactivite() {
     setOccupe(false);
     const r = data as { ok: boolean; message?: string };
     if (r.ok) {
+      tracer('deverrouillage');
       await memoriserEmpreinte(session.user.id, code);
       return ouvrir();
     }

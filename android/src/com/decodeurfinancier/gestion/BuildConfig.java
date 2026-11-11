@@ -2,7 +2,7 @@ package com.decodeurfinancier.gestion;
 
 /** Version de l'application (reprise dans le nom d'agent du navigateur). */
 final class BuildConfig {
-    static final String VERSION = "2.8.0";
+    static final String VERSION = "2.9.0";
 
     private BuildConfig() {}
 }

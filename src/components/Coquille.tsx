@@ -2,6 +2,7 @@ import { imprimerPageA4 } from '../impression/impression';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AlertesEquipe } from '../lib/alertes';
+import { definirOrgTrace, tracer } from '../lib/trace';
 import { VerrouInactivite, verrouillerMaintenant } from './VerrouInactivite';
 import { FiletSecurite } from './FiletSecurite';
 import { useSession } from '../lib/session';
@@ -98,6 +99,12 @@ export function Coquille() {
   const logo = identite?.logoUrl;
   const page = [...liens].reverse().find((l) => (l.vers === '/' ? emplacement.pathname === '/' : emplacement.pathname.startsWith(l.vers)));
   const versPage = page?.vers ?? '/';
+  const idOrg = organisation?.organisation_id;
+  useEffect(() => {
+    definirOrgTrace(idOrg);
+    if (idOrg && page) tracer('module_ouvert', { module: page.libelle });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idOrg, versPage]);
   useEffect(() => {
     setReduite(false);
     setOuvertes((l) => (l.includes(versPage) ? l : [...l, versPage].slice(-8)));
@@ -111,6 +118,7 @@ export function Coquille() {
   }, [ouvertes]);
   const fenetresOuvertes = ouvertes.map((v) => liens.find((l) => l.vers === v)).filter((l): l is (typeof liens)[number] => !!l);
   const fermerFenetre = (vers: string) => {
+    tracer('fenetre_fermee', { module: liens.find((l) => l.vers === vers)?.libelle ?? vers });
     const reste = ouvertes.filter((v) => v !== vers);
     setOuvertes(reste);
     if (vers !== versPage) return;
@@ -201,7 +209,7 @@ export function Coquille() {
               🖨️
             </button>
           )}
-          <button type="button" className="entete-bouton" onClick={verrouillerMaintenant} title="Verrouiller (code d’entrée)" aria-label="Verrouiller">
+          <button type="button" className="entete-bouton" onClick={() => { tracer('verrouillage'); verrouillerMaintenant(); }} title="Verrouiller (code d’entrée)" aria-label="Verrouiller">
             🔒
           </button>
           <Link to="/compte" className="entete-utilisateur" title={nomUtilisateur}>
@@ -224,7 +232,7 @@ export function Coquille() {
               <button type="button" className="feu feu-rouge" onClick={() => animerPuis('fermer', () => fermerFenetre(versPage))} title="Fermer" aria-label="Fermer la fenêtre">
                 <span aria-hidden>×</span>
               </button>
-              <button type="button" className="feu feu-jaune" onClick={() => animerPuis('reduire', () => setReduite(true))} title="Réduire" aria-label="Réduire la fenêtre">
+              <button type="button" className="feu feu-jaune" onClick={() => animerPuis('reduire', () => { tracer('fenetre_reduite', { module: page?.libelle ?? '' }); setReduite(true); })} title="Réduire" aria-label="Réduire la fenêtre">
                 <span aria-hidden>−</span>
               </button>
               <button type="button" className="feu feu-vert" onClick={() => setAgrandie(!agrandie)} title={agrandie ? 'Restaurer' : 'Agrandir'} aria-label={agrandie ? 'Restaurer la fenêtre' : 'Agrandir la fenêtre'}>
