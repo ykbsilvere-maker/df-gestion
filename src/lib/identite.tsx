@@ -12,6 +12,18 @@ export const COULEURS: Record<string, { libelle: string; fonce: string; fonce2: 
   prune: { libelle: 'Prune', fonce: '#2d1a33', fonce2: '#43274b' },
   ardoise: { libelle: 'Ardoise', fonce: '#22272e', fonce2: '#343c46' },
   nuit: { libelle: 'Nuit', fonce: '#151b30', fonce2: '#232c4a' },
+  bleu_roi: { libelle: 'Bleu roi', fonce: '#14308f', fonce2: '#2143b5' },
+  indigo: { libelle: 'Indigo', fonce: '#2a1f6b', fonce2: '#3b2d8f' },
+  violet: { libelle: 'Violet', fonce: '#4a1d7a', fonce2: '#602b9b' },
+  framboise: { libelle: 'Framboise', fonce: '#7a1447', fonce2: '#98215d' },
+  rubis: { libelle: 'Rubis', fonce: '#7a1220', fonce2: '#992131' },
+  bordeaux: { libelle: 'Bordeaux', fonce: '#4a0f1c', fonce2: '#66192b' },
+  cuivre: { libelle: 'Cuivre', fonce: '#6b3410', fonce2: '#89461a' },
+  olive: { libelle: 'Olive', fonce: '#37401a', fonce2: '#4c5826' },
+  emeraude: { libelle: 'Émeraude', fonce: '#0b4a36', fonce2: '#136349' },
+  turquoise: { libelle: 'Turquoise', fonce: '#0b4a4a', fonce2: '#136363' },
+  petrole: { libelle: 'Pétrole', fonce: '#0d3b45', fonce2: '#165361' },
+  graphite: { libelle: 'Graphite', fonce: '#2b2b2f', fonce2: '#3e3e44' },
 };
 
 export function appliquerCouleur(code: string) {
