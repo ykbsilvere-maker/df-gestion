@@ -9,7 +9,6 @@ import { messageErreur } from '../../lib/format';
 import { clavierMontant, lireMontant, montant } from '../../lib/argent';
 import { aujourdhui, dateFr, useComptes } from '../../lib/tresorerie';
 import { useImpression } from '../../impression/impression';
-import { classeurXlsx, telechargerFichier, TYPE_XLSX } from '../../lib/excel';
 import { enUnites } from '../../lib/argent';
 import { Alerte, Champ, EnTetePage, Fenetre, MontantFort, Pastille, Vide } from '../../components/ui';
 import { useDemandeCreation } from '../../lib/demande';

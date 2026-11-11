@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { appareilLisible, dateHeure, differences, iconeAction, libelleAction, libelleChamp, messageErreur } from '../lib/format';
 import { imprimerPageA4 } from '../impression/impression';
-import { classeurXlsx, telechargerFichier, TYPE_XLSX } from '../lib/excel';
 import type { LigneAudit, Profil } from '../lib/types';
 import { Alerte, Champ, EnTetePage, Vide } from '../components/ui';
 

@@ -7,7 +7,6 @@ import { useSession } from '../../lib/session';
 import { messageErreur } from '../../lib/format';
 import { montant } from '../../lib/argent';
 import { aujourdhui, dateFr } from '../../lib/tresorerie';
-import { classeurXlsx, telechargerFichier, TYPE_XLSX } from '../../lib/excel';
 import { enUnites } from '../../lib/argent';
 import { Alerte, Champ, EnTetePage, MontantFort, Pastille } from '../../components/ui';
 

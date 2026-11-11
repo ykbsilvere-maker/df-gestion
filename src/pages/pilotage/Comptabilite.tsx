@@ -7,7 +7,7 @@ import { useSession } from '../../lib/session';
 import { messageErreur } from '../../lib/format';
 import { clavierMontant, enUnites, lireMontant, montant } from '../../lib/argent';
 import { aujourdhui, dateFr } from '../../lib/tresorerie';
-import { classeurXlsx, telechargerFichier, TYPE_XLSX, type Feuille } from '../../lib/excel';
+import type { Feuille } from '../../lib/excel';
 import { Alerte, Champ, EnTetePage, Fenetre, Pastille, Vide } from '../../components/ui';
 
 type Onglet = 'journal' | 'grand_livre' | 'balance' | 'bilan' | 'cloture' | 'plan';

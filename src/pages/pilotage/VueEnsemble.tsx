@@ -5,7 +5,6 @@ import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { messageErreur } from '../../lib/format';
 import { enUnites, montant } from '../../lib/argent';
-import { classeurXlsx, telechargerFichier, TYPE_XLSX } from '../../lib/excel';
 import { choisirMagasinGlobal, useMagasinGlobal } from '../../lib/magasinGlobal';
 import { Alerte, Champ, EnTetePage } from '../../components/ui';
 
