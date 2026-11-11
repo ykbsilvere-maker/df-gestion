@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import type { Magasin } from './types';
 import { pontAndroid } from './android';
+import { classeurXlsx, telechargerFichier, TYPE_XLSX } from './excel';
 
 export const LIBELLES_MOUVEMENTS: Record<string, string> = {
   reception: 'Réception',
@@ -78,12 +79,21 @@ export function useMagasinCourant(org: string | undefined, magasins: Magasin[]):
   return [id, choisir];
 }
 
-/** Export CSV compatible Excel (séparateur « ; », BOM UTF-8). */
+/** Export Excel (.xlsx) d'un tableau simple. Le nom historique est gardé pour les appels existants. */
 export function telechargerCsv(nom: string, entetes: string[], lignes: (string | number | null | undefined)[][]) {
   const echapper = (v: string | number | null | undefined) => {
     const s = v === null || v === undefined ? '' : String(v);
     return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
+  // Vrai classeur Excel (.xlsx) : colonnes à la bonne largeur, nombres reconnus comme des nombres.
+  const feuille = {
+    nom: 'Export',
+    entetes,
+    lignes: lignes.map((l) => l.map((v) => (v === null || v === undefined ? '' : v))),
+    largeurs: entetes.map((e, i) => Math.max(10, Math.min(46, Math.max(e.length, ...lignes.slice(0, 200).map((l) => String(l[i] ?? '').length)) + 3))),
+  };
+  if (telechargerFichier(nom.replace(/\.csv$/i, '.xlsx'), TYPE_XLSX, classeurXlsx([feuille]))) return;
+  // Ancienne application Android sans enregistrement de fichiers binaires : repli en CSV.
   const contenu = [entetes, ...lignes].map((l) => l.map(echapper).join(';')).join('\r\n');
   // Application Android : le fichier est enregistré dans « Téléchargements ».
   const android = pontAndroid();
