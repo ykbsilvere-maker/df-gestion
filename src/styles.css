@@ -2041,3 +2041,27 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
   .app-nav a.active:hover { transform: scale(1.1); }
   .app-nav a:active { transform: scale(1.02); }
 }
+
+/* ---- 2.9.1 : Dock stable — la croix ne bouge plus sous le pointeur ---- */
+@media (min-width: 861px) {
+  .barre-taches { height: 58px; gap: 6px; padding: 0 12px; }
+  /* La case de chaque module garde sa place et sa taille : seule l'icône grossit, vers le haut. */
+  .tache, .tache.active { width: 52px; height: 50px; justify-content: center; transform: none !important; margin: 0 !important; animation: pop .3s var(--ressort); overflow: visible; }
+  .tache:hover, .tache:hover + .tache, .tache:has(+ .tache:hover), .tache:active { transform: none !important; margin: 0 !important; }
+  .tache button:first-child { width: 100%; height: 100%; padding: 0; }
+  .tache button:first-child span { transform-origin: 50% 100%; transition: transform .2s var(--ressort); will-change: transform; }
+  .tache:hover button:first-child span { transform: scale(1.32) translateY(-2px); }
+  .tache:hover + .tache button:first-child span, .tache:has(+ .tache:hover) button:first-child span { transform: scale(1.12); }
+  .tache:active button:first-child span { transform: scale(1.05) translateY(2px); transition-duration: .06s; }
+  /* Croix : grande, fixe, avec une zone sensible élargie autour d'elle. */
+  .tache .tache-fermer, .tache.active .tache-fermer { top: -9px; right: -7px; width: 22px; height: 22px; line-height: 22px; font-size: 11px; opacity: 1; border: 2px solid #fff; box-sizing: border-box; display: grid; place-items: center; transition: transform .16s var(--ressort), background-color .12s; }
+  .tache .tache-fermer::before { content: ''; position: absolute; inset: -9px; border-radius: 50%; }
+  .tache .tache-fermer:hover { transform: scale(1.22); background: #ff3b30; color: #fff; }
+  .tache .tache-fermer:active { transform: scale(.9); }
+  .tache-bureau .tache-fermer { display: none; }
+  /* Fermeture : l'icône se replie et sa case se referme en douceur. */
+  .tache.tache-sort { animation: tache-sort .19s ease-in forwards; pointer-events: none; }
+  @keyframes tache-sort { to { scale: .2; translate: 0 12px; opacity: 0; width: 0; } }
+  .tache.tache-sort { transform: none; }
+  .tache[data-nom]:hover::before { bottom: 128%; transform: translateX(-50%); }
+}

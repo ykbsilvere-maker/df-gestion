@@ -126,6 +126,16 @@ export function Coquille() {
     if (suivante) naviguer(suivante);
     else setReduite(true);
   };
+  // Fermeture depuis le Dock : dès l'appui (sans attendre le relâchement), l'icône se replie puis disparaît.
+  const [fermant, setFermant] = useState<string | null>(null);
+  const fermerDepuisDock = (vers: string) => {
+    if (fermant) return;
+    setFermant(vers);
+    window.setTimeout(() => {
+      setFermant(null);
+      fermerFenetre(vers);
+    }, 190);
+  };
   const nomUtilisateur = (session?.user.user_metadata?.nom_complet as string | undefined) || identifiantAffiche(session?.user.email);
 
   const lien = (l: (typeof liens)[number]) => (
@@ -275,7 +285,16 @@ export function Coquille() {
             ⊞
           </button>
           {fenetresOuvertes.map((l) => (
-            <span key={l.vers} data-nom={l.libelle} className={`tache ${!reduite && l.vers === versPage ? 'active' : ''}`}>
+            <span
+              key={l.vers}
+              data-nom={l.libelle}
+              className={`tache ${!reduite && l.vers === versPage ? 'active' : ''} ${fermant === l.vers ? 'tache-sort' : ''}`}
+              onAuxClick={(e) => e.button === 1 && fermerDepuisDock(l.vers)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                fermerDepuisDock(l.vers);
+              }}
+            >
               <button
                 type="button"
                 onClick={() => {
@@ -287,7 +306,7 @@ export function Coquille() {
                 <span aria-hidden>{l.icone} </span>
                 {l.libelle}
               </button>
-              <button type="button" className="tache-fermer" onClick={() => fermerFenetre(l.vers)} aria-label={`Fermer ${l.libelle}`}>
+              <button type="button" className="tache-fermer" onPointerDown={(e) => { e.preventDefault(); fermerDepuisDock(l.vers); }} onClick={(e) => e.detail === 0 && fermerDepuisDock(l.vers)} aria-label={`Fermer ${l.libelle}`} title="Fermer (ou clic droit sur l’icône)">
                 ✕
               </button>
             </span>
