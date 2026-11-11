@@ -216,7 +216,7 @@ describe('Personnalisation', () => {
     );
     expect(r).toHaveLength(0);
     await expect(
-      enTantQue(pool, alice, (q) => q(`update organisations set couleur = 'fluo' where id = $1`, [orgA])),
+      enTantQue(pool, alice, (q) => q(`update organisations set couleur = 'Rouge fluo !' where id = $1`, [orgA])),
     ).rejects.toThrow(/check constraint/);
   });
 
