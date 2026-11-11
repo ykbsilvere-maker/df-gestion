@@ -3,6 +3,12 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.0.** **Magasins indépendants** : un sélecteur en haut de l'écran (« Tous les magasins » ou un magasin)
+que suivent l'accueil, le stock et la trésorerie ; une page **Vue d'ensemble** qui compare les magasins (ventes du
+jour et du mois, marge, charges, résultat, stock, ruptures, écarts de caisse) et donne le total de l'entreprise ;
+chaque **compte de trésorerie** (banque, Mobile Money…) se rattache à un magasin ou reste commun, et ses dépenses
+comptent dans le résultat de ce magasin (migration 028).
+
 **Version 2.7.** **Fenêtres façon Windows** (ordinateur) : chaque module s'ouvre dans une fenêtre avec Réduire,
 Agrandir et Fermer ; une barre des tâches en bas garde les modules ouverts, et le bouton ⊞ affiche le bureau avec les
 icônes. **Alertes d'équipe** en direct : à l'ouverture ou à la clôture d'une caisse ou de la journée, les autres

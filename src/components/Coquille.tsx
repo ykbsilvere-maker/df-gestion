@@ -3,6 +3,8 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AlertesEquipe } from '../lib/alertes';
 import { definirOrgTrace, tracer } from '../lib/trace';
+import { useMagasins } from '../lib/stock';
+import { choisirMagasinGlobal, useMagasinGlobal } from '../lib/magasinGlobal';
 import { VerrouInactivite, verrouillerMaintenant } from './VerrouInactivite';
 import { FiletSecurite } from './FiletSecurite';
 import { useSession } from '../lib/session';
@@ -21,6 +23,7 @@ const LIENS: { vers: string; libelle: string; permission?: string | string[]; ad
   { vers: '/rapports/ventes', libelle: 'Ventes', permission: ['ventes.exporter', 'rapports.consulter'], icone: '📊', groupe: 'vendre' },
   { vers: '/stock', libelle: 'Stock', permission: 'stock.consulter', icone: '📦', groupe: 'stock' },
   { vers: '/fournisseurs', libelle: 'Fournisseurs', permission: ['fournisseurs.consulter', 'achats.consulter'], icone: '🚚', groupe: 'stock' },
+  { vers: '/vue-ensemble', libelle: 'Vue d’ensemble', permission: 'rentabilite.consulter', icone: '🏬', groupe: 'pilotage' },
   { vers: '/budget', libelle: 'Budget', permission: 'budget.consulter', icone: '📒', groupe: 'pilotage' },
   { vers: '/tresorerie', libelle: 'Trésorerie', permission: 'tresorerie.consulter', icone: '💰', groupe: 'pilotage' },
   { vers: '/rentabilite', libelle: 'Rentabilité', permission: 'rentabilite.consulter', icone: '📈', groupe: 'pilotage' },
@@ -59,6 +62,12 @@ export function Coquille() {
   const [menuMobile, setMenuMobile] = useState(false);
   const emplacement = useLocation();
   const naviguer = useNavigate();
+  const magasinsVisibles = useMagasins(organisation?.organisation_id);
+  const magasinGlobal = useMagasinGlobal();
+  useEffect(() => {
+    // Magasin retenu qui n'existe plus (ou autre entreprise) : retour à « Tous ».
+    if (magasinGlobal && magasinsVisibles.length && !magasinsVisibles.some((m) => m.id === magasinGlobal)) choisirMagasinGlobal('');
+  }, [magasinGlobal, magasinsVisibles]);
   // Fenêtres façon Windows (ordinateur) : modules ouverts dans la barre des tâches, fenêtre réduite ou agrandie.
   const [ouvertes, setOuvertes] = useState<string[]>(() => {
     try {
@@ -214,6 +223,19 @@ export function Coquille() {
           {page?.libelle}
         </div>
         <div className="app-entete-actions">
+          {magasinsVisibles.length > 1 && (
+            <label className={`entete-magasin ${magasinGlobal ? 'precis' : ''}`} title="Magasin affiché">
+              <span aria-hidden>🏬</span>
+              <select value={magasinGlobal} onChange={(e) => choisirMagasinGlobal(e.target.value)} aria-label="Magasin affiché">
+                <option value="">Tous les magasins</option>
+                {magasinsVisibles.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nom}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {!pleinEcran && (
             <button type="button" className="entete-bouton" onClick={() => void imprimerPageA4()} title="Imprimer cette page (A4)" aria-label="Imprimer cette page sur A4">
               🖨️

@@ -2065,3 +2065,25 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
   .tache.tache-sort { transform: none; }
   .tache[data-nom]:hover::before { bottom: 128%; transform: translateX(-50%); }
 }
+
+/* ---- 3.0 : magasins indépendants et vue d'ensemble ---- */
+.entete-magasin { display: inline-flex; align-items: center; gap: 6px; padding: 0 4px 0 10px; height: 38px; border-radius: 12px; border: 1px solid var(--trait); background: var(--surface); transition: border-color .2s, box-shadow .25s; }
+.entete-magasin select { border: 0; background: transparent; font: inherit; font-weight: 600; padding: 6px 4px; max-width: 190px; box-shadow: none !important; }
+.entete-magasin.precis { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+.etiquette-magasin { align-self: flex-start; font-size: 0.7rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--encre-douce); }
+.cartes-magasins { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin: 12px 0; }
+.carte-magasin { display: grid; gap: 8px; text-align: left; font: inherit; cursor: pointer; border: 2px solid transparent; transition: transform .28s var(--ressort), box-shadow .25s, border-color .2s; }
+.carte-magasin:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(16,24,40,.1); }
+.carte-magasin:active { transform: scale(.98); }
+.carte-magasin.choisi { border-color: var(--accent); }
+.carte-magasin-tete { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.carte-magasin-ca { font-size: 1.6rem; font-weight: 800; letter-spacing: -.01em; }
+.barre-part { height: 6px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+.barre-part i { display: block; height: 100%; border-radius: 6px; background: var(--accent); transition: width .6s var(--glisse); }
+.carte-magasin-chiffres { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-top: 1px solid var(--trait); padding-top: 8px; font-weight: 700; font-size: 0.9rem; }
+.carte-magasin-chiffres small { display: block; font-weight: 500; font-size: 0.72rem; color: var(--encre-douce); }
+.carte-magasin-chiffres em { font-style: normal; font-weight: 500; font-size: 0.75rem; color: var(--encre-douce); }
+.texte-positif { color: var(--foret, #136349); }
+.ligne-choisie td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.ligne-total td { border-top: 2px solid var(--encre); }
+@media (max-width: 860px) { .entete-magasin select { max-width: 110px; } }

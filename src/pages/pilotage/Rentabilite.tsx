@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { messageErreur } from '../../lib/format';
@@ -171,6 +172,7 @@ export function Rentabilite() {
       <EnTetePage
         icone="📈"
         titre="Rentabilité"
+        actions={<Link className="bouton bouton-discret" to="/vue-ensemble">🏬 Par magasin</Link>}
         sousTitre="La boutique gagne-t-elle de l’argent ? Compte d’exploitation, seuil de rentabilité et soldes SYSCOHADA, mois par mois."
         actions={c && <button className="bouton bouton-discret" onClick={exporter}>Excel</button>}
       />

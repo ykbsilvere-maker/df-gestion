@@ -1,3 +1,4 @@
+import { useMagasinGlobal } from '../lib/magasinGlobal';
 import { BandeauJournee, useJournee } from '../caisse/Journee';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -52,6 +53,7 @@ function ActionsRapides({ peut, gerantPrincipal }: { peut: (p: string) => boolea
 
 export function Accueil() {
   const { organisation, peut, adminGeneral, session } = useSession();
+  const magasinGlobal = useMagasinGlobal();
   const prenom = ((session?.user.user_metadata?.nom_complet as string | undefined) ?? '').trim().split(/\s+/)[0] ?? '';
   const naviguer = useNavigate();
   // L'administrateur général arrive sur sa console à chaque nouvelle session.
@@ -89,8 +91,8 @@ export function Accueil() {
       setCompteurs({ magasins, caisses, membres, invitations });
       if (peut('stock.consulter')) {
         const [etat, alertes] = await Promise.all([
-          supabase.rpc('etat_stock', { p_org: org }),
-          supabase.rpc('alertes_stock', { p_org: org }),
+          supabase.rpc('etat_stock', { p_org: org, p_magasin: magasinGlobal || null }),
+          supabase.rpc('alertes_stock', { p_org: org, p_magasin: magasinGlobal || null }),
         ]);
         setStock({
           valeur: ((etat.data ?? []) as { valeur: number }[]).reduce((s, l) => s + Number(l.valeur), 0),
@@ -112,7 +114,7 @@ export function Accueil() {
         setDernieres((data ?? []) as LigneAudit[]);
       }
     })();
-  }, [org, peut]);
+  }, [org, peut, magasinGlobal]);
 
   if (!organisation) return null;
 

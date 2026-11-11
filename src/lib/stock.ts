@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import type { Magasin } from './types';
 import { pontAndroid } from './android';
+import { useMagasinGlobal } from './magasinGlobal';
 import { classeurXlsx, telechargerFichier, TYPE_XLSX } from './excel';
 
 export const LIBELLES_MOUVEMENTS: Record<string, string> = {
@@ -65,9 +66,14 @@ export function useMagasinCourant(org: string | undefined, magasins: Magasin[]):
       return '';
     }
   });
+  const global = useMagasinGlobal();
   useEffect(() => {
     if (magasins.length && !magasins.some((m) => m.id === id)) setId(magasins[0]!.id);
   }, [magasins, id]);
+  // Un magasin précis choisi en haut de l'écran s'impose aux pages de stock.
+  useEffect(() => {
+    if (global && magasins.some((m) => m.id === global)) setId(global);
+  }, [global, magasins]);
   const choisir = (v: string) => {
     setId(v);
     try {

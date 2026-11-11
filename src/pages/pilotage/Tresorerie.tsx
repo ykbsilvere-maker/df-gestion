@@ -1,3 +1,5 @@
+import { useMagasins } from '../../lib/stock';
+import { useMagasinGlobal } from '../../lib/magasinGlobal';
 import { LogoCompte } from '../../components/LogoMoyen';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -54,7 +56,11 @@ export function Tresorerie() {
   const [mouvements, setMouvements] = useState<{ solde_debut: number; solde_fin: number; mouvements: Mouvement[] } | null>(null);
   const [virement, setVirement] = useState<Record<string, string> | null>(null);
   const [rapprochement, setRapprochement] = useState<{ compte: CompteSolde; date: string; solde: string; justification: string } | null>(null);
-  const [edition, setEdition] = useState<Partial<CompteTresorerie> | null>(null);
+  const [edition, setEdition] = useState<(Partial<CompteTresorerie> & { magasin_id?: string | null }) | null>(null);
+  const [rattachements, setRattachements] = useState<Record<string, string | null>>({});
+  const magasins = useMagasins(org);
+  const magasinGlobal = useMagasinGlobal();
+  const nomMagasin = (id: string | null | undefined) => magasins.find((m) => m.id === id)?.nom;
 
   const charger = useCallback(async () => {
     const [a, b, c] = await Promise.all([
@@ -66,6 +72,8 @@ export function Tresorerie() {
     setEtat(a.data as Etat);
     setVirements((b.data ?? []) as Virement[]);
     setCaisses((c.data ?? []) as { id: string; nom: string }[]);
+    const { data: liens } = await supabase.from('comptes_tresorerie').select('id, magasin_id').eq('organisation_id', org);
+    setRattachements(Object.fromEntries(((liens ?? []) as { id: string; magasin_id: string | null }[]).map((x) => [x.id, x.magasin_id])));
   }, [org]);
   useEffect(() => {
     void charger();
@@ -78,7 +86,8 @@ export function Tresorerie() {
       .then(({ data, error }) => (error ? setErreur(messageErreur(error)) : setMouvements(data as typeof mouvements)));
   }, [compteOuvert, periode]);
 
-  const comptes = etat?.comptes ?? [];
+  // Magasin choisi en haut de l'écran : ses comptes, plus les comptes communs.
+  const comptes = (etat?.comptes ?? []).filter((c) => !magasinGlobal || !rattachements[c.id] || rattachements[c.id] === magasinGlobal);
   const actifs = comptes.filter((c) => c.actif);
   const nomCompte = (id: string) => comptes.find((c) => c.id === id)?.nom ?? '—';
 
@@ -146,10 +155,16 @@ export function Tresorerie() {
       date_ouverture: edition.date_ouverture ?? aujourdhui(),
       ordre: edition.ordre ?? 100,
     };
-    const { error } = edition.id
-      ? await supabase.from('comptes_tresorerie').update({ ...champs, actif: edition.actif ?? true }).eq('id', edition.id)
-      : await supabase.from('comptes_tresorerie').insert({ ...champs, organisation_id: org });
+    const { data: enregistre, error } = edition.id
+      ? await supabase.from('comptes_tresorerie').update({ ...champs, actif: edition.actif ?? true }).eq('id', edition.id).select('id').maybeSingle()
+      : await supabase.from('comptes_tresorerie').insert({ ...champs, organisation_id: org }).select('id').maybeSingle();
     if (error) return setErreur(/duplicate/.test(error.message) ? 'Un compte porte déjà ce nom.' : messageErreur(error));
+    // Rattachement à un magasin (hors comptes de caisse, qui suivent leur caisse).
+    const idCompte = edition.id ?? (enregistre as { id: string } | null)?.id;
+    if (idCompte && !champs.caisse_id && (edition.magasin_id ?? null) !== (edition.id ? rattachements[edition.id] ?? null : null)) {
+      const { error: e2 } = await supabase.rpc('rattacher_compte', { p_compte: idCompte, p_magasin: edition.magasin_id || null });
+      if (e2) return setErreur(messageErreur(e2));
+    }
     setEdition(null);
     await charger();
   }
@@ -214,6 +229,7 @@ export function Tresorerie() {
               <LogoCompte compte={c} />
               <strong>{c.nom}</strong>
             </span>
+            {magasins.length > 1 && <span className="etiquette-magasin">{nomMagasin(rattachements[c.id]) ?? 'Commun'}</span>}
             <span className={`carte-compte-solde ${c.solde < 0 ? 'texte-negatif' : ''}`}>{montant(c.solde)}</span>
             <span className="secondaire">
               + {montant(c.entrees_mois)} · − {montant(c.sorties_mois)} ce mois
@@ -241,7 +257,7 @@ export function Tresorerie() {
                 </button>
               )}
               {peut('tresorerie.modifier') && (
-                <button className="bouton bouton-discret" onClick={() => setEdition(compteOuvert)}>
+                <button className="bouton bouton-discret" onClick={() => setEdition({ ...compteOuvert, magasin_id: rattachements[compteOuvert.id] ?? null })}>
                   Modifier le compte
                 </button>
               )}
@@ -451,6 +467,18 @@ export function Tresorerie() {
                   ))}
                 </select>
               </Champ>
+              {edition.type !== 'caisse' && magasins.length > 1 && (
+                <Champ label="Magasin" aide="Ses dépenses comptent dans le résultat de ce magasin. « Commun » = toute l’entreprise.">
+                  <select value={edition.magasin_id ?? ''} onChange={(e) => setEdition({ ...edition, magasin_id: e.target.value || null })}>
+                    <option value="">Commun à tous les magasins</option>
+                    {magasins.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nom}
+                      </option>
+                    ))}
+                  </select>
+                </Champ>
+              )}
               {edition.type === 'caisse' && (
                 <Champ label="Tiroir de la caisse" aide="Ses ventes en espèces arrivent sur ce compte">
                   <select value={edition.caisse_id ?? ''} onChange={(e) => setEdition({ ...edition, caisse_id: e.target.value || null })}>
