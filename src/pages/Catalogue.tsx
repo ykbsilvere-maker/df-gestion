@@ -1,9 +1,11 @@
+import { exporterClasseur, toutCharger, type FormatExport } from '../lib/export';
+import { BoutonsExport, Pagination } from '../components/Export';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { messageErreur } from '../lib/format';
-import { montant } from '../lib/argent';
+import { enUnites, montant } from '../lib/argent';
 import type { Categorie, Produit } from '../lib/types';
 import { Alerte, Fenetre, Pastille, Vide } from '../components/ui';
 import { Scanner } from '../components/Scanner';
@@ -32,6 +34,7 @@ export function Catalogue() {
   const [filtreCategorie, setFiltreCategorie] = useState('');
   const [avecArretes, setAvecArretes] = useState(false);
   const [page, setPage] = useState(0);
+  const [tout, setTout] = useState(false);
   const [encore, setEncore] = useState(false);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState('');
@@ -49,6 +52,15 @@ export function Catalogue() {
   }, [org]);
 
   /** Recherche (code-barres, code interne, mots) ou liste paginée. Renvoie les lignes trouvées. */
+  const requeteProduits = useCallback(
+    (debut: number, fin: number) => {
+      let q = supabase.from('produits').select('*').eq('organisation_id', org).order('designation').range(debut, fin);
+      if (!avecArretes) q = q.eq('statut', 'actif');
+      if (filtreCategorie) q = q.eq('categorie_id', filtreCategorie);
+      return q;
+    },
+    [org, avecArretes, filtreCategorie],
+  );
   const charger = useCallback(
     async (t: string): Promise<Ligne[]> => {
       const numero = ++requete.current;
@@ -74,22 +86,26 @@ export function Catalogue() {
         if (filtreCategorie) resultat = resultat.filter((r) => r.categorie_id === filtreCategorie);
         setEncore(false);
       } else {
-        let q = supabase
-          .from('produits')
-          .select('*')
-          .eq('organisation_id', org)
-          .order('designation')
-          .range(page * PAR_PAGE, page * PAR_PAGE + PAR_PAGE);
-        if (!avecArretes) q = q.eq('statut', 'actif');
-        if (filtreCategorie) q = q.eq('categorie_id', filtreCategorie);
-        const { data, error } = await q;
-        if (error) setErreur(messageErreur(error));
-        const produits = (data ?? []) as Produit[];
-        setEncore(produits.length > PAR_PAGE);
-        const visibles = produits.slice(0, PAR_PAGE);
-        const { data: codes } = visibles.length
-          ? await supabase.from('codes_barres').select('produit_id, code').in('produit_id', visibles.map((p) => p.id))
-          : { data: [] };
+        let produits: Produit[] = [];
+        if (tout) {
+          try {
+            produits = await toutCharger<Produit>(requeteProduits);
+          } catch (e) {
+            setErreur(messageErreur(e));
+          }
+        } else {
+          const { data, error } = await requeteProduits(page * PAR_PAGE, page * PAR_PAGE + PAR_PAGE);
+          if (error) setErreur(messageErreur(error));
+          produits = (data ?? []) as Produit[];
+        }
+        setEncore(!tout && produits.length > PAR_PAGE);
+        const visibles = tout ? produits : produits.slice(0, PAR_PAGE);
+        // Tout le catalogue : les codes-barres sont lus par tranches, pas article par article.
+        const codes = !visibles.length
+          ? []
+          : tout
+            ? await toutCharger<{ produit_id: string; code: string }>((d, f) => supabase.from('codes_barres').select('produit_id, code').eq('organisation_id', org).range(d, f), 60000).catch(() => [])
+            : ((await supabase.from('codes_barres').select('produit_id, code').in('produit_id', visibles.map((p) => p.id))).data ?? []);
         const parProduit = new Map<string, string[]>();
         for (const c of (codes ?? []) as { produit_id: string; code: string }[])
           parProduit.set(c.produit_id, [...(parProduit.get(c.produit_id) ?? []), c.code]);
@@ -101,7 +117,7 @@ export function Catalogue() {
       }
       return resultat;
     },
-    [org, page, avecArretes, filtreCategorie],
+    [org, page, tout, requeteProduits],
   );
 
   useEffect(() => {
@@ -145,6 +161,29 @@ export function Catalogue() {
 
   const nomCategorie = (id: string | null) => categories.find((c) => c.id === id)?.nom ?? '—';
 
+  /** Tout le catalogue (avec les filtres en cours), en Excel ou en PDF. */
+  async function exporter(format: FormatExport) {
+    let tous: Produit[];
+    try {
+      tous = await toutCharger<Produit>(requeteProduits);
+    } catch (e) {
+      return setErreur(messageErreur(e));
+    }
+    exporterClasseur(
+      `catalogue-${new Date().toISOString().slice(0, 10)}`,
+      [
+        {
+          nom: 'Catalogue',
+          titre: ['Catalogue des articles', `${tous.length} article${tous.length > 1 ? 's' : ''}${filtreCategorie ? ` · ${nomCategorie(filtreCategorie)}` : ''}`],
+          entetes: ['Code', 'Désignation', 'Catégorie', 'Unité', 'Prix d’achat', 'Prix de vente', 'TVA (%)', 'Stock minimum', 'Statut'],
+          lignes: tous.map((p) => [p.code, p.designation, nomCategorie(p.categorie_id), p.unite, p.prix_achat == null ? null : enUnites(Number(p.prix_achat)), enUnites(Number(p.prix_vente)), Number(p.taux_tva), p.seuil_min, p.statut]),
+          largeurs: [12, 40, 22, 10, 14, 14, 9, 14, 10],
+        },
+      ],
+      format,
+    );
+  }
+
   return (
     <div className="page-catalogue">
       <h1 className="sr-only">Catalogue</h1>
@@ -174,6 +213,7 @@ export function Catalogue() {
             autoFocus
             enterKeyHint="search"
           />
+          <BoutonsExport onExport={exporter} />
           <button className="bouton bouton-discret" onClick={() => setScan(true)} aria-label="Scanner un code-barres">
             📷
           </button>
@@ -288,15 +328,7 @@ export function Catalogue() {
           </div>
         )}
         {!terme && (
-          <div className="pagination">
-            <button className="bouton bouton-discret" disabled={page === 0} onClick={() => setPage(page - 1)}>
-              Précédents
-            </button>
-            <span>Page {page + 1}</span>
-            <button className="bouton bouton-discret" disabled={!encore} onClick={() => setPage(page + 1)}>
-              Suivants
-            </button>
-          </div>
+          <Pagination page={page} encore={encore} tout={tout} nombre={lignes.length} setPage={setPage} setTout={setTout} />
         )}
       </section>
 

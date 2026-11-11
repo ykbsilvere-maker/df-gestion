@@ -3,6 +3,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AlertesEquipe } from '../lib/alertes';
 import { definirOrgTrace, tracer } from '../lib/trace';
+import { definirEntrepriseExport } from '../lib/export';
 import { useMagasins } from '../lib/stock';
 import { choisirMagasinGlobal, useMagasinGlobal } from '../lib/magasinGlobal';
 import { VerrouInactivite, verrouillerMaintenant } from './VerrouInactivite';
@@ -21,6 +22,7 @@ const LIENS: { vers: string; libelle: string; permission?: string | string[]; ad
   { vers: '/catalogue', libelle: 'Catalogue', permission: 'catalogue.consulter', icone: '🛍️', groupe: 'vendre' },
   { vers: '/devis', libelle: 'Devis', permission: 'ventes.valider', icone: '📄', groupe: 'vendre' },
   { vers: '/rapports/ventes', libelle: 'Ventes', permission: ['ventes.exporter', 'rapports.consulter'], icone: '📊', groupe: 'vendre' },
+  { vers: '/rapports/caisse', libelle: 'Rapports de caisse', permission: ['caisse.cloturer', 'rapports.consulter'], icone: '🧾', groupe: 'vendre' },
   { vers: '/stock', libelle: 'Stock', permission: 'stock.consulter', icone: '📦', groupe: 'stock' },
   { vers: '/fournisseurs', libelle: 'Fournisseurs', permission: ['fournisseurs.consulter', 'achats.consulter'], icone: '🚚', groupe: 'stock' },
   { vers: '/vue-ensemble', libelle: 'Vue d’ensemble', permission: 'rentabilite.consulter', icone: '🏬', groupe: 'pilotage' },
@@ -111,6 +113,7 @@ export function Coquille() {
   const idOrg = organisation?.organisation_id;
   useEffect(() => {
     definirOrgTrace(idOrg);
+    definirEntrepriseExport(organisation?.nom);
     if (idOrg && page) tracer('module_ouvert', { module: page.libelle });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idOrg, versPage]);

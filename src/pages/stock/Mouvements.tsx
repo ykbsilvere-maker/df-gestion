@@ -1,3 +1,5 @@
+import { toutCharger, type FormatExport } from '../../lib/export';
+import { BoutonsExport, Pagination } from '../../components/Export';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
@@ -34,6 +36,7 @@ export function Mouvements() {
   const [du, setDu] = useState('');
   const [au, setAu] = useState('');
   const [page, setPage] = useState(0);
+  const [tout, setTout] = useState(false);
   const [lignes, setLignes] = useState<Mouvement[]>([]);
   const [encore, setEncore] = useState(false);
   const [noms, setNoms] = useState<Record<string, string>>({});
@@ -74,20 +77,33 @@ export function Mouvements() {
 
   useEffect(() => {
     void (async () => {
-      const { data, error } = await requete(PAR_PAGE, page * PAR_PAGE);
-      if (error) return setErreur(messageErreur(error));
-      const mv = (data ?? []) as Mouvement[];
-      setEncore(mv.length > PAR_PAGE);
-      const visibles = mv.slice(0, PAR_PAGE);
+      let mv: Mouvement[];
+      if (tout) {
+        try {
+          mv = await toutCharger<Mouvement>((d, f) => requete(f - d, d));
+        } catch (e) {
+          return setErreur(messageErreur(e));
+        }
+      } else {
+        const { data, error } = await requete(PAR_PAGE, page * PAR_PAGE);
+        if (error) return setErreur(messageErreur(error));
+        mv = (data ?? []) as Mouvement[];
+      }
+      setEncore(!tout && mv.length > PAR_PAGE);
+      const visibles = tout ? mv : mv.slice(0, PAR_PAGE);
       setLignes(visibles);
       await completerNoms(visibles);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requete, page]);
+  }, [requete, page, tout]);
 
-  async function exporter() {
-    const { data } = await requete(5000, 0);
-    const mv = (data ?? []) as Mouvement[];
+  async function exporter(format: FormatExport = 'xlsx') {
+    let mv: Mouvement[];
+    try {
+      mv = await toutCharger<Mouvement>((d, f) => requete(f - d, d));
+    } catch (e) {
+      return setErreur(messageErreur(e));
+    }
     const { n, a } = await completerNoms(mv);
     telechargerCsv(
       `mouvements-stock-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -104,6 +120,7 @@ export function Mouvements() {
         m.motif,
         m.cree_par ? a[m.cree_par] : '',
       ]),
+      format,
     );
   }
 
@@ -118,9 +135,7 @@ export function Mouvements() {
         icone="🔄" titre="Mouvements de stock"
         sousTitre="Registre complet et non modifiable : chaque entrée, sortie, transfert et ajustement, avec son coût et son auteur."
         actions={
-          <button className="bouton bouton-discret" onClick={() => void exporter()} disabled={!lignes.length}>
-            Exporter (Excel)
-          </button>
+          <div className="actions-entete"><BoutonsExport onExport={exporter} disabled={!lignes.length} /></div>
         }
       />
       <Alerte>{erreur}</Alerte>
@@ -211,15 +226,7 @@ export function Mouvements() {
             </table>
           </div>
         )}
-        <div className="pagination">
-          <button className="bouton bouton-discret" disabled={page === 0} onClick={() => setPage(page - 1)}>
-            Plus récents
-          </button>
-          <span>Page {page + 1}</span>
-          <button className="bouton bouton-discret" disabled={!encore} onClick={() => setPage(page + 1)}>
-            Plus anciens
-          </button>
-        </div>
+        <Pagination page={page} encore={encore} tout={tout} nombre={lignes.length} setPage={setPage} setTout={setTout} precedent="Plus récents" suivant="Plus anciens" />
       </section>
     </>
   );

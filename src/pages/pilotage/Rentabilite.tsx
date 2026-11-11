@@ -1,3 +1,5 @@
+import { exporterClasseur, type FormatExport } from '../../lib/export';
+import { BoutonsExport } from '../../components/Export';
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
@@ -125,12 +127,11 @@ export function Rentabilite() {
     };
   }, [org, mois]);
 
-  function exporter() {
+  function exporter(format: FormatExport = 'xlsx') {
     if (!c) return;
-    telechargerFichier(
+    exporterClasseur(
       `rentabilite-${mois}.xlsx`,
-      TYPE_XLSX,
-      classeurXlsx([
+      [
         {
           nom: 'Compte d’exploitation',
           titre: [`${organisation!.nom} — Compte d’exploitation de ${libelleMois(c.mois).toLowerCase()}`],
@@ -160,7 +161,8 @@ export function Rentabilite() {
           entetes: ['Mois', 'CA', 'Marge', 'Taux de marge (%)', 'Charges', 'Résultat'],
           lignes: c.evolution.map((m) => [libelleMois(m.mois), enUnites(m.ca), enUnites(m.marge), m.taux_marge ?? 0, enUnites(m.charges), enUnites(m.resultat)]),
         },
-      ]),
+      ],
+      format,
     );
   }
 
@@ -176,7 +178,7 @@ export function Rentabilite() {
         actions={
           <div className="actions-entete">
             <Link className="bouton bouton-discret" to="/vue-ensemble">🏬 Par magasin</Link>
-            {c && <button className="bouton bouton-discret" onClick={exporter}>Excel</button>}
+            {c && <BoutonsExport onExport={exporter} />}
           </div>
         }
       />

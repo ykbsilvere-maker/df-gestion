@@ -1,3 +1,5 @@
+import { exporterClasseur, toutCharger, type FormatExport } from '../lib/export';
+import { BoutonsExport, Pagination } from '../components/Export';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
@@ -66,6 +68,7 @@ export function Journal() {
   const [du, setDu] = useState('');
   const [au, setAu] = useState('');
   const [page, setPage] = useState(0);
+  const [tout, setTout] = useState(false);
   const [encore, setEncore] = useState(false);
   const [ouverte, setOuverte] = useState<number | null>(null);
   const [erreur, setErreur] = useState('');
@@ -80,24 +83,34 @@ export function Journal() {
     })();
   }, [org]);
 
+  const requete = useCallback(
+    (debut: number, fin: number) => {
+      let q = supabase.from('journal_audit').select('*').eq('organisation_id', org as string).order('id', { ascending: false }).range(debut, fin);
+      if (famille) q = q.like('action', `${famille}%`);
+      if (utilisateur) q = q.eq('user_id', utilisateur);
+      if (du) q = q.gte('created_at', `${du}T00:00:00Z`);
+      if (au) q = q.lte('created_at', `${au}T23:59:59.999Z`);
+      return q;
+    },
+    [org, famille, utilisateur, du, au],
+  );
   const charger = useCallback(async () => {
     if (!org) return;
-    let q = supabase
-      .from('journal_audit')
-      .select('*')
-      .eq('organisation_id', org)
-      .order('id', { ascending: false })
-      .range(page * PAR_PAGE, page * PAR_PAGE + PAR_PAGE); // une ligne de plus pour savoir s'il reste des pages
-    if (famille) q = q.like('action', `${famille}%`);
-    if (utilisateur) q = q.eq('user_id', utilisateur);
-    if (du) q = q.gte('created_at', `${du}T00:00:00Z`);
-    if (au) q = q.lte('created_at', `${au}T23:59:59.999Z`);
-    const { data, error } = await q;
+    if (tout) {
+      try {
+        setLignes(await toutCharger<LigneAudit>(requete));
+        setEncore(false);
+      } catch (e) {
+        setErreur(messageErreur(e));
+      }
+      return;
+    }
+    const { data, error } = await requete(page * PAR_PAGE, page * PAR_PAGE + PAR_PAGE); // une ligne de plus pour savoir s'il reste des pages
     if (error) return setErreur(messageErreur(error));
     const rows = (data ?? []) as LigneAudit[];
     setEncore(rows.length > PAR_PAGE);
     setLignes(rows.slice(0, PAR_PAGE));
-  }, [org, page, famille, utilisateur, du, au]);
+  }, [org, page, tout, requete]);
 
   useEffect(() => {
     void charger();
@@ -117,18 +130,26 @@ export function Journal() {
     });
 
   /** Export de la page affichée (avec les filtres) pour l'archiver ou la remettre à un contrôleur. */
-  function exporter() {
-    telechargerFichier(
+  /** Toutes les lignes qui répondent aux filtres, pas seulement la page affichée. */
+  async function exporter(format: FormatExport = 'xlsx') {
+    let toutes: LigneAudit[];
+    try {
+      toutes = tout ? lignes : await toutCharger<LigneAudit>(requete);
+    } catch (e) {
+      return setErreur(messageErreur(e));
+    }
+    exporterClasseur(
       `Piste-audit-${isoJour(new Date())}.xlsx`,
-      TYPE_XLSX,
-      classeurXlsx([
+      [
         {
           nom: 'Piste d’audit',
           entetes: ['Date et heure', 'Opération', 'Utilisateur', 'Détail', 'Référence'],
-          lignes: lignes.map((l) => [dateHeure(l.created_at), libelleAction(l.action), nom(l.user_id), resume(l), `#${l.id}`]),
+          lignes: toutes.map((l) => [dateHeure(l.created_at), libelleAction(l.action), nom(l.user_id), resume(l), `#${l.id}`]),
+          titre: ['Piste d’audit', [du && `du ${du}`, au && `au ${au}`].filter(Boolean).join(' ') || 'Toutes les dates'],
           largeurs: [20, 36, 26, 60, 12],
         },
-      ]),
+      ],
+      format,
     );
   }
 
@@ -139,7 +160,7 @@ export function Journal() {
         sousTitre="Qui a fait quoi, quand et depuis quel appareil : connexions, caisses, journées, articles, stock, utilisateurs. Horodaté (heure d’Abidjan), ni modifiable ni effaçable."
         actions={
           <div className="actions-entete">
-            <button type="button" className="bouton bouton-discret" onClick={exporter} disabled={!lignes.length}>⬇️ Excel</button>
+            <BoutonsExport onExport={exporter} disabled={!lignes.length} />
             <button type="button" className="bouton bouton-discret" onClick={() => void imprimerPageA4('Piste d’audit')} disabled={!lignes.length}>🖨️ Imprimer (A4)</button>
           </div>
         }
@@ -250,15 +271,7 @@ export function Journal() {
             })}
           </ul>
         )}
-        <div className="pagination">
-          <button className="bouton bouton-discret" disabled={page === 0} onClick={() => setPage(page - 1)}>
-            Plus récentes
-          </button>
-          <span>Page {page + 1}</span>
-          <button className="bouton bouton-discret" disabled={!encore} onClick={() => setPage(page + 1)}>
-            Plus anciennes
-          </button>
-        </div>
+        <Pagination page={page} encore={encore} tout={tout} nombre={lignes.length} setPage={setPage} setTout={setTout} precedent="Plus récentes" suivant="Plus anciennes" />
       </section>
     </>
   );

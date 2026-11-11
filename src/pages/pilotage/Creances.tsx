@@ -1,3 +1,5 @@
+import { exporterClasseur, type FormatExport } from '../../lib/export';
+import { BoutonsExport } from '../../components/Export';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
@@ -150,12 +152,11 @@ export function Creances() {
     await charger();
   }
 
-  function exporter() {
+  function exporter(format: FormatExport = 'xlsx') {
     const entetes = ['Client', 'Téléphone', ...TRANCHES.map((t) => t.libelle), 'Total dû', 'Retard max (j)', 'Dernière relance'];
-    telechargerFichier(
+    exporterClasseur(
       `balance-agee-${au}.xlsx`,
-      TYPE_XLSX,
-      classeurXlsx([
+      [
         {
           nom: 'Balance âgée',
           titre: [`${organisation!.nom} — Balance âgée des créances clients au ${dateFr(au)}`],
@@ -163,7 +164,8 @@ export function Creances() {
           lignes: lignes.map((l) => [l.nom, l.telephone ?? '', ...TRANCHES.map((t) => enUnites(l[t.cle] as number)), enUnites(l.total), l.retard_max ?? 0, l.derniere_relance ? dateFr(l.derniere_relance) : '']),
           totaux: ['Total', '', ...totaux.map((v) => enUnites(v)), enUnites(total), '', ''],
         },
-      ]),
+      ],
+      format,
     );
   }
 
@@ -176,9 +178,7 @@ export function Creances() {
         actions={
           <>
             {lignes.length > 0 && (
-              <button className="bouton bouton-discret" onClick={exporter}>
-                Excel
-              </button>
+              <BoutonsExport onExport={exporter} />
             )}
             {peut('tresorerie.creer') && (
               <button className="bouton bouton-discret" onClick={() => setClient({ delai_paiement: 30, actif: true })}>

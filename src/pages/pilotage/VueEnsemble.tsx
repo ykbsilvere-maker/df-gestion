@@ -1,3 +1,5 @@
+import { exporterClasseur, type FormatExport } from '../../lib/export';
+import { BoutonsExport } from '../../components/Export';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
@@ -63,14 +65,13 @@ export function VueEnsemble() {
   const meilleur = Math.max(1, ...lignes.map((l) => Number(l.ventes_mois)));
   const ceMois = mois === moisCourant();
 
-  function exporter() {
+  function exporter(format: FormatExport = 'xlsx') {
     const l = (x: LigneMagasin | (typeof total & { nom: string })) => [
       x.nom, enUnites(x.ventes_jour), x.tickets_jour, enUnites(x.ventes_mois), x.tickets_mois, enUnites(x.marge), enUnites(x.charges), enUnites(x.resultat), enUnites(x.valeur_stock), x.ruptures, enUnites(x.ecarts),
     ];
-    telechargerFichier(
+    exporterClasseur(
       `Vue-ensemble-${mois}.xlsx`,
-      TYPE_XLSX,
-      classeurXlsx([
+      [
         {
           nom: 'Magasins',
           titre: [`Vue d’ensemble des magasins — ${mois}`],
@@ -79,7 +80,8 @@ export function VueEnsemble() {
           totaux: ['Entreprise', enUnites(total.ventes_jour), total.tickets_jour, enUnites(total.ventes_mois), total.tickets_mois, enUnites(total.marge), enUnites(total.charges + communes), enUnites(resultatGlobal), enUnites(total.valeur_stock), total.ruptures, enUnites(total.ecarts)],
           largeurs: [26, 16, 14, 16, 14, 16, 16, 16, 16, 10, 16],
         },
-      ]),
+      ],
+      format,
     );
   }
 
@@ -94,7 +96,7 @@ export function VueEnsemble() {
             <Champ label="Mois">
               <input type="month" value={mois} max={moisCourant()} onChange={(e) => e.target.value && setMois(e.target.value)} />
             </Champ>
-            <button type="button" className="bouton bouton-discret" onClick={exporter} disabled={!lignes.length}>⬇️ Excel</button>
+            <BoutonsExport onExport={exporter} disabled={!lignes.length} />
           </div>
         }
       />

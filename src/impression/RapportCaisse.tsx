@@ -200,12 +200,12 @@ export function RapportCaisse({
       {z && (
         <div className="rapport-signatures">
           <div>
-            <strong>Le caissier</strong>
+            <strong>Le caissier / La caissière</strong>
             <span>{caissier ?? ''}</span>
             <i>Nom, date et signature</i>
           </div>
           <div>
-            <strong>Le responsable</strong>
+            <strong>Le gérant</strong>
             <span>&nbsp;</span>
             <i>Nom, date et signature</i>
           </div>

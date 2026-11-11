@@ -1,3 +1,5 @@
+import { exporterClasseur, type FormatExport } from '../../lib/export';
+import { BoutonsExport } from '../../components/Export';
 import { SaisieGuidee } from './SaisieGuidee';
 import { Fragment, useCallback, useEffect, useState, type FormEvent } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -146,7 +148,7 @@ export function Comptabilite() {
     await charger();
   }
 
-  function exporter() {
+  function exporter(format: FormatExport = 'xlsx') {
     const titre = `${organisation!.nom} — du ${dateFr(du)} au ${dateFr(au)}`;
     let feuilles: Feuille[] = [];
     if (onglet === 'journal')
@@ -182,7 +184,7 @@ export function Comptabilite() {
           ];
         }),
       }];
-    if (feuilles.length) telechargerFichier(`comptabilite-${onglet}-${du}-${au}.xlsx`, TYPE_XLSX, classeurXlsx(feuilles));
+    if (feuilles.length) exporterClasseur(`comptabilite-${onglet}-${du}-${au}`, feuilles, format);
   }
 
   const totDebit = ecritures.reduce((s, e) => s + e.lignes.reduce((t, l) => t + Number(l.debit), 0), 0);
@@ -198,7 +200,7 @@ export function Comptabilite() {
         sousTitre="Écritures SYSCOHADA générées automatiquement par les ventes, achats, dépenses et virements : journal, grand livre, balance et bilan."
         actions={
           <>
-            {['journal', 'balance', 'grand_livre'].includes(onglet) && <button className="bouton bouton-discret" onClick={exporter}>Excel</button>}
+            {['journal', 'balance', 'grand_livre'].includes(onglet) && <BoutonsExport onExport={exporter} />}
             {peut('comptabilite.creer') && (
               <button className="bouton bouton-principal" onClick={() => setGuide(true)}>
                 ✨ Saisir une opération

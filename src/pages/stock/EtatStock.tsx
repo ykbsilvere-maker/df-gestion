@@ -1,3 +1,4 @@
+import { BoutonsExport } from '../../components/Export';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
@@ -74,19 +75,19 @@ export function EtatStock() {
         icone="📦" titre="État du stock"
         sousTitre="Quantités et valeur au coût moyen pondéré (CMP). Chaque quantité résulte des mouvements enregistrés."
         actions={
-          <button
-            className="bouton bouton-discret"
-            disabled={!visibles.length}
-            onClick={() =>
-              telechargerCsv(
+          <div className="actions-entete">
+            <BoutonsExport
+              disabled={!visibles.length}
+              onExport={(format) =>
+                telechargerCsv(
                 `stock-${nomMagasin}-${new Date().toISOString().slice(0, 10)}.csv`,
                 ['Code', 'Désignation', 'Unité', 'Quantité', `CMP (${deviseCourante().code})`, `Valeur (${deviseCourante().code})`, 'Stock minimum', 'État'],
                 visibles.map((l) => [l.code, l.designation, l.unite, Number(l.quantite), enUnites(l.cout_moyen), enUnites(l.valeur), l.seuil_min, etatLigne(l).libelle]),
-              )
-            }
-          >
-            Exporter (Excel)
-          </button>
+                  format,
+                )
+              }
+            />
+          </div>
         }
       />
       <Alerte>{erreur}</Alerte>
