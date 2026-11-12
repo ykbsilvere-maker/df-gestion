@@ -1,4 +1,4 @@
-import type { Cellule, Feuille } from './excel';
+import { colonnePct, lignePct, pointsPct, sansPct, type Cellule, type Feuille } from './excel';
 
 /**
  * Export PDF d'un tableau, sans bibliothèque : même description de feuilles que l'export Excel
@@ -49,8 +49,10 @@ function tronquer(os: number[], max: number, corps: number, gras: boolean): numb
 }
 
 const estNombre = (v: Cellule) => typeof v === 'number';
-function texteCellule(v: Cellule): string {
+function texteCellule(v: Cellule, pct = false): string {
   if (v === null || v === undefined) return '';
+  const points = pointsPct(v, pct);
+  if (points !== null) return `${points.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`;
   if (typeof v === 'number') return Number.isInteger(v) ? v.toLocaleString('fr-FR') : v.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
   return String(v);
 }
@@ -85,10 +87,13 @@ export function classeurPdf(feuilles: Feuille[], options: { entreprise?: string 
     const texte = (os: number[], x: number, yy: number, c: number, gras = false) => {
       flux += `BT /${gras ? 'F2' : 'F1'} ${c} Tf ${x.toFixed(1)} ${yy.toFixed(1)} Td ${chaine(os)} Tj ET\n`;
     };
-    const ligne = (valeurs: Cellule[], gras: boolean, fond?: string) => {
+    const pctCol = f.entetes.map(colonnePct);
+    const ligne = (valeurs: Cellule[], gras: boolean, fond?: string, entete = false) => {
       if (fond) flux += `${fond} rg ${marge} ${(y - 4).toFixed(1)} ${utile} ${hauteurLigne} re f 0 g\n`;
+      const lp = !entete && lignePct(valeurs);
       valeurs.slice(0, nb).forEach((v, i) => {
-        const os = tronquer(octets(gras && typeof v === 'string' ? v : texteCellule(v)), cols[i]! - 6, corps, gras);
+        const brut = entete ? sansPct(String(v)) : i === 0 && lp && typeof v === 'string' ? sansPct(v) : texteCellule(v, i > 0 && (pctCol[i] || lp));
+        const os = tronquer(octets(brut), cols[i]! - 6, corps, gras);
         const x = droite[i] ? xs[i]! + cols[i]! - 3 - largeur(os, corps, gras) : xs[i]! + 3;
         if (os.length) texte(os, x, y, corps, gras);
       });
@@ -108,7 +113,7 @@ export function classeurPdf(feuilles: Feuille[], options: { entreprise?: string 
         });
         y -= 4;
       }
-      ligne(f.entetes, true, '0.89 0.87 0.83');
+      ligne(f.entetes, true, '0.89 0.87 0.83', true);
     };
     const finPage = () => {
       pages.push(flux);

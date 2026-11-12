@@ -289,20 +289,35 @@ export function Coquille() {
         </div>
         {reduite && (
           <div className="bureau-icones">
-            {liens.map((l) => (
-              <button
-                key={l.vers}
-                type="button"
-                className="bureau-icone"
-                onClick={() => {
-                  setReduite(false);
-                  if (l.vers !== versPage) naviguer(l.vers);
-                }}
-              >
-                <span aria-hidden>{l.icone}</span>
-                {l.libelle}
-              </button>
-            ))}
+            {/* Launchpad : les modules rangés par famille, au centre de l'écran */}
+            <div className="bureau-panneau">
+              {([null, 'vendre', 'stock', 'pilotage', 'reglages'] as (Groupe | null)[]).map((g) => {
+                const du = liens.filter((l) => (l.groupe ?? null) === g);
+                if (!du.length) return null;
+                return (
+                  <section key={g ?? 'general'} className="bureau-groupe">
+                    <h3>{g ? GROUPES[g] : 'Général'}</h3>
+                    <div className="bureau-grille" style={{ ['--colonnes' as string]: Math.min(du.length, 3) }}>
+                      {du.map((l, k) => (
+                        <button
+                          key={l.vers}
+                          type="button"
+                          className="bureau-icone"
+                          style={{ animationDelay: `${k * 35}ms` }}
+                          onClick={() => {
+                            setReduite(false);
+                            if (l.vers !== versPage) naviguer(l.vers);
+                          }}
+                        >
+                          <span aria-hidden>{l.icone}</span>
+                          {l.libelle}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
           </div>
         )}
         <div className="barre-taches" role="toolbar" aria-label="Fenêtres ouvertes">

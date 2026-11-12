@@ -6,10 +6,13 @@ import { messageErreur } from '../lib/format';
 import { montant, nombreMonnaie } from '../lib/argent';
 import { quantite } from '../lib/stock';
 import { MontantFort } from '../components/ui';
+import { useMagasinGlobal } from '../lib/magasinGlobal';
 
-type Periode = 'jour' | 'semaine' | 'mois' | 'annee';
+type Periode = 'jour' | 'semaine' | 'mois' | 'annee' | 'intervalle';
+type Pas = 'hour' | 'day' | 'week' | 'month';
 interface Donnees {
   periode: Periode;
+  pas?: Pas;
   debut: string;
   ca: number;
   ca_precedent: number;
@@ -31,6 +34,7 @@ const PERIODES: { code: Periode; libelle: string; precedent: string }[] = [
   { code: 'semaine', libelle: 'Semaine', precedent: 'la semaine dernière à date' },
   { code: 'mois', libelle: 'Mois', precedent: 'le mois dernier à date' },
   { code: 'annee', libelle: 'Année', precedent: 'l’an dernier à date' },
+  { code: 'intervalle', libelle: '📅 Intervalle', precedent: 'la période précédente de même durée' },
 ];
 
 // Palette des graphiques : teintes de la marque, lisibles en clair.
@@ -43,11 +47,17 @@ function evolution(actuel: number, precedent: number): { texte: string; sens: 'h
   return { texte: `${p > 0 ? '+' : ''}${p.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`, sens: p > 0 ? 'hausse' : 'baisse' };
 }
 
-function libelleBarre(iso: string, p: Periode): string {
+function pasDe(p: Periode, d: Donnees | null): Pas {
+  if (p === 'intervalle') return d?.pas ?? 'day';
+  return p === 'jour' ? 'hour' : p === 'annee' ? 'month' : 'day';
+}
+
+function libelleBarre(iso: string, p: Periode, pas: Pas): string {
   const d = new Date(iso);
-  if (p === 'jour') return `${d.getHours()}h`;
-  if (p === 'annee') return d.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '');
+  if (pas === 'hour') return `${d.getHours()}h`;
+  if (pas === 'month') return d.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '');
   if (p === 'semaine') return d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '');
+  if (pas === 'week' || (p === 'intervalle' && d.getDate() === 1)) return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).replace('.', '');
   return String(d.getDate());
 }
 
@@ -58,14 +68,14 @@ function court(v: number): string {
   return nombreMonnaie(v);
 }
 
-function Histogramme({ serie, periode }: { serie: Donnees['serie']; periode: Periode }) {
+function Histogramme({ serie, periode, pas: unite }: { serie: Donnees['serie']; periode: Periode; pas: Pas }) {
   const [survol, setSurvol] = useState<number | null>(null);
   const max = Math.max(1, ...serie.map((s) => Number(s.ca)));
   const L = 640;
   const H = 210;
   const marge = { g: 44, b: 26, h: 10 };
   const largeurBarre = (L - marge.g) / Math.max(serie.length, 1);
-  const pas = periode === 'mois' ? Math.ceil(serie.length / 10) : 1;
+  const pas = Math.max(1, Math.ceil(serie.length / (unite === 'week' ? 9 : 12)));
   const graduations = [0, 0.5, 1].map((f) => f * max);
   const actuelle = serie.findIndex((s) => new Date(s.debut) > new Date()) - 1;
   return (
@@ -98,7 +108,7 @@ function Histogramme({ serie, periode }: { serie: Donnees['serie']; periode: Per
               />
               {i % pas === 0 && (
                 <text x={x + largeurBarre * 0.35} y={H - 8} textAnchor="middle" className="graphique-axe">
-                  {libelleBarre(s.debut, periode)}
+                  {libelleBarre(s.debut, periode, unite)}
                 </text>
               )}
             </g>
@@ -109,7 +119,7 @@ function Histogramme({ serie, periode }: { serie: Donnees['serie']; periode: Per
         {survol !== null && serie[survol] ? (
           <>
             <strong>{montant(serie[survol]!.ca)}</strong> · {serie[survol]!.tickets} ticket{serie[survol]!.tickets > 1 ? 's' : ''} ·{' '}
-            {new Date(serie[survol]!.debut).toLocaleString('fr-FR', periode === 'jour' ? { hour: '2-digit', minute: '2-digit' } : periode === 'annee' ? { month: 'long', year: 'numeric' } : { weekday: 'long', day: 'numeric', month: 'long' })}
+            {new Date(serie[survol]!.debut).toLocaleString('fr-FR', unite === 'hour' ? { hour: '2-digit', minute: '2-digit' } : unite === 'month' ? { month: 'long', year: 'numeric' } : unite === 'week' ? { day: 'numeric', month: 'long' } : { weekday: 'long', day: 'numeric', month: 'long' })}
           </>
         ) : (
           <span className="secondaire">Touchez une barre pour voir le détail.</span>
@@ -180,6 +190,23 @@ export function TableauDeBord() {
   });
   const [d, setD] = useState<Donnees | null>(null);
   const [erreur, setErreur] = useState('');
+  const magasinGlobal = useMagasinGlobal();
+  // Intervalle libre : par défaut, du 1er du mois à aujourd'hui.
+  const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+  const [du, setDu] = useState(() => {
+    try {
+      return localStorage.getItem('dfg-tdb-du') || iso(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    } catch {
+      return iso(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    }
+  });
+  const [au, setAu] = useState(() => {
+    try {
+      return localStorage.getItem('dfg-tdb-au') || iso(new Date());
+    } catch {
+      return iso(new Date());
+    }
+  });
 
   useEffect(() => {
     try {
@@ -188,7 +215,23 @@ export function TableauDeBord() {
       /* stockage indisponible */
     }
     let actif = true;
-    void supabase.rpc('tableau_de_bord', { p_org: org, p_periode: periode }).then(({ data, error }) => {
+    if (periode === 'intervalle') {
+      try {
+        localStorage.setItem('dfg-tdb-du', du);
+        localStorage.setItem('dfg-tdb-au', au);
+      } catch {
+        /* stockage indisponible */
+      }
+      if (!du || !au || du > au) {
+        setErreur('Choisissez une date de début antérieure à la date de fin.');
+        return;
+      }
+    }
+    const appel =
+      periode === 'intervalle'
+        ? supabase.rpc('tableau_de_bord_intervalle', { p_org: org, p_du: du, p_au: au, p_magasin: magasinGlobal || null })
+        : supabase.rpc('tableau_de_bord', { p_org: org, p_periode: periode, p_magasin: magasinGlobal || null });
+    void appel.then(({ data, error }) => {
       if (!actif) return;
       if (error) setErreur(messageErreur(error));
       else {
@@ -199,7 +242,7 @@ export function TableauDeBord() {
     return () => {
       actif = false;
     };
-  }, [org, periode]);
+  }, [org, periode, du, au, magasinGlobal]);
 
   const p = PERIODES.find((x) => x.code === periode)!;
   const evoCa = d ? evolution(Number(d.ca), Number(d.ca_precedent)) : null;
@@ -210,12 +253,26 @@ export function TableauDeBord() {
     <section className="tdb">
       <div className="tdb-entete">
         <h2>Tableau de bord</h2>
-        <div className="segments" role="tablist" aria-label="Périodicité">
-          {PERIODES.map((x) => (
-            <button key={x.code} type="button" role="tab" aria-selected={periode === x.code} className={periode === x.code ? 'actif' : ''} onClick={() => setPeriode(x.code)}>
-              {x.libelle}
-            </button>
-          ))}
+        <div className="tdb-periode">
+          <div className="segments" role="tablist" aria-label="Périodicité">
+            {PERIODES.map((x) => (
+              <button key={x.code} type="button" role="tab" aria-selected={periode === x.code} className={periode === x.code ? 'actif' : ''} onClick={() => setPeriode(x.code)}>
+                {x.libelle}
+              </button>
+            ))}
+          </div>
+          {periode === 'intervalle' && (
+            <div className="tdb-intervalle">
+              <label>
+                Du
+                <input type="date" value={du} max={au || undefined} onChange={(e) => e.target.value && setDu(e.target.value)} />
+              </label>
+              <label>
+                au
+                <input type="date" value={au} min={du || undefined} max={iso(new Date())} onChange={(e) => e.target.value && setAu(e.target.value)} />
+              </label>
+            </div>
+          )}
         </div>
       </div>
       {erreur && <p className="texte-negatif">{erreur}</p>}
@@ -271,7 +328,7 @@ export function TableauDeBord() {
                   </Link>
                 )}
               </div>
-              <Histogramme serie={d.serie} periode={periode} />
+              <Histogramme serie={d.serie} periode={periode} pas={pasDe(periode, d)} />
             </div>
             <div className="carte">
               <h3>Paiements</h3>

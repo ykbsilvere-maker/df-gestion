@@ -62,4 +62,22 @@ describe('Magasins indépendants', () => {
     const c = await enTantQue(pool, alice, (q) => un(q<{ id: string }>(`select id from comptes_tresorerie where organisation_id = $1 and caisse_id is null limit 1`, [org])));
     await expect(enTantQue(pool, bintou, (q) => q(`select public.rattacher_compte($1, $2)`, [c.id, mag1]))).rejects.toThrow(/tresorerie/);
   });
+
+  it('3.2 : tableau de bord sur un intervalle libre', async () => {
+    const r = await enTantQue(pool, alice, async (q) => ({
+      dix: (await un(q<{ r: { pas: string; serie: unknown[]; ca: number } }>(`select public.tableau_de_bord_intervalle($1, current_date - 9, current_date) r`, [org]))).r,
+      jour: (await un(q<{ r: { pas: string; serie: unknown[] } }>(`select public.tableau_de_bord_intervalle($1, current_date, current_date) r`, [org]))).r,
+      long: (await un(q<{ r: { pas: string } }>(`select public.tableau_de_bord_intervalle($1, current_date - 120, current_date) r`, [org]))).r,
+      an: (await un(q<{ r: { pas: string; serie: unknown[] } }>(`select public.tableau_de_bord_intervalle($1, '2025-01-01', '2025-12-31', $2) r`, [org, mag2]))).r,
+    }));
+    expect(r.dix.pas).toBe('day');
+    expect(r.dix.serie).toHaveLength(10);
+    expect(r.jour.pas).toBe('hour');
+    expect(r.jour.serie).toHaveLength(24);
+    expect(r.long.pas).toBe('week');
+    expect(r.an.pas).toBe('month');
+    expect(r.an.serie).toHaveLength(12);
+    await expect(enTantQue(pool, alice, (q) => q(`select public.tableau_de_bord_intervalle($1, current_date, current_date - 1)`, [org]))).rejects.toThrow(/antérieure/);
+    await expect(enTantQue(pool, bintou, (q) => q(`select public.tableau_de_bord_intervalle($1, current_date - 1, current_date)`, [org]))).rejects.toThrow(/rapports/);
+  });
 });

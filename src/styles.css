@@ -2100,3 +2100,26 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .recap-caisse tfoot td { font-weight: 800; border-top: .5mm solid #000; border-bottom: 0; }
 .recap-caisse .rapport-signatures { margin-top: 10mm; } .recap-caisse .rapport-signatures > div { min-height: 36mm; padding: 3mm; }
 .recap-caisse tr { break-inside: avoid; }
+
+/* ---- 3.2 : bureau centré, façon Launchpad ---- */
+@media (min-width: 861px) {
+  .bureau-icones { display: flex; align-items: center; justify-content: center; padding: 24px 16px; grid-template-columns: none; }
+  .bureau-panneau { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 18px; max-width: 1180px; margin: auto; }
+  .bureau-groupe { background: rgba(255,255,255,.55); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.7); border-radius: 22px; padding: 14px 16px 10px; box-shadow: 0 10px 30px rgba(20,20,20,.08); animation: fenetre-ouvre .4s var(--ressort) backwards; }
+  .bureau-groupe h3 { margin: 0 0 6px 6px; font-size: 0.74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--encre-douce); }
+  .bureau-grille { display: grid; grid-template-columns: repeat(var(--colonnes, 3), 100px); grid-auto-rows: 96px; gap: 4px; justify-content: center; min-width: 100px; }
+  .bureau-groupe:nth-child(1) { animation-delay: 0ms; } .bureau-groupe:nth-child(2) { animation-delay: 50ms; }
+  .bureau-groupe:nth-child(3) { animation-delay: 100ms; } .bureau-groupe:nth-child(4) { animation-delay: 150ms; } .bureau-groupe:nth-child(5) { animation-delay: 200ms; }
+  .bureau-icone { text-align: center; line-height: 1.2; padding: 6px 4px; }
+  .bureau-icone span { font-size: 2.3rem; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 16px; background: #fff; box-shadow: 0 4px 12px rgba(20,20,20,.1); transition: transform .28s var(--ressort); }
+  .bureau-icone:hover { background: transparent; transform: none; }
+  .bureau-icone:hover span { transform: translateY(-4px) scale(1.12); }
+}
+
+/* ---- 3.2 : tableau de bord, intervalle libre ---- */
+.tdb-periode { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: flex-end; }
+.tdb-intervalle { display: inline-flex; align-items: center; gap: 8px; padding: 3px 10px; border: 1px solid var(--trait); border-radius: 999px; background: var(--surface); animation: page-entre .3s var(--glisse); }
+.tdb-intervalle label { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.86rem; color: var(--encre-douce); }
+.tdb-intervalle input { border: 0; background: transparent; font: inherit; padding: 4px 2px; box-shadow: none !important; }
+@media (max-width: 600px) { .tdb-periode { justify-content: flex-start; } .tdb-intervalle { flex-wrap: wrap; border-radius: 14px; } }

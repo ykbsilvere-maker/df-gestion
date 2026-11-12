@@ -3,6 +3,11 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.2.** **Tableau de bord sur un intervalle libre** (📅 Intervalle : du … au …) en plus de Jour / Semaine /
+Mois / Année, comparé à la période précédente de même durée ; il suit aussi le magasin choisi en haut de l'écran
+(migration 029). **Exports** : les entiers n'ont plus de virgule finale, les taux et colonnes en « % » sortent en vrais
+pourcentages dans Excel et dans le PDF. **Bureau** recentré et rangé par familles, façon Launchpad.
+
 **Version 3.1.** **Rapports de caisse à la demande** (menu Vendre › Rapports de caisse) : rapports Z des mois
 passés, récapitulatif mensuel et reçu (duplicata) de n'importe quelle vente, régénérés depuis les données, sur A4, avec
 les cadres de signature du caissier ou de la caissière et du gérant. **Export PDF** à côté de chaque export Excel

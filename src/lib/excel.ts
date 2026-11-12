@@ -115,28 +115,66 @@ function colonne(i: number): string {
   return s;
 }
 
-// Styles : 0 normal, 1 en-tête (gras, fond), 2 nombre « # ##0 », 3 total gras, 4 total nombre gras, 5 titre gras
+/*
+ * Styles : 0 normal, 1 en-tête (gras, fond), 2 entier « # ##0 », 3 total gras, 4 total entier gras, 5 titre gras,
+ * 6 décimal « # ##0,00 », 7 total décimal, 8 pourcentage « 18 % », 9 total pourcentage, 10 pourcentage « 41,3 % »,
+ * 11 total pourcentage décimal. Les entiers n'ont plus de virgule finale (l'ancien format « #,##0.### » en laissait une).
+ */
 const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.###"/></numFmts>
+<numFmts count="1"><numFmt numFmtId="164" formatCode="0.0%"/></numFmts>
 <fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
 <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE8EEF4"/><bgColor indexed="64"/></patternFill></fill></fills>
 <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="6">
+<cellXfs count="12">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
-<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
-<xf numFmtId="164" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1"/>
+<xf numFmtId="3" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1"/>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="4" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1"/>
+<xf numFmtId="9" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="9" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1"/>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="164" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1"/>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 
-function cellule(ref: string, v: Cellule, styleTexte: number, styleNombre: number): string {
+// ---- Pourcentages : une colonne « … (%) » ou « Taux … », une ligne « Taux de marge (%) », ou un texte « 41,3 % ».
+const COLONNE_PCT = /%|\btaux\b/i;
+const TEXTE_PCT = /^([+-]?\d[\d\s\u202f\u00a0]*(?:[.,]\d+)?)\s*%$/;
+/** Colonne exprimée en pourcentage (valeurs en points : 18 = 18 %). */
+export const colonnePct = (entete: string) => COLONNE_PCT.test(entete);
+/** Ligne « libellé (%) | valeur » : sa première cellule annonce un pourcentage. */
+export const lignePct = (l: Cellule[]) => typeof l[0] === 'string' && /\(%\)|^taux\b/i.test(l[0].trim());
+/** Libellé sans le « (%) » devenu inutile : la cellule est déjà au format pourcentage. */
+export const sansPct = (t: string) => t.replace(/\s*\(%\)/g, '');
+/** Points de pourcentage d'une cellule (18 pour « 18 % »), ou null si ce n'en est pas un. */
+export function pointsPct(v: Cellule, contexte: boolean): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return contexte ? v : null;
+  if (typeof v === 'string') {
+    const m = TEXTE_PCT.exec(v.trim());
+    if (m) return Number(m[1]!.replace(/[\s\u202f\u00a0]/g, '').replace(',', '.'));
+  }
+  return null;
+}
+
+function cellule(ref: string, v: Cellule, styleTexte: number, total = false, pct = false): string {
   if (v === null || v === undefined || v === '') return '';
-  if (typeof v === 'number' && Number.isFinite(v)) return `<c r="${ref}" s="${styleNombre}"><v>${v}</v></c>`;
+  const points = pointsPct(v, pct);
+  if (points !== null) {
+    const fraction = Math.round(points * 1000) / 100000;
+    const entier = Number.isInteger(Math.round(points * 1000) / 1000);
+    return `<c r="${ref}" s="${entier ? (total ? 9 : 8) : total ? 11 : 10}"><v>${fraction}</v></c>`;
+  }
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    const entier = Number.isInteger(v);
+    return `<c r="${ref}" s="${entier ? (total ? 4 : 2) : total ? 7 : 6}"><v>${v}</v></c>`;
+  }
   return `<c r="${ref}" s="${styleTexte}" t="inlineStr"><is><t xml:space="preserve">${xml(String(v))}</t></is></c>`;
 }
 
@@ -144,19 +182,21 @@ function feuilleXml(f: Feuille): string {
   const lignes: string[] = [];
   let r = 1;
   for (const t of f.titre ?? []) {
-    lignes.push(`<row r="${r}">${cellule(`A${r}`, t, 5, 5)}</row>`);
+    lignes.push(`<row r="${r}">${cellule(`A${r}`, t, 5)}</row>`);
     r++;
   }
   if (f.titre?.length) r++;
   const ligneEntete = r;
-  lignes.push(`<row r="${r}">${f.entetes.map((e, i) => cellule(`${colonne(i)}${r}`, e, 1, 1)).join('')}</row>`);
+  const pct = f.entetes.map(colonnePct);
+  lignes.push(`<row r="${r}">${f.entetes.map((e, i) => cellule(`${colonne(i)}${r}`, sansPct(e), 1)).join('')}</row>`);
   r++;
   for (const l of f.lignes) {
-    lignes.push(`<row r="${r}">${l.map((v, i) => cellule(`${colonne(i)}${r}`, v, 0, 2)).join('')}</row>`);
+    const lp = lignePct(l);
+    lignes.push(`<row r="${r}">${l.map((v, i) => cellule(`${colonne(i)}${r}`, i === 0 && lp && typeof v === 'string' ? sansPct(v) : v, 0, false, i > 0 && (pct[i] || lp))).join('')}</row>`);
     r++;
   }
   if (f.totaux) {
-    lignes.push(`<row r="${r}">${f.totaux.map((v, i) => cellule(`${colonne(i)}${r}`, v, 3, 4)).join('')}</row>`);
+    lignes.push(`<row r="${r}">${f.totaux.map((v, i) => cellule(`${colonne(i)}${r}`, v, 3, true, pct[i])).join('')}</row>`);
   }
   const largeurs = f.entetes.map((e, i) => {
     const imposee = f.largeurs?.[i];
