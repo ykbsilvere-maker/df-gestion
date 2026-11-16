@@ -3,6 +3,22 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.5.** **DF Marché : les boutiques DF Gestion en ligne** (migration 032, site `marche/`, publié à part :
+`DF-Marche-site.zip`). Un seul site regroupe toutes les boutiques : le client choisit sa boutique, parcourt le catalogue
+(prix, **soldes** avec bannière et compte à rebours sur l'accueil, **stock en direct**, nombre de commandes, avis),
+remplit son panier et commande : **livraison** (zone et frais fixés par la boutique, adresse, repère, position GPS
+facultative, jour et heure souhaités) ou **retrait**. Paiement **à la livraison** ou **directement sur les numéros
+Wave, Orange Money, MTN ou Moov de la boutique** : le client indique le numéro qui a payé et joint la capture ; DF Marché
+n'encaisse rien et ne demande jamais de code secret. Il reçoit un **code de suivi** (étapes, paiement, bouton WhatsApp
+vers la boutique) et, une fois livré, peut **noter les produits** (avis vérifiés : seuls les clients livrés notent).
+Côté DF Gestion, le module **Boutique en ligne** (droits « boutique ») : **Commandes** (pastille et son à chaque nouvelle
+commande, confirmation, vérification du paiement avec la capture, préparation, livraison, annulation motivée, messages
+WhatsApp prêts pour le client), **Produits en ligne** (publier/retirer, description, disponible = stock − réservé) et
+**Ma vitrine** (présentation, activité, photos, horaires, contact, carte, numéros de paiement, retrait, zones de
+livraison, commande minimum, mise en ligne). À la remise, la caissière **encaisse la commande dans sa caisse**
+(bouton « 🌐 Commandes en ligne ») : c'est une vente normale (stock, rapport de caisse, comptabilité) ; les frais de
+livraison restent hors vente. Le module peut être retiré comme les autres modules optionnels.
+
 **Version 3.4.** **Fichier clients et créances réunis dans « Crédits clients »** (migration 031). Le module a
 désormais cinq onglets : Dossiers, Nouveau crédit, **Clients**, **Balance âgée** et Procédure de relance ; les
 anciens onglets « Créances clients » et « Dossiers de crédit » de la Trésorerie y sont regroupés (les anciennes

@@ -13,6 +13,7 @@ export const MODULES_OPTIONNELS: { code: string; icone: string; libelle: string;
   { code: 'rentabilite', icone: '📈', libelle: 'Rentabilité', aide: 'Compte d’exploitation, seuil de rentabilité' },
   { code: 'promotions', icone: '🏷️', libelle: 'Soldes et promotions', aide: 'Surstock, remises appliquées en caisse' },
   { code: 'comptabilite', icone: '📚', libelle: 'Comptabilité SYSCOHADA', aide: 'Journal, grand livre, balance, bilan' },
+  { code: 'boutique', icone: '🌐', libelle: 'Boutique en ligne (DF Marché)', aide: 'Vitrine, commandes en ligne, livraison' },
 ];
 
 /** Cases à cocher : `desactives` liste les codes décochés. */

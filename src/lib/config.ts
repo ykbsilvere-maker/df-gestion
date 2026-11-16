@@ -17,7 +17,7 @@ export type SourceConfiguration = 'build' | 'fichier' | 'appareil';
 
 declare global {
   interface Window {
-    DFG_CONFIG?: { supabaseUrl?: string; supabaseAnonKey?: string };
+    DFG_CONFIG?: { supabaseUrl?: string; supabaseAnonKey?: string; marcheUrl?: string };
   }
 }
 

@@ -1,6 +1,8 @@
 node_modules
 dist
+dist-marche
 dev-dist
+dist-marche
 .env
 .env.local
 *.log

@@ -5,4 +5,6 @@
 window.DFG_CONFIG = {
   supabaseUrl: 'https://hhsjlrqdejvifmtqzkdl.supabase.co',
   supabaseAnonKey: 'sb_publishable_dcaY0i7Gm_vDYuTLaeMq8g_6TmbuJMU',
+  // Adresse du site DF Marché (boutiques en ligne).
+  marcheUrl: 'https://dfmarche.netlify.app',
 };

@@ -1,12 +1,13 @@
 {
   "name": "decodeur-gestion",
   "private": true,
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "Le Décodeur Financier — logiciel de gestion commerciale, stock et caisse (PWA)",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:marche": "vite build -c vite.marche.config.ts",
     "preview": "vite preview",
     "typecheck": "tsc",
     "test": "vitest run",

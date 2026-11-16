@@ -49,6 +49,12 @@ jobs:
           cp dist/index.html dist/404.html
           (cd dist && zip -qr ../DF-Gestion-site.zip .)
 
+      - name: Site DF Marché (boutiques en ligne)
+        run: |
+          npx vite build -c vite.marche.config.ts
+          cp dist-marche/index.html dist-marche/404.html
+          (cd dist-marche && zip -qr ../DF-Marche-site.zip .)
+
       - name: Application web pour l'APK
         run: npx vite build --mode apk
 
@@ -88,6 +94,7 @@ jobs:
           path: |
             DF-Gestion*.apk
             DF-Gestion-site.zip
+            DF-Marche-site.zip
 
       - name: Publication (Releases)
         if: github.ref == 'refs/heads/main'
@@ -95,7 +102,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v${VERSION}-${{ github.run_number }}"
-          gh release create "$TAG" DF-Gestion.apk "DF-Gestion-${VERSION}.apk" DF-Gestion-site.zip \
+          gh release create "$TAG" DF-Gestion.apk "DF-Gestion-${VERSION}.apk" DF-Gestion-site.zip DF-Marche-site.zip \
             --title "DF Gestion ${VERSION} (construction ${{ github.run_number }})" \
-            --notes "APK Android et site web. Lien stable de l'APK : https://github.com/${{ github.repository }}/releases/latest/download/DF-Gestion.apk" \
+            --notes "APK Android, site web DF Gestion et site DF Marché. Lien stable de l'APK : https://github.com/${{ github.repository }}/releases/latest/download/DF-Gestion.apk" \
             --latest

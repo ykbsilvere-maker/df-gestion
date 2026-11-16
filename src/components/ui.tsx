@@ -69,7 +69,7 @@ export function Fenetre({
   );
 }
 
-export function Pastille({ ton, children }: { ton: 'vert' | 'gris' | 'or' | 'rouge'; children: ReactNode }) {
+export function Pastille({ ton, children }: { ton: 'vert' | 'gris' | 'or' | 'rouge' | 'bleu'; children: ReactNode }) {
   return <span className={`pastille pastille-${ton}`}>{children}</span>;
 }
 

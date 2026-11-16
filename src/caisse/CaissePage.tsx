@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { CreditsCaisse } from '../pages/credits/CreditsCaisse';
+import { CommandesCaisse } from '../pages/boutique/CommandesCaisse';
 import { useIdentite } from '../lib/identite';
 import { clavierMontant, deviseCourante, lireMontant, montant, saisieMontant } from '../lib/argent';
 import { messageErreur } from '../lib/format';
@@ -630,7 +631,7 @@ function PointDeVente({
   const [rejetees, setRejetees] = useState<VenteLocale[]>([]);
   const [liste, setListe] = useState<LigneListe[]>([]);
   const [derniere, setDerniere] = useState<VenteLocale | null>(null);
-  const [fenetre, setFenetre] = useState<null | 'paiement' | 'cloture' | 'ventes' | 'scanner' | 'rejets' | 'case' | 'options' | 'credits'>(null);
+  const [fenetre, setFenetre] = useState<null | 'paiement' | 'cloture' | 'ventes' | 'scanner' | 'rejets' | 'case' | 'options' | 'credits' | 'commandes'>(null);
   // Options du poste (impression, changement de caisse) : réservées aux responsables, jamais aux caissiers.
   const optionsVisibles = peut('caisse.valider');
   const [edition, setEdition] = useState<number | null>(null);
@@ -983,6 +984,12 @@ function PointDeVente({
             <Ico>🤝</Ico>
             Crédits
           </button>
+          {peut('boutique.consulter') && (
+            <button type="button" className="bouton bouton-discret" onClick={() => setFenetre('commandes')} disabled={!enLigne}>
+              <Ico>🌐</Ico>
+              Commandes en ligne
+            </button>
+          )}
           <button type="button" className="bouton bouton-discret" onClick={() => void rapportX()} disabled={!enLigne}>
             <Ico>📈</Ico>
             Rapport X
@@ -1277,6 +1284,9 @@ function PointDeVente({
 
       <Fenetre titre="Crédits clients à encaisser" ouverte={fenetre === 'credits'} onFermer={() => setFenetre(null)} large>
         {fenetre === 'credits' && <CreditsCaisse org={org} sessionId={sessionCaisse.id} moyens={moyens} enLigne={enLigne} />}
+      </Fenetre>
+      <Fenetre titre="Commandes en ligne à remettre" ouverte={fenetre === 'commandes'} onFermer={() => setFenetre(null)} large>
+        {fenetre === 'commandes' && <CommandesCaisse org={org} sessionId={sessionCaisse.id} moyens={moyens} enLigne={enLigne} />}
       </Fenetre>
       <Fenetre titre="Ventes de la session" ouverte={fenetre === 'ventes'} onFermer={() => setFenetre(null)} large>
         {liste.length === 0 ? (

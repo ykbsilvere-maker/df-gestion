@@ -174,6 +174,7 @@ export const MODULES: { code: string; libelle: string }[] = [
   { code: 'tresorerie', libelle: 'Trésorerie' },
   { code: 'rentabilite', libelle: 'Rentabilité' },
   { code: 'promotions', libelle: 'Surstock et soldes' },
+  { code: 'boutique', libelle: 'Boutique en ligne' },
 ];
 
 export const ACTIONS: { code: string; libelle: string }[] = [

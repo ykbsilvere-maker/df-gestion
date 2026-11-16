@@ -2246,3 +2246,51 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .papier .rapport-tableau thead th { background: #1b1b1b; color: #fff; }
 .papier .lettre-signature .secondaire { font-size: 7.5pt; color: #777; margin-top: 1mm; }
 @media (max-width: 640px) { .choix-type-client button { padding: 10px; column-gap: 8px; } .choix-type-client button small { display: none; } .choix-type-client button > span { font-size: 1.3rem; grid-row: 1; } }
+
+/* ===== 3.5 — Boutique en ligne (DF Marché) ===== */
+.pastille-bleu { background: #e8f0fb; color: #1f5fae; }
+.bouton-whatsapp { background: #25d366; color: #fff; border-color: #25d366; font-weight: 700; }
+.bouton-whatsapp:hover { background: #1fb457; color: #fff; }
+.tableau tr.ligne-nouvelle td { background: #fff8e6; }
+.tableau tr.ligne-nouvelle td:first-child { box-shadow: inset 4px 0 0 #d9a733; }
+.puce-paiement { display: inline-block; border-left: 4px solid; padding: 1px 0 1px 7px; font-weight: 600; font-size: 0.88rem; }
+.prix-barre { text-decoration: line-through; color: var(--encre-douce); }
+.frise-commande { list-style: none; display: flex; margin: 4px 0 14px; padding: 0; gap: 0; }
+.frise-commande li { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; color: var(--encre-douce); font-size: 0.88rem; }
+.frise-commande li::before { content: ''; position: absolute; top: 9px; left: -50%; width: 100%; height: 3px; background: var(--trait); z-index: 0; }
+.frise-commande li:first-child::before { display: none; }
+.frise-commande .frise-point { width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 3px solid var(--trait); position: relative; z-index: 1; }
+.frise-commande li.faite { color: var(--encre); }
+.frise-commande li.faite::before, .frise-commande li.courante::before { background: #1f8a65; }
+.frise-commande li.faite .frise-point { background: #1f8a65; border-color: #1f8a65; }
+.frise-commande li.courante .frise-point { border-color: #d9a733; box-shadow: 0 0 0 4px rgba(217, 167, 51, 0.2); }
+.frise-commande li.courante { color: var(--encre); font-weight: 600; }
+.frise-commande li.annulee .frise-point { border-color: var(--trait); }
+.actions-commande { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.grille-commande, .grille-vitrine { align-items: start; }
+.pile-boutique { display: grid; gap: 16px; }
+.details-commande { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; margin: 0; }
+.details-commande dt { color: var(--encre-douce); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; padding-top: 2px; }
+.details-commande dd { margin: 0; }
+.justificatif-paiement { display: block; margin: 10px 0; }
+.justificatif-paiement img { max-width: 100%; max-height: 360px; border-radius: 10px; border: 1px solid var(--trait); }
+.produit-ligne { display: flex; align-items: center; gap: 10px; }
+.interrupteur { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; }
+.interrupteur input { appearance: none; width: 40px; height: 22px; border-radius: 999px; background: var(--trait); position: relative; transition: background 0.15s; cursor: pointer; margin: 0; }
+.interrupteur input::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+.interrupteur input:checked { background: #1f8a65; }
+.interrupteur input:checked::after { transform: translateX(18px); }
+.photos-vitrine { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.photos-vitrine figure { margin: 0; position: relative; display: flex; flex-direction: column; gap: 4px; }
+.photos-vitrine img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; border: 1px solid var(--trait); }
+.photos-vitrine figcaption { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.65); color: #fff; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; }
+.ajout-photo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; aspect-ratio: 4 / 3; border: 2px dashed var(--trait); border-radius: 10px; cursor: pointer; color: var(--encre-douce); font-weight: 600; font-size: 0.85rem; text-align: center; }
+.ajout-photo span { font-size: 1.5rem; }
+.carte-osm { width: 100%; height: 220px; border: 0; border-radius: 12px; margin-top: 10px; }
+.etat-vitrine { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.appel-vitrine { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; background: linear-gradient(120deg, #fff 60%, #fdecea); border: 1px solid #f3c7c3; }
+.appel-vitrine h2 { margin: 0 0 4px; }
+@media (max-width: 640px) {
+  .frise-commande li { font-size: 0.72rem; }
+  .details-commande { grid-template-columns: 1fr; }
+}

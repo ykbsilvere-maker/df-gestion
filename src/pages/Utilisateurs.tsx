@@ -977,6 +977,11 @@ const GRILLE: ModuleGrille[] = [
     droits: { voir: ['promotions.consulter'], saisir: ['promotions.creer'], valider: ['promotions.valider'] },
   },
   {
+    code: 'boutique', libelle: 'Boutique en ligne (DF Marché)',
+    aide: { voir: 'Voir et encaisser les commandes', saisir: 'Vitrine, produits en ligne', valider: 'Confirmer, vérifier les paiements' },
+    droits: { voir: ['boutique.consulter'], saisir: ['boutique.modifier'], valider: ['boutique.valider', 'boutique.annuler'] },
+  },
+  {
     code: 'tresorerie', libelle: 'Trésorerie',
     aide: { voir: 'Soldes', saisir: 'Saisir un virement', valider: 'Valider, rapprocher, gérer les comptes' },
     droits: { voir: ['tresorerie.consulter'], saisir: ['tresorerie.creer'], valider: ['tresorerie.valider', 'tresorerie.modifier'] },
@@ -1015,7 +1020,7 @@ const PROFILS: { libelle: string; aide: string; niveaux: Partial<Record<string, 
   {
     libelle: 'Caissier',
     aide: 'Caisse et catalogue en lecture ; jamais de prix d’achat, de marge, de comptes ni de budget.',
-    niveaux: { caisse: 'saisir', catalogue: 'voir' },
+    niveaux: { caisse: 'saisir', catalogue: 'voir', boutique: 'voir' },
   },
   {
     libelle: 'Gestionnaire de stock',
@@ -1035,7 +1040,7 @@ const PROFILS: { libelle: string; aide: string; niveaux: Partial<Record<string, 
     aide: 'Tout le magasin au quotidien ; sans budget, rentabilité, trésorerie ni comptabilité.',
     niveaux: {
       caisse: 'valider', catalogue: 'valider', stock: 'valider', fournisseurs: 'saisir', extraction: 'saisir',
-      promotions: 'saisir', utilisateurs: 'saisir',
+      promotions: 'saisir', utilisateurs: 'saisir', boutique: 'valider',
     },
   },
 ];

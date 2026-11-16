@@ -9,6 +9,7 @@ import { choisirMagasinGlobal, useMagasinGlobal } from '../lib/magasinGlobal';
 import { VerrouInactivite, verrouillerMaintenant } from './VerrouInactivite';
 import { FiletSecurite } from './FiletSecurite';
 import { useSession } from '../lib/session';
+import { useCommandesWeb } from '../pages/boutique/alerte';
 import { useIdentite } from '../lib/identite';
 import { identifiantAffiche } from '../lib/acces';
 import { reprendreLogoDemande } from '../lib/demandeOuverture';
@@ -22,6 +23,7 @@ const LIENS: { vers: string; libelle: string; permission?: string | string[]; ad
   { vers: '/catalogue', libelle: 'Catalogue', permission: 'catalogue.consulter', icone: '🛍️', groupe: 'vendre' },
   { vers: '/devis', libelle: 'Devis', permission: 'ventes.valider', icone: '📄', groupe: 'vendre' },
   { vers: '/credits', libelle: 'Crédits clients', permission: ['ventes.valider', 'tresorerie.consulter', 'caisse.creer'], icone: '🤝', groupe: 'vendre' },
+  { vers: '/boutique', libelle: 'Boutique en ligne', permission: 'boutique.consulter', icone: '🌐', groupe: 'vendre' },
   { vers: '/rapports/ventes', libelle: 'Ventes', permission: ['ventes.exporter', 'rapports.consulter'], icone: '📊', groupe: 'vendre' },
   { vers: '/rapports/caisse', libelle: 'Rapports de caisse', permission: ['caisse.cloturer', 'rapports.consulter'], icone: '🧾', groupe: 'vendre' },
   { vers: '/stock', libelle: 'Stock', permission: 'stock.consulter', icone: '📦', groupe: 'stock' },
@@ -149,6 +151,7 @@ export function Coquille() {
       fermerFenetre(vers);
     }, 190);
   };
+  const commandesWeb = useCommandesWeb(idOrg, peut('boutique.consulter'));
   const nomUtilisateur = (session?.user.user_metadata?.nom_complet as string | undefined) || identifiantAffiche(session?.user.email);
 
   const lien = (l: (typeof liens)[number]) => (
@@ -157,6 +160,11 @@ export function Coquille() {
         {l.icone}
       </span>
       <span className="nav-libelle">{l.libelle}</span>
+      {l.vers === '/boutique' && commandesWeb > 0 && (
+        <span className="nav-badge" aria-label={`${commandesWeb} commande(s) en ligne à traiter`}>
+          {commandesWeb}
+        </span>
+      )}
       {l.vers === '/administration' && demandes > 0 && (
         <span className="nav-badge" aria-label={`${demandes} demande(s) à traiter`}>
           {demandes}

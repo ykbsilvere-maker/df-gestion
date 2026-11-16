@@ -12,6 +12,7 @@ import { Utilisateurs } from './pages/Utilisateurs';
 import { Journal } from './pages/Journal';
 import { CreditsModule, FicheCredit, FormulaireCredit, ListeCredits, ProcedureCredit } from './pages/credits/Credits';
 import { BalanceAgee, FicheClient, FichierClients } from './pages/credits/Clients';
+import { BoutiqueModule, CommandesWeb, FicheCommandeWeb, MaVitrine, ProduitsEnLigne } from './pages/boutique/Boutique';
 import { Personnalisation } from './pages/Personnalisation';
 import { Catalogue } from './pages/Catalogue';
 import { EtiquettesPage } from './pages/EtiquettesPage';
@@ -171,6 +172,12 @@ function Routes_() {
         <Route path="rentabilite" element={<AvecDroit permission="rentabilite.consulter"><Rentabilite /></AvecDroit>} />
         <Route path="comptabilite" element={<AvecDroit permission="comptabilite.consulter"><Comptabilite /></AvecDroit>} />
         <Route path="soldes" element={<AvecDroit permission="promotions.consulter"><Soldes /></AvecDroit>} />
+        <Route path="boutique" element={<AvecDroit permission="boutique.consulter"><BoutiqueModule /></AvecDroit>}>
+          <Route index element={<CommandesWeb />} />
+          <Route path="commandes/:id" element={<FicheCommandeWeb />} />
+          <Route path="produits" element={<ProduitsEnLigne />} />
+          <Route path="vitrine" element={<AvecDroit permission="boutique.modifier"><MaVitrine /></AvecDroit>} />
+        </Route>
         <Route path="credits" element={<AvecDroit permission={['ventes.valider', 'tresorerie.consulter', 'caisse.creer']}><CreditsModule /></AvecDroit>}>
           <Route index element={<ListeCredits />} />
           <Route path="nouveau" element={<AvecDroit permission="ventes.valider"><FormulaireCredit /></AvecDroit>} />
