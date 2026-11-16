@@ -989,9 +989,10 @@ export function FicheClient() {
   if (!r) return <EnTetePage titre="Client" sousTitre={erreur || 'Chargement…'} />;
   const ouvertes = r.creances.filter((c) => c.statut === 'ouverte' && Number(c.reste) > 0);
   const derniere = r.relances[0]?.niveau ?? 0;
-  const prochainNiveau = Math.min(4, derniere + 1) as 1 | 2 | 3 | 4;
   const retardMax = Math.max(0, ...ouvertes.map((c) => c.jours_retard));
-  const etape = procedure ? [0, procedure.palier_1, procedure.palier_2, procedure.palier_3, procedure.palier_4].filter((s) => retardMax >= s && s > 0).length : 0;
+  const etape = procedure ? [procedure.palier_1, procedure.palier_2, procedure.palier_3, procedure.palier_4].filter((s) => retardMax >= s).length : 0;
+  // Le courrier suit la procédure : au moins l'étape atteinte, et jamais en dessous de la relance précédente.
+  const prochainNiveau = Math.min(4, Math.max(1, etape, derniere + 1)) as 1 | 2 | 3 | 4;
   const numeroDossier = (cid: string | null) => dossiers.find((d) => d.id === cid)?.numero;
 
   return (

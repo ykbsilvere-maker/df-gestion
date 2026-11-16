@@ -2229,11 +2229,11 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .papier { position: relative; display: flex; flex-direction: column; padding-top: 0; }
 .papier-bandeau { height: 4mm; margin: 0 -12mm 7mm; background: linear-gradient(90deg, var(--papier-accent, #b3261e) 0 68%, #1b1b1b 68% 100%); }
 .papier-entete { display: flex; justify-content: space-between; align-items: flex-start; gap: 10mm; padding-bottom: 5mm; border-bottom: 0.8pt solid var(--papier-accent, #b3261e); margin-bottom: 6mm; }
-.papier-emetteur { display: flex; align-items: center; gap: 5mm; font-size: 8.5pt; color: #333; line-height: 1.4; }
+.papier-emetteur { display: flex; align-items: center; gap: 5mm; font-size: 8.5pt; color: #333; line-height: 1.4; flex: 1 1 auto; min-width: 0; }
 .papier-logo { max-height: 22mm; max-width: 45mm; object-fit: contain; display: block; }
 .papier-monogramme { width: 19mm; height: 19mm; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--papier-accent, #b3261e); color: #fff; font-size: 17pt; font-weight: 800; letter-spacing: 0.5pt; box-shadow: inset 0 0 0 1.2mm rgba(255, 255, 255, 0.18); }
 .papier-nom { font-size: 15pt; font-weight: 800; color: #111; letter-spacing: 0.2pt; line-height: 1.15; margin-bottom: 1mm; }
-.papier-cartouche { text-align: right; border-left: 2.2mm solid var(--papier-accent, #b3261e); padding: 1.5mm 0 1.5mm 4mm; }
+.papier-cartouche { flex: 0 1 78mm; text-align: right; border-left: 2.2mm solid var(--papier-accent, #b3261e); padding: 1.5mm 0 1.5mm 4mm; }
 .papier-titre { font-size: 13pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4pt; color: #111; }
 .papier-reference { font-size: 8.5pt; color: #444; margin-top: 1mm; line-height: 1.4; }
 .papier-adresse { display: flex; justify-content: flex-end; margin: 0 0 8mm; }
@@ -2248,4 +2248,4 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .papier .lettre-mention { font-weight: 700; text-transform: uppercase; font-size: 8.5pt; letter-spacing: 0.3pt; color: var(--papier-accent, #b3261e); }
 .papier .rapport-tableau thead th { background: #1b1b1b; color: #fff; }
 .papier .lettre-signature .secondaire { font-size: 7.5pt; color: #777; margin-top: 1mm; }
-@media (max-width: 640px) { .choix-type-client { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .choix-type-client button { padding: 10px; column-gap: 8px; } .choix-type-client button small { display: none; } .choix-type-client button > span { font-size: 1.3rem; grid-row: 1; } }
