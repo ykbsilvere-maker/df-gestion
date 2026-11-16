@@ -104,6 +104,7 @@ export function Cloture({
               <strong>{montant(attendu)}</strong>
               <small>
                 fond {montant(rapport.fond_initial)} + encaissé {montant(rapport.especes_encaissees)}
+                {Number(rapport.credits_especes ?? 0) > 0 && <> + crédits {montant(rapport.credits_especes ?? 0)}</>}
               </small>
             </div>
           </div>

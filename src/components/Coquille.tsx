@@ -21,6 +21,7 @@ const LIENS: { vers: string; libelle: string; permission?: string | string[]; ad
   { vers: '/caisse', libelle: 'Caisse', permission: 'caisse.creer', icone: '🛒', groupe: 'vendre' },
   { vers: '/catalogue', libelle: 'Catalogue', permission: 'catalogue.consulter', icone: '🛍️', groupe: 'vendre' },
   { vers: '/devis', libelle: 'Devis', permission: 'ventes.valider', icone: '📄', groupe: 'vendre' },
+  { vers: '/credits', libelle: 'Crédits clients', permission: ['ventes.valider', 'tresorerie.consulter', 'caisse.creer'], icone: '🤝', groupe: 'vendre' },
   { vers: '/rapports/ventes', libelle: 'Ventes', permission: ['ventes.exporter', 'rapports.consulter'], icone: '📊', groupe: 'vendre' },
   { vers: '/rapports/caisse', libelle: 'Rapports de caisse', permission: ['caisse.cloturer', 'rapports.consulter'], icone: '🧾', groupe: 'vendre' },
   { vers: '/stock', libelle: 'Stock', permission: 'stock.consulter', icone: '📦', groupe: 'stock' },

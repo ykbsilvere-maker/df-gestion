@@ -20,6 +20,8 @@ interface Totaux {
   depenses_caisse?: number;
   sorties_caisse?: number;
   apports_caisse?: number;
+  credits_especes?: number;
+  credits_encaisses?: number;
   par_moyen: { libelle: string; nature: string; montant: number; nombre: number }[];
 }
 interface VenteJournal {
@@ -244,6 +246,9 @@ export function SuiviCaisse() {
                 <tr><td>Fond de caisse à l’ouverture</td><td className="nombre">{montant(t.fond_initial)}</td></tr>
                 <tr><td>+ Ventes en espèces</td><td className="nombre">{montant(t.especes_encaissees)}</td></tr>
                 <tr><td>+ Apports</td><td className="nombre">{montant(t.apports_caisse ?? 0)}</td></tr>
+                {Number(t.credits_especes ?? 0) > 0 && (
+                  <tr><td>+ Règlements de crédits clients (espèces)</td><td className="nombre">{montant(t.credits_especes ?? 0)}</td></tr>
+                )}
                 <tr><td>− Dépenses payées par le tiroir</td><td className="nombre">{montant(t.depenses_caisse ?? 0)}</td></tr>
                 <tr><td>− Sorties (versements)</td><td className="nombre">{montant(t.sorties_caisse ?? 0)}</td></tr>
                 <tr className="ligne-total"><td>= Espèces attendues au tiroir</td><td className="nombre">{montant(t.especes_attendues)}</td></tr>

@@ -31,6 +31,14 @@ export function dateHeure(iso: string | null | undefined): string {
 /** Libellés des actions du journal d'audit. */
 const LIBELLES_ACTIONS: Record<string, string> = {
   'session.connexion': 'Connexion',
+  'credits.insert': 'Crédit client préparé',
+  'credits.update': 'Crédit client modifié (accordé, confié, annulé)',
+  'credits_suivi.insert': 'Démarche de recouvrement notée',
+  'procedures_credit.insert': 'Procédure de relance réglée',
+  'procedures_credit.update': 'Procédure de relance modifiée',
+  'encaissements_creances.insert': 'Règlement d’un client encaissé',
+  'creances.insert': 'Créance client ouverte',
+  'relances.insert': 'Relance d’un client',
   'session.deconnexion': 'Déconnexion',
   'organisations.insert': 'Création de l’entreprise',
   'organisations.update': 'Modification de l’entreprise',
@@ -119,6 +127,7 @@ export function iconeAction(code: string): string {
   if (/^(membres|membre_|invitations|compte)/.test(code)) return '👤';
   if (/^(produits|categories|codes_barres|import)/.test(code)) return '🛍️';
   if (/^(receptions|transferts|inventaires|fournisseurs)/.test(code)) return '📦';
+  if (/^(credits|procedures_credit|creances|relances)/.test(code)) return '🤝';
   if (/^(depenses|virements|encaissements|paiements)/.test(code)) return '💰';
   return '⚙️';
 }
@@ -139,6 +148,7 @@ const LIBELLES_CHAMPS: Record<string, string> = {
   cloturee_le: 'Clôturée le', ouverte_le: 'Ouverte le', caissier_id: 'Caissier', magasin_id: 'Magasin', caisse_id: 'Caisse', montant: 'Montant',
   motif: 'Motif', note: 'Note', reference: 'Référence', photo_path: 'Photo', marque: 'Marque', gere_peremption: 'Suivi de péremption',
   date_reception: 'Date de réception', derniere_connexion: 'Dernière connexion', crees: 'Créés', mis_a_jour: 'Mis à jour', erreurs: 'Erreurs',
+  responsable_id: 'Suivi confié à', echeance: 'Échéance', duree_jours: 'Durée (jours)', motif_exception: 'Motif d’exception', palier_1: '1re relance (jours)', palier_2: '2e relance (jours)', palier_3: 'Mise en demeure (jours)', palier_4: 'Contentieux (jours)',
   appareil: 'Appareil', navigateur: 'Navigateur', module: 'Module', document: 'Document', fichier: 'Fichier', entreprise: 'Entreprise', nombre_ventes: 'Nombre de ventes', total_ventes: 'Total des ventes',
 };
 export function libelleChamp(c: string): string {

@@ -25,6 +25,9 @@ export function TresorerieModule() {
         <NavLink to="/tresorerie/creances">
           <span className="onglet-icone" aria-hidden>📨</span>Créances clients
         </NavLink>
+        <NavLink to="/credits">
+          <span className="onglet-icone" aria-hidden>🤝</span>Dossiers de crédit
+        </NavLink>
         {(peut('achats.creer') || peut('stock.creer') || peut('fournisseurs.consulter')) && (
           <NavLink to="/tresorerie/approvisionnement">
             <span className="onglet-icone" aria-hidden>🛒</span>Approvisionnement
@@ -385,7 +388,7 @@ interface Releve {
   echu: number;
 }
 
-const TEXTES_RELANCE: Record<1 | 2 | 3, { titre: string; corps: string; fin: string }> = {
+const TEXTES_RELANCE: Record<1 | 2 | 3 | 4, { titre: string; corps: string; fin: string }> = {
   1: {
     titre: 'Rappel de paiement',
     corps:
@@ -403,6 +406,12 @@ const TEXTES_RELANCE: Record<1 | 2 | 3, { titre: string; corps: string; fin: str
     corps:
       'Nos relances précédentes étant restées sans effet, nous vous mettons en demeure de nous régler les sommes ci-dessous sous huit (8) jours. À défaut, nous nous verrons contraints d’engager une procédure de recouvrement, les frais restant à votre charge.',
     fin: 'Ce courrier vaut mise en demeure.',
+  },
+  4: {
+    titre: 'Dernier avis avant recouvrement contentieux',
+    corps:
+      'Notre mise en demeure est restée sans effet : les sommes ci-dessous restent impayées. Sans règlement intégral sous quarante-huit (48) heures, le dossier sera transmis pour recouvrement contentieux.',
+    fin: 'Les frais de recouvrement pourront être mis à votre charge dans les limites prévues par la loi.',
   },
 };
 
@@ -675,7 +684,7 @@ export function FicheClient() {
           <ul className="liste-simple">
             {r.relances.map((x, i) => (
               <li key={i}>
-                {dateFr(x.date_relance)} — {TEXTES_RELANCE[x.niveau as 1 | 2 | 3].titre} ({montant(x.montant_du)} dû)
+                {dateFr(x.date_relance)} — {TEXTES_RELANCE[x.niveau as 1 | 2 | 3 | 4]?.titre ?? `Relance n° ${x.niveau}`} ({montant(x.montant_du)} dû)
               </li>
             ))}
           </ul>

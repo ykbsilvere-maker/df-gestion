@@ -10,6 +10,7 @@ import { Accueil } from './pages/Accueil';
 import { Magasins } from './pages/Magasins';
 import { Utilisateurs } from './pages/Utilisateurs';
 import { Journal } from './pages/Journal';
+import { CreditsModule, FicheCredit, FormulaireCredit, ListeCredits, ProcedureCredit } from './pages/credits/Credits';
 import { Personnalisation } from './pages/Personnalisation';
 import { Catalogue } from './pages/Catalogue';
 import { EtiquettesPage } from './pages/EtiquettesPage';
@@ -162,6 +163,13 @@ function Routes_() {
         <Route path="rentabilite" element={<AvecDroit permission="rentabilite.consulter"><Rentabilite /></AvecDroit>} />
         <Route path="comptabilite" element={<AvecDroit permission="comptabilite.consulter"><Comptabilite /></AvecDroit>} />
         <Route path="soldes" element={<AvecDroit permission="promotions.consulter"><Soldes /></AvecDroit>} />
+        <Route path="credits" element={<AvecDroit permission={['ventes.valider', 'tresorerie.consulter', 'caisse.creer']}><CreditsModule /></AvecDroit>}>
+          <Route index element={<ListeCredits />} />
+          <Route path="nouveau" element={<AvecDroit permission="ventes.valider"><FormulaireCredit /></AvecDroit>} />
+          <Route path="procedure" element={<ProcedureCredit />} />
+          <Route path=":id" element={<FicheCredit />} />
+          <Route path=":id/modifier" element={<AvecDroit permission="ventes.valider"><FormulaireCredit /></AvecDroit>} />
+        </Route>
         <Route path="devis" element={<AvecDroit permission="ventes.valider"><ListeDevis /></AvecDroit>} />
         <Route path="devis/:id" element={<AvecDroit permission="ventes.valider"><FicheDevis /></AvecDroit>} />
         <Route path="rapports/caisse" element={<AvecDroit permission={['caisse.cloturer', 'rapports.consulter']}><RapportsCaisse /></AvecDroit>} />

@@ -17,6 +17,8 @@ const FAMILLES: { valeur: string; libelle: string }[] = [
   { valeur: 'journee.', libelle: 'Ouverture et clôture de la journée' },
   { valeur: 'sessions_caisse.', libelle: 'Ouverture et clôture des caisses' },
   { valeur: 'ventes.', libelle: 'Ventes annulées' },
+  { valeur: 'credits', libelle: 'Crédits clients et relances' },
+  { valeur: 'encaissements_creances.', libelle: 'Règlements de clients' },
   { valeur: 'produits.', libelle: 'Articles du catalogue' },
   { valeur: 'receptions.', libelle: 'Réceptions de marchandises' },
   { valeur: 'inventaires.', libelle: 'Inventaires' },

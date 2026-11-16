@@ -2123,3 +2123,68 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .tdb-intervalle label { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.86rem; color: var(--encre-douce); }
 .tdb-intervalle input { border: 0; background: transparent; font: inherit; padding: 4px 2px; box-shadow: none !important; }
 @media (max-width: 600px) { .tdb-periode { justify-content: flex-start; } .tdb-intervalle { flex-wrap: wrap; border-radius: 14px; } }
+
+/* =====================================================================
+   3.3 — Crédits clients structurés
+   ===================================================================== */
+.puces-durees { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.situation-client { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 12px 14px; border: 1px solid var(--trait); border-radius: 12px; background: var(--surface-2); }
+.situation-client > div { display: flex; flex-direction: column; gap: 2px; }
+.situation-client span { font-size: 0.8rem; color: var(--encre-douce); }
+.situation-client small { color: var(--encre-douce); }
+.situation-client.alerte { border-color: #e2b04a; background: #fbf3e2; }
+.situation-message { grid-column: 1 / -1; margin: 4px 0 0; font-weight: 600; }
+.bloc-motif { margin-top: 12px; }
+.carte-action { border-color: var(--accent); background: var(--accent-clair); }
+.carte-action p { margin: 0; font-weight: 600; }
+
+.frise-procedure { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: relative; }
+.frise-procedure::before { content: ''; position: absolute; left: 10%; right: 10%; top: 17px; height: 2px; background: var(--trait); }
+.frise-procedure li { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 0 4px; }
+.frise-point { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--surface); border: 2px solid var(--trait); color: var(--encre-douce); position: relative; z-index: 1; }
+.frise-procedure strong { font-size: 0.86rem; }
+.frise-procedure small { font-size: 0.75rem; color: var(--encre-douce); }
+.frise-procedure li.passee .frise-point { background: var(--surface-2); border-color: var(--encre-douce); color: var(--encre); }
+.frise-procedure li.en-cours .frise-point { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 0 5px var(--accent-clair); }
+.frise-procedure li.en-cours strong { color: var(--accent); }
+.conseil-procedure { margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border-left: 0; }
+@media (max-width: 700px) {
+  .frise-procedure { grid-template-columns: 1fr; gap: 10px; }
+  .frise-procedure::before { display: none; }
+  .frise-procedure li { flex-direction: row; text-align: left; gap: 10px; }
+}
+.actions-suivi { display: flex; flex-wrap: wrap; gap: 10px; }
+.grille-fiche { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
+@media (max-width: 900px) { .grille-fiche { grid-template-columns: 1fr; } }
+.liste-suivi { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.liste-suivi li { display: flex; gap: 12px; align-items: flex-start; padding-bottom: 12px; border-bottom: 1px solid var(--trait); }
+.liste-suivi li:last-child { border-bottom: 0; }
+.liste-suivi p { margin: 2px 0; }
+.liste-suivi small { color: var(--encre-douce); }
+.suivi-icone { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); }
+.procedure-etapes { list-style: none; counter-reset: etape; margin: 0 0 16px; padding: 0; display: grid; gap: 10px; }
+.procedure-etapes li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 14px; border: 1px solid var(--trait); border-radius: 12px; flex-wrap: wrap; }
+.procedure-etapes p { margin: 2px 0 0; color: var(--encre-douce); }
+.champ-jours { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-weight: 600; }
+.champ-jours input { width: 80px; }
+
+.credits-caisse { display: grid; gap: 12px; }
+.liste-credits-caisse { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.liste-credits-caisse li { border: 1px solid var(--trait); border-radius: 12px; overflow: hidden; }
+.liste-credits-caisse li.choisi { border-color: var(--accent); }
+.credit-ligne { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border: 0; font: inherit; text-align: left; cursor: pointer; }
+.credit-ligne:hover { background: var(--surface-2); }
+.credit-ligne > span:first-child { display: flex; flex-direction: column; gap: 2px; }
+.credit-ligne small { color: var(--encre-douce); }
+.credit-reste { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-weight: 800; }
+.credit-encaissement { padding: 12px 14px; background: var(--surface-2); border-top: 1px solid var(--trait); }
+
+/* Documents A4 des crédits */
+.rapport-a4 .bloc-infos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin: 4mm 0 6mm; }
+.rapport-a4 .bloc-infos div { border: 0.6pt solid #999; border-radius: 2mm; padding: 2.5mm 3mm; display: flex; flex-direction: column; gap: 1mm; }
+.rapport-a4 .bloc-infos span { font-size: 7.5pt; color: #555; text-transform: uppercase; letter-spacing: 0.3pt; }
+.rapport-a4 .bloc-infos strong { font-size: 10.5pt; }
+.rapport-a4 .bloc-infos small { font-size: 8pt; color: #333; }
+.rapport-a4 .reconnaissance { margin: 6mm 0 2mm; padding: 4mm; border: 0.8pt solid #000; border-radius: 2mm; font-size: 10pt; line-height: 1.5; }
+.signatures-2 { grid-template-columns: repeat(2, 1fr); }
+.decharge { margin-top: 14mm; }

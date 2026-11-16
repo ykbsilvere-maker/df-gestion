@@ -15,6 +15,9 @@ export interface RapportSession {
   fond_initial: number;
   especes_encaissees: number;
   especes_attendues: number;
+  /** 3.3 : règlements de crédits clients reçus à cette caisse (dont espèces mises au tiroir). */
+  credits_especes?: number;
+  credits_encaisses?: number;
   /** montant = net à reverser (encaissé − monnaie rendue par ce moyen). */
   par_moyen: { libelle: string; nature: string; montant: number; nombre: number; encaisse?: number; rendu?: number }[];
   rendus_autres_moyens?: number;
@@ -158,6 +161,12 @@ export function RapportCaisse({
           <span>Encaissées</span>
           <span>{montant(rapport.especes_encaissees)}</span>
         </div>
+        {Number(rapport.credits_especes ?? 0) > 0 && (
+          <div>
+            <span>Règlements de crédits</span>
+            <span>{montant(rapport.credits_especes ?? 0)}</span>
+          </div>
+        )}
         <div className="recu-total">
           <span>Attendues en caisse</span>
           <span>{montant(rapport.especes_attendues)}</span>

@@ -3,6 +3,20 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.3.** **Crédits clients structurés** (menu Vendre › Crédits clients, migration 030). Le responsable
+prépare un **dossier de crédit** avec les **articles** remis (scan ou recherche, stock du magasin affiché) ; la
+**durée de paiement** calcule la **date de paiement**, et choisir la date recalcule la durée (raccourcis 7 à 90 jours,
+délai habituel du client par défaut). Il **confie le suivi** à une caissière ou le garde : elle ne voit que ses
+dossiers, **encaisse à sa caisse** (bouton 🤝 Crédits ; les espèces comptent dans le tiroir et apparaissent au
+rapport Z) et note ses démarches (appel, visite, message, promesse de paiement datée). Accorder le crédit sort les
+articles du stock, ouvre la créance (411 / 701 en comptabilité) et contrôle le **plafond** et les **retards** : un
+dépassement exige un motif, gardé au dossier. Une **procédure de relance** réglable (rappel avant échéance, relance
+amiable, seconde relance, mise en demeure, contentieux, avec les jours de retard de chaque étape et l'étape qui
+bloque les nouveaux crédits) indique pour chaque dossier l'étape atteinte et la prochaine ; les **lettres** de chaque
+étape, le **bon de crédit** (reconnaissance de dette signée par le client, le caissier ou la caissière et le gérant),
+le **relevé du dossier** et le **reçu de règlement** s'impriment en A4. Un crédit sans règlement s'annule : les
+articles reviennent en stock.
+
 **Version 3.2.** **Tableau de bord sur un intervalle libre** (📅 Intervalle : du … au …) en plus de Jour / Semaine /
 Mois / Année, comparé à la période précédente de même durée ; il suit aussi le magasin choisi en haut de l'écran
 (migration 029). **Exports** : les entiers n'ont plus de virgule finale, les taux et colonnes en « % » sortent en vrais
