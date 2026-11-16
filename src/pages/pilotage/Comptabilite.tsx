@@ -496,7 +496,7 @@ export function Comptabilite() {
                     <tbody>
                       {TRANCHES_BILAN.map((t) => (
                         <tr key={t.cle}>
-                          <td><span className={`puce tranche-${t.cle}`} aria-hidden /> {t.libelle}</td>
+                          <td><span className={`pastille-tranche tranche-${t.cle}`} aria-hidden /> {t.libelle}</td>
                           <td className={`nombre ${(t.cle === 'j90' || t.cle === 'plus90') && Number(bilan.balance_agee![t.cle]) > 0 ? 'texte-negatif' : ''}`}>{montant(bilan.balance_agee![t.cle])}</td>
                           <td className="nombre secondaire">{part(Number(bilan.balance_agee![t.cle]), Number(bilan.balance_agee!.total))}</td>
                         </tr>

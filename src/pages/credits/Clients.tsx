@@ -635,7 +635,7 @@ export function BalanceAgee() {
           <ul className="legende-anciennete">
             {TRANCHES.map((t, i) => (
               <li key={t.cle}>
-                <span className={`puce tranche-${t.cle}`} aria-hidden />
+                <span className={`pastille-tranche tranche-${t.cle}`} aria-hidden />
                 {t.libelle} <strong>{montant(totaux[i] ?? 0)}</strong> <span className="secondaire">{pourcent(totaux[i] ?? 0, total)}</span>
               </li>
             ))}

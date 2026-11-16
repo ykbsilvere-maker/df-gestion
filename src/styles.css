@@ -2202,9 +2202,6 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .bloc-identifiants { border: 1px solid var(--trait); border-radius: 12px; padding: 10px 14px 4px; margin: 0; display: grid; gap: 10px; }
 .bloc-identifiants legend { font-weight: 700; font-size: 0.85rem; padding: 0 6px; color: var(--encre-douce); text-transform: uppercase; letter-spacing: 0.04em; }
 .question-oui-non { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-weight: 600; }
-.champ-avec-bouton { display: flex; gap: 6px; align-items: stretch; }
-.champ-avec-bouton select { flex: 1; min-width: 0; }
-.champ-avec-bouton .bouton { white-space: nowrap; padding-inline: 10px; }
 .fiche-identite { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px 18px; }
 .fiche-identite > div { display: flex; flex-direction: column; gap: 3px; }
 .fiche-identite span { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--encre-douce); }
@@ -2220,7 +2217,7 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .tranche-j60 { background: #e07b2e; }
 .tranche-j90 { background: #c8461b; }
 .tranche-plus90 { background: #8e1414; }
-.puce { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: 0; margin-right: 4px; }
+.pastille-tranche { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: 0; margin-right: 4px; }
 .legende-anciennete { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 0.92rem; }
 .bilan-anciennete { grid-column: 1 / -1; }
 .bilan-anciennete-titre { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
