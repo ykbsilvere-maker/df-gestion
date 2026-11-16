@@ -36,6 +36,7 @@ beforeAll(async () => {
     mag2 = (await un(q<{ id: string }>(`insert into magasins (organisation_id, code, nom) values ($1, 'MAG02', 'Cocody') returning id`, [org]))).id;
     caisse = (await un(q<{ id: string }>(`select id from caisses where magasin_id = $1`, [mag]))).id;
     for (const m of await q<{ code: string; id: string }>(`select code, id from moyens_paiement where organisation_id = $1`, [org])) moyens[m.code] = m.id;
+    await q(`update moyens_paiement set reference_obligatoire = true where id = $1`, [moyens.wave]);
     const p = async (d: string, prix: number) =>
       (await un(q<{ id: string }>(`insert into produits (organisation_id, designation, prix_vente) values ($1, $2, $3) returning id`, [org, d, prix]))).id;
     riz = await p('Riz 25 kg', 18000);
