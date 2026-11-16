@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Link, NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { useIdentite } from '../../lib/identite';
@@ -13,6 +13,7 @@ import { useImpression } from '../../impression/impression';
 import { BoutonsExport } from '../../components/Export';
 import { RechercheProduit, type ProduitTrouve } from '../../components/RechercheProduit';
 import { Alerte, Champ, EnTetePage, Fenetre, MontantFort, Pastille, Vide } from '../../components/ui';
+import { FenetreClient, type Client } from './Clients';
 import {
   ACTIONS_SUIVI,
   BonCredit,
@@ -51,9 +52,10 @@ export function EtapePastille({ etape }: { etape: number }) {
   return <Pastille ton={e.ton}>{e.court}</Pastille>;
 }
 
-/** Module « Crédits clients ». */
+/** Module « Crédits clients » : dossiers, fichier clients, balance âgée et procédure. */
 export function CreditsModule() {
   const { peut } = useSession();
+  const voirComptes = peut('tresorerie.consulter') || peut('ventes.valider');
   return (
     <>
       <nav className="onglets" aria-label="Crédits clients">
@@ -63,6 +65,16 @@ export function CreditsModule() {
         {peut('ventes.valider') && (
           <NavLink to="/credits/nouveau">
             <span className="onglet-icone" aria-hidden>➕</span>Nouveau crédit
+          </NavLink>
+        )}
+        {(voirComptes || peut('clients.consulter')) && (
+          <NavLink to="/credits/clients">
+            <span className="onglet-icone" aria-hidden>👥</span>Clients
+          </NavLink>
+        )}
+        {voirComptes && (
+          <NavLink to="/credits/balance">
+            <span className="onglet-icone" aria-hidden>📊</span>Balance âgée
           </NavLink>
         )}
         <NavLink to="/credits/procedure">
@@ -282,8 +294,10 @@ export function FormulaireCredit() {
   const magasins = useMagasins(org);
   const magasinGlobal = useMagasinGlobal();
   const [magasin, setMagasin] = useState('');
-  const [clients, setClients] = useState<{ id: string; nom: string; telephone: string | null; delai_paiement: number }[]>([]);
-  const [client, setClient] = useState('');
+  const [clients, setClients] = useState<{ id: string; nom: string; telephone: string | null; delai_paiement: number; exemple: boolean }[]>([]);
+  const [params] = useSearchParams();
+  const [client, setClient] = useState(params.get('client') ?? '');
+  const [nouveauClient, setNouveauClient] = useState<Partial<Client> | null>(null);
   const [situation, setSituation] = useState<Situation | null>(null);
   const [duree, setDuree] = useState(30);
   const [echeance, setEcheance] = useState(plusJours(aujourdhui(), 30));
@@ -299,10 +313,19 @@ export function FormulaireCredit() {
   // Un brouillon déjà enregistré (motif demandé, erreur) est repris au lieu d'en créer un autre.
   const [brouillon, setBrouillon] = useState<string | null>(id ?? null);
 
+  const chargerClients = useCallback(
+    () =>
+      supabase.from('clients').select('id, nom, telephone, delai_paiement, exemple').eq('organisation_id', org).eq('actif', true).order('nom')
+        .then(({ data }) => {
+          const l = (data ?? []) as typeof clients;
+          setClients(l);
+          return l;
+        }),
+    [org],
+  );
   useEffect(() => {
-    void supabase.from('clients').select('id, nom, telephone, delai_paiement').eq('organisation_id', org).eq('actif', true).order('nom')
-      .then(({ data }) => setClients((data ?? []) as typeof clients));
-  }, [org]);
+    void chargerClients();
+  }, [chargerClients]);
   useEffect(() => {
     if (!magasin && magasins.length) setMagasin(magasinGlobal && magasins.some((m) => m.id === magasinGlobal) ? magasinGlobal : magasins[0]!.id);
   }, [magasins, magasin, magasinGlobal]);
@@ -360,11 +383,17 @@ export function FormulaireCredit() {
     setEcheance(iso);
     setDuree(ecartJours(aujourdhui(), iso));
   }
-  function choisirClient(cid: string) {
+  function choisirClient(cid: string, liste = clients) {
     setClient(cid);
-    const c = clients.find((x) => x.id === cid);
+    const c = liste.find((x) => x.id === cid);
     if (c && !id) choisirDuree(c.delai_paiement);
   }
+  // Client passé dans l'adresse (« Nouveau crédit » depuis la fiche client) : sa durée habituelle.
+  const clientDemande = params.get('client');
+  useEffect(() => {
+    if (clientDemande && !id && clients.some((c) => c.id === clientDemande)) choisirClient(clientDemande);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientDemande, clients.length]);
   async function ajouter(p: ProduitTrouve) {
     setLignes((ls) => {
       const i = ls.findIndex((l) => l.produit_id === p.id);
@@ -421,13 +450,18 @@ export function FormulaireCredit() {
         <section className="carte">
           <h2>Client et paiement</h2>
           <div className="grille-4">
-            <Champ label="Client">
-              <select value={client} onChange={(e) => choisirClient(e.target.value)} required>
-                <option value="">Choisir…</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nom}{c.telephone ? ` · ${c.telephone}` : ''}</option>
-                ))}
-              </select>
+            <Champ label="Client" aide={clients.some((c) => c.id === client && c.exemple) ? 'Client d’exemple : le dossier ne pourra pas être validé' : undefined}>
+              <div className="champ-avec-bouton">
+                <select value={client} onChange={(e) => choisirClient(e.target.value)} required>
+                  <option value="">Choisir…</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nom}{c.telephone ? ` · ${c.telephone}` : ''}</option>
+                  ))}
+                </select>
+                <button type="button" className="bouton bouton-discret" onClick={() => setNouveauClient({ type_client: 'particulier', delai_paiement: 30, actif: true })} title="Enregistrer un nouveau client">
+                  + Nouveau
+                </button>
+              </div>
             </Champ>
             <Champ label="Magasin qui remet les articles">
               <select value={magasin} onChange={(e) => setMagasin(e.target.value)}>
@@ -535,6 +569,14 @@ export function FormulaireCredit() {
           <p className="secondaire">En accordant le crédit, les articles sortent du stock et la créance du client est ouverte jusqu’au {dateFr(echeance)}.</p>
         </section>
       </form>
+      <FenetreClient
+        client={nouveauClient}
+        onFermer={() => setNouveauClient(null)}
+        onEnregistre={(cid) => {
+          setNouveauClient(null);
+          void chargerClients().then((l) => choisirClient(cid, l));
+        }}
+      />
     </>
   );
 }
@@ -790,7 +832,7 @@ export function FicheCredit() {
             <li><span>Doit au total (tous crédits)</span><strong>{montant(d.client.encours)}</strong></li>
             <li><span>Plafond de crédit</span><strong>{d.client.plafond_credit == null ? 'Aucun' : montant(d.client.plafond_credit)}</strong></li>
           </ul>
-          {peut('tresorerie.consulter') && <p><Link to={`/tresorerie/clients/${d.client.id}`}>Relevé de compte complet du client →</Link></p>}
+          {(peut('tresorerie.consulter') || peut('ventes.valider')) && <p><Link to={`/credits/clients/${d.client.id}`}>Fiche et relevé de compte du client →</Link></p>}
         </section>
       </div>
 

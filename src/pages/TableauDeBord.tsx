@@ -309,7 +309,7 @@ export function TableauDeBord() {
               <span className="kpi-evolution">Voir les alertes →</span>
             </Link>
             {d.creances_echues !== null && (
-              <Link to="/tresorerie/creances" className={`kpi kpi-lien ${Number(d.creances_echues) > 0 ? 'kpi-alerte' : ''}`}>
+              <Link to="/credits/balance" className={`kpi kpi-lien ${Number(d.creances_echues) > 0 ? 'kpi-alerte' : ''}`}>
                 <span className="kpi-icone" aria-hidden>📨</span>
                 <span className="kpi-libelle">Créances échues</span>
                 <span className="kpi-valeur"><MontantFort v={d.creances_echues} /></span>

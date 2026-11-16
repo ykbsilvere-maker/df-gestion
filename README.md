@@ -3,6 +3,25 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.4.** **Fichier clients et créances réunis dans « Crédits clients »** (migration 031). Le module a
+désormais cinq onglets : Dossiers, Nouveau crédit, **Clients**, **Balance âgée** et Procédure de relance ; les
+anciens onglets « Créances clients » et « Dossiers de crédit » de la Trésorerie y sont regroupés (les anciennes
+adresses redirigent). On **enregistre le client une fois** — **particulier** (personne physique : « A-t-il un NCC ou un
+RCCM ? Oui / Non », pièce d'identité facultative) ou **entreprise** (NCC, RCCM, personne à contacter) — avec son délai
+habituel et son plafond ; on le retrouve ensuite dans les crédits (bouton « + Nouveau » directement dans le formulaire
+de crédit), la balance âgée, la **fiche client** (identification, crédits, relevé avec solde progressif, règlements,
+relances) et les courriers. La **balance âgée** affiche la répartition par ancienneté (barre colorée, % par tranche),
+l'étape de la procédure de chaque client et permet de reprendre une **créance existante** (ancien cahier de crédit).
+Le **gérant de magasin** (droit ventes.valider) y a accès sans droit sur la trésorerie ; l'encaissement hors caisse
+reste réservé à la trésorerie. **Exemples de test** : un responsable crée en un clic 3 clients et 5 crédits marqués
+TEST, à chaque étape de la procédure (à jour, 1re et 2e relance, mise en demeure, contentieux) ; ils ne touchent ni au
+stock, ni à la trésorerie, ni à la comptabilité, ne peuvent pas être accordés pour de vrai et se suppriment d'un clic.
+Les **lettres et documents** (relances, mise en demeure, bon de crédit, relevés, reçus) sont imprimés sur un
+**papier à en-tête** : logo de l'entreprise (ou son monogramme à sa couleur s'il n'y a pas encore de logo — à
+ajouter dans Personnalisation), bandeau, bloc destinataire et pied de page avec RCCM, NCC et régime fiscal. Le
+**bilan** sépare les **créances clients** des autres créances et ajoute l'**ancienneté des créances clients**
+(non échues, 1–30, 31–60, 61–90, + 90 jours, hors exemples), exportable en Excel ou PDF.
+
 **Version 3.3.** **Crédits clients structurés** (menu Vendre › Crédits clients, migration 030). Le responsable
 prépare un **dossier de crédit** avec les **articles** remis (scan ou recherche, stock du magasin affiché) ; la
 **durée de paiement** calcule la **date de paiement**, et choisir la date recalcule la durée (raccourcis 7 à 90 jours,

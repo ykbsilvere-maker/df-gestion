@@ -3,6 +3,7 @@ import { montant } from '../../lib/argent';
 import { quantite } from '../../lib/stock';
 import { dateFr } from '../../lib/tresorerie';
 import type { Organisation } from '../../lib/types';
+import { PapierEntete, Signature, dateCourrier } from './papier';
 
 /** Paramètres de la procédure de recouvrement (jours de retard qui déclenchent chaque étape). */
 export interface Procedure {
@@ -120,28 +121,6 @@ export const ACTIONS_SUIVI: Record<string, { libelle: string; icone: string }> =
   note: { libelle: 'Note', icone: '📝' },
 };
 
-const dateLongue = () => new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Abidjan' });
-
-function EnTeteLettre({ o, logoUrl, client }: { o: Organisation | undefined; logoUrl: string | null; client: DetailCredit['client'] }) {
-  return (
-    <header className="lettre-entete">
-      <div>
-        {logoUrl && <img src={logoUrl} alt="" />}
-        <strong>{o?.nom}</strong>
-        <div>{[o?.adresse, o?.ville].filter(Boolean).join(', ')}</div>
-        <div>{[o?.telephone, o?.email].filter(Boolean).join(' · ')}</div>
-        {(o?.rccm || o?.ncc) && <div>{[o?.rccm && `RCCM ${o.rccm}`, o?.ncc && `NCC ${o.ncc}`].filter(Boolean).join(' · ')}</div>}
-      </div>
-      <div className="lettre-destinataire">
-        <strong>{client.nom}</strong>
-        {client.contact && <div>À l’attention de {client.contact}</div>}
-        {client.adresse && <div>{client.adresse}</div>}
-        {client.telephone && <div>{client.telephone}</div>}
-      </div>
-    </header>
-  );
-}
-
 function TableauSituation({ d }: { d: DetailCredit }) {
   const x = d.dossier;
   return (
@@ -211,46 +190,37 @@ export function texteLettre(niveau: number, d: DetailCredit): { titre: string; c
 export function LettreCredit({ d, niveau, o, logoUrl }: { d: DetailCredit; niveau: number; o: Organisation | undefined; logoUrl: string | null }) {
   const t = texteLettre(niveau, d);
   return (
-    <div className="rapport-a4 lettre">
-      <EnTeteLettre o={o} logoUrl={logoUrl} client={d.client} />
-      <p className="lettre-date">{o?.ville ? `${o.ville}, le ` : 'Le '}{dateLongue()}</p>
-      <p><strong>Objet : {t.titre}</strong></p>
-      {niveau === 3 && <p><strong>Lettre remise en main propre contre décharge</strong></p>}
+    <PapierEntete o={o} logoUrl={logoUrl} destinataire={d.client} lettre>
+      <p className="lettre-date">{dateCourrier(o)}</p>
+      <p className="lettre-objet"><span>Objet :</span> {t.titre}</p>
+      {niveau === 3 && <p className="lettre-mention">Lettre remise en main propre contre décharge</p>}
       <p>Madame, Monsieur,</p>
       <p>{t.corps}</p>
       <TableauSituation d={d} />
       <p>{t.fin}</p>
       <p>Pour tout renseignement, votre interlocuteur est {d.dossier.responsable ?? 'la Direction'}.</p>
       <p>Nous vous prions d’agréer, Madame, Monsieur, l’expression de nos salutations distinguées.</p>
-      <div className="lettre-signature">
-        <div>La Direction</div>
-        <div className="lettre-ligne-signature" />
-      </div>
+      <Signature />
       {niveau >= 3 && (
         <div className="signatures signatures-2 decharge">
           <div>Reçu le<br /><span>Date</span></div>
           <div>Le client<br /><span>Nom et signature (décharge)</span></div>
         </div>
       )}
-    </div>
+    </PapierEntete>
   );
 }
 
 function Corps({ titre, o, logoUrl, d, children }: { titre: string; o: Organisation | undefined; logoUrl: string | null; d: DetailCredit; children: ReactNode }) {
   return (
-    <div className="rapport-a4">
-      <header className="rapport-entete">
-        <div>
-          <strong>{o?.nom}</strong>
-          <h1>{titre}</h1>
-          <p>
-            {d.dossier.numero} · {d.client.nom} · {d.dossier.magasin}
-          </p>
-        </div>
-        {logoUrl && <img src={logoUrl} alt="" />}
-      </header>
+    <PapierEntete
+      o={o}
+      logoUrl={logoUrl}
+      titre={titre}
+      reference={<>N° {d.dossier.numero}<br />{d.client.nom} · {d.dossier.magasin}</>}
+    >
       {children}
-    </div>
+    </PapierEntete>
   );
 }
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { FournisseurSession, useSession } from './lib/session';
 import { configurationManquante } from './lib/supabase';
 import { Coquille } from './components/Coquille';
@@ -11,6 +11,7 @@ import { Magasins } from './pages/Magasins';
 import { Utilisateurs } from './pages/Utilisateurs';
 import { Journal } from './pages/Journal';
 import { CreditsModule, FicheCredit, FormulaireCredit, ListeCredits, ProcedureCredit } from './pages/credits/Credits';
+import { BalanceAgee, FicheClient, FichierClients } from './pages/credits/Clients';
 import { Personnalisation } from './pages/Personnalisation';
 import { Catalogue } from './pages/Catalogue';
 import { EtiquettesPage } from './pages/EtiquettesPage';
@@ -33,7 +34,7 @@ import { ExtractionVentes } from './pages/rapports/ExtractionVentes';
 import { CoutsDeRevient, FicheFournisseur, FournisseursModule } from './pages/fournisseurs/FournisseursModule';
 import { Budget } from './pages/pilotage/Budget';
 import { Tresorerie } from './pages/pilotage/Tresorerie';
-import { Creances, FicheClient, TresorerieModule } from './pages/pilotage/Creances';
+import { TresorerieModule } from './pages/pilotage/Creances';
 import { Approvisionnement } from './pages/pilotage/Approvisionnement';
 import { FicheDevis, ListeDevis } from './pages/Devis';
 import { Rentabilite } from './pages/pilotage/Rentabilite';
@@ -88,6 +89,12 @@ function AvecDroit({ permission, children }: { permission: string | string[]; ch
   const { peut } = useSession();
   const liste = Array.isArray(permission) ? permission : [permission];
   return liste.some((p) => peut(p)) ? <>{children}</> : <Navigate to="/" replace />;
+}
+
+/** Ancienne fiche client de la trésorerie → fiche client des crédits. */
+function RedirectionClient() {
+  const { id } = useParams();
+  return <Navigate to={`/credits/clients/${id}`} replace />;
 }
 
 function Routes_() {
@@ -155,8 +162,9 @@ function Routes_() {
         <Route path="budget" element={<AvecDroit permission="budget.consulter"><Budget /></AvecDroit>} />
         <Route path="tresorerie" element={<AvecDroit permission={['tresorerie.consulter', 'achats.creer', 'stock.creer']}><TresorerieModule /></AvecDroit>}>
           <Route index element={<AvecDroit permission="tresorerie.consulter"><Tresorerie /></AvecDroit>} />
-          <Route path="creances" element={<AvecDroit permission="tresorerie.consulter"><Creances /></AvecDroit>} />
-          <Route path="clients/:id" element={<AvecDroit permission="tresorerie.consulter"><FicheClient /></AvecDroit>} />
+          {/* Anciennes adresses (avant 3.4) : les créances clients sont dans « Crédits clients ». */}
+          <Route path="creances" element={<Navigate to="/credits/balance" replace />} />
+          <Route path="clients/:id" element={<RedirectionClient />} />
           <Route path="approvisionnement" element={<Approvisionnement />} />
         </Route>
         <Route path="vue-ensemble" element={<AvecDroit permission="rentabilite.consulter"><VueEnsemble /></AvecDroit>} />
@@ -166,6 +174,9 @@ function Routes_() {
         <Route path="credits" element={<AvecDroit permission={['ventes.valider', 'tresorerie.consulter', 'caisse.creer']}><CreditsModule /></AvecDroit>}>
           <Route index element={<ListeCredits />} />
           <Route path="nouveau" element={<AvecDroit permission="ventes.valider"><FormulaireCredit /></AvecDroit>} />
+          <Route path="clients" element={<AvecDroit permission={['clients.consulter', 'ventes.valider', 'tresorerie.consulter']}><FichierClients /></AvecDroit>} />
+          <Route path="clients/:id" element={<AvecDroit permission={['ventes.valider', 'tresorerie.consulter']}><FicheClient /></AvecDroit>} />
+          <Route path="balance" element={<AvecDroit permission={['ventes.valider', 'tresorerie.consulter']}><BalanceAgee /></AvecDroit>} />
           <Route path="procedure" element={<ProcedureCredit />} />
           <Route path=":id" element={<FicheCredit />} />
           <Route path=":id/modifier" element={<AvecDroit permission="ventes.valider"><FormulaireCredit /></AvecDroit>} />

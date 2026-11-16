@@ -2,6 +2,7 @@ import { exporterClasseur, type FormatExport } from '../../lib/export';
 import { BoutonsExport } from '../../components/Export';
 import { SaisieGuidee } from './SaisieGuidee';
 import { Fragment, useCallback, useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { messageErreur } from '../../lib/format';
@@ -38,9 +39,20 @@ interface LigneBalance { compte: string; intitule: string; solde_initial: number
 interface CompteGL { compte: string; intitule: string; solde_initial: number; mouvements: { date: string; numero: string; journal: string; libelle: string; piece: string | null; debit: number; credit: number }[] | null }
 interface Bilan {
   au: string;
-  actif: { immobilisations: number; stocks: number; creances: number; tresorerie: number; total: number };
+  actif: { immobilisations: number; stocks: number; creances_clients?: number; creances: number; tresorerie: number; total: number };
   passif: { capitaux_propres: number; resultat: number; dettes_financieres: number; dettes_fournisseurs: number; dettes_fiscales_sociales: number; autres_dettes: number; tresorerie_passif: number; total: number };
+  /** Ancienneté des créances clients (hors clients d'exemple), depuis les dossiers et créances. */
+  balance_agee?: { non_echu: number; j30: number; j60: number; j90: number; plus90: number; total: number; clients: number };
 }
+
+const TRANCHES_BILAN = [
+  { cle: 'non_echu', libelle: 'Non échues' },
+  { cle: 'j30', libelle: 'Retard 1 à 30 jours' },
+  { cle: 'j60', libelle: 'Retard 31 à 60 jours' },
+  { cle: 'j90', libelle: 'Retard 61 à 90 jours' },
+  { cle: 'plus90', libelle: 'Retard de plus de 90 jours' },
+] as const;
+const part = (v: number, t: number) => (t > 0 ? `${Math.round((v / t) * 1000) / 10} %` : '—');
 
 const debutMois = () => `${aujourdhui().slice(0, 7)}-01`;
 const libelleMois = (iso: string) => {
@@ -184,7 +196,44 @@ export function Comptabilite() {
           ];
         }),
       }];
-    if (feuilles.length) exporterClasseur(`comptabilite-${onglet}-${du}-${au}`, feuilles, format);
+    else if (onglet === 'bilan' && bilan) {
+      const a = bilan.actif;
+      const p = bilan.passif;
+      const ag = bilan.balance_agee;
+      feuilles = [{
+        nom: 'Bilan',
+        titre: [`${organisation!.nom} — Bilan simplifié au ${dateFr(bilan.au)}`],
+        entetes: ['Rubrique', 'Montant'],
+        lignes: [
+          ['ACTIF', ''],
+          ['Immobilisations nettes', enUnites(a.immobilisations)],
+          ['Stocks de marchandises', enUnites(a.stocks)],
+          ['Créances clients', enUnites(a.creances_clients ?? 0)],
+          ['Autres créances', enUnites(a.creances)],
+          ['Trésorerie', enUnites(a.tresorerie)],
+          ['Total actif', enUnites(a.total)],
+          ['', ''],
+          ['PASSIF', ''],
+          ['Capitaux propres', enUnites(p.capitaux_propres)],
+          ['Résultat de la période', enUnites(p.resultat)],
+          ['Dettes financières', enUnites(p.dettes_financieres)],
+          ['Dettes fournisseurs', enUnites(p.dettes_fournisseurs)],
+          ['Dettes fiscales et sociales', enUnites(p.dettes_fiscales_sociales)],
+          ['Autres dettes', enUnites(p.autres_dettes)],
+          ['Trésorerie passif', enUnites(p.tresorerie_passif)],
+          ['Total passif', enUnites(p.total)],
+        ],
+      }];
+      if (ag)
+        feuilles.push({
+          nom: 'Ancienneté créances',
+          titre: [`${organisation!.nom} — Ancienneté des créances clients au ${dateFr(bilan.au)}`, `${ag.clients} client(s) débiteur(s)`],
+          entetes: ['Tranche', 'Montant', 'Part'],
+          lignes: TRANCHES_BILAN.map((t) => [t.libelle, enUnites(ag[t.cle]), part(Number(ag[t.cle]), Number(ag.total))]),
+          totaux: ['Total', enUnites(ag.total), '100 %'],
+        });
+    }
+    if (feuilles.length) exporterClasseur(`comptabilite-${onglet}-${onglet === 'bilan' ? au : `${du}-${au}`}`, feuilles, format);
   }
 
   const totDebit = ecritures.reduce((s, e) => s + e.lignes.reduce((t, l) => t + Number(l.debit), 0), 0);
@@ -200,7 +249,7 @@ export function Comptabilite() {
         sousTitre="Écritures SYSCOHADA générées automatiquement par les ventes, achats, dépenses et virements : journal, grand livre, balance et bilan."
         actions={
           <>
-            {['journal', 'balance', 'grand_livre'].includes(onglet) && <BoutonsExport onExport={exporter} />}
+            {['journal', 'balance', 'grand_livre', 'bilan'].includes(onglet) && <BoutonsExport onExport={exporter} />}
             {peut('comptabilite.creer') && (
               <button className="bouton bouton-principal" onClick={() => setGuide(true)}>
                 ✨ Saisir une opération
@@ -398,7 +447,14 @@ export function Comptabilite() {
               <tbody>
                 <tr><td>Immobilisations nettes</td><td className="nombre">{montant(bilan.actif.immobilisations)}</td></tr>
                 <tr><td>Stocks de marchandises</td><td className="nombre">{montant(bilan.actif.stocks)}</td></tr>
-                <tr><td>Créances (clients et autres)</td><td className="nombre">{montant(bilan.actif.creances)}</td></tr>
+                {bilan.actif.creances_clients === undefined ? (
+                  <tr><td>Créances (clients et autres)</td><td className="nombre">{montant(bilan.actif.creances)}</td></tr>
+                ) : (
+                  <>
+                    <tr><td>Créances clients</td><td className="nombre">{montant(bilan.actif.creances_clients)}</td></tr>
+                    <tr><td>Autres créances</td><td className="nombre">{montant(bilan.actif.creances)}</td></tr>
+                  </>
+                )}
                 <tr><td>Trésorerie (caisse, Mobile Money, banque)</td><td className="nombre">{montant(bilan.actif.tresorerie)}</td></tr>
                 <tr className="ligne-total"><td>Total actif</td><td className="nombre">{montant(bilan.actif.total)}</td></tr>
               </tbody>
@@ -419,6 +475,53 @@ export function Comptabilite() {
               </tbody>
             </table>
           </div>
+          {bilan.balance_agee && (
+            <div className="carte bilan-anciennete">
+              <div className="bilan-anciennete-titre">
+                <h3>Ancienneté des créances clients</h3>
+                {(peut('ventes.valider') || peut('tresorerie.consulter')) && <Link to="/credits/balance">Balance âgée détaillée par client →</Link>}
+              </div>
+              {Number(bilan.balance_agee.total) === 0 ? (
+                <p className="secondaire">Aucune créance client en cours à cette date.</p>
+              ) : (
+                <>
+                  <div className="barre-anciennete" role="img" aria-label="Répartition des créances clients par ancienneté">
+                    {TRANCHES_BILAN.map((t) =>
+                      Number(bilan.balance_agee![t.cle]) > 0 ? (
+                        <span key={t.cle} className={`tranche-${t.cle}`} style={{ flexGrow: Number(bilan.balance_agee![t.cle]) }} title={`${t.libelle} : ${montant(bilan.balance_agee![t.cle])}`} />
+                      ) : null,
+                    )}
+                  </div>
+                  <table className="tableau tableau-compact">
+                    <tbody>
+                      {TRANCHES_BILAN.map((t) => (
+                        <tr key={t.cle}>
+                          <td><span className={`puce tranche-${t.cle}`} aria-hidden /> {t.libelle}</td>
+                          <td className={`nombre ${(t.cle === 'j90' || t.cle === 'plus90') && Number(bilan.balance_agee![t.cle]) > 0 ? 'texte-negatif' : ''}`}>{montant(bilan.balance_agee![t.cle])}</td>
+                          <td className="nombre secondaire">{part(Number(bilan.balance_agee![t.cle]), Number(bilan.balance_agee!.total))}</td>
+                        </tr>
+                      ))}
+                      <tr className="ligne-total">
+                        <td>Total dû par {bilan.balance_agee.clients} client{bilan.balance_agee.clients > 1 ? 's' : ''}</td>
+                        <td className="nombre">{montant(bilan.balance_agee.total)}</td>
+                        <td className="nombre">100 %</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  {Number(bilan.balance_agee.total) !== Number(bilan.actif.creances_clients ?? bilan.balance_agee.total) && (
+                    <p className="secondaire">
+                      L’écart avec la ligne « Créances clients » de l’actif vient des écritures saisies à la main sur les comptes 41 ou des créances non encore comptabilisées.
+                    </p>
+                  )}
+                  {Number(bilan.balance_agee.plus90) > 0 && (
+                    <p className="secondaire">
+                      ⚠️ {montant(bilan.balance_agee.plus90)} ont plus de 90 jours de retard : à examiner avec votre expert-comptable pour une éventuelle provision pour créances douteuses.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           <p className="secondaire bilan-note">
             Bilan simplifié au {dateFr(bilan.au)}, calculé depuis les écritures. {bilan.actif.total === bilan.passif.total ? '✅ Actif et passif sont équilibrés.' : '⚠️ Écart entre actif et passif : vérifiez les écritures manuelles.'}{' '}
             Les états financiers annuels officiels restent à faire valider par un expert-comptable.
