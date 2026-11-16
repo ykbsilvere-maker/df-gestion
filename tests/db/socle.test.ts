@@ -54,7 +54,7 @@ describe('Création d’entreprise', () => {
     const orgs = await enTantQue(pool, alice, (q) => q(`select * from public.mes_organisations()`));
     expect(orgs).toHaveLength(1);
     expect(orgs[0]).toMatchObject({ organisation_id: orgA, role_code: 'proprietaire', tous_magasins: true });
-    expect((orgs[0] as { permissions: string[] }).permissions).toHaveLength(153); // 17 modules × 9 actions (v0.9)
+    expect((orgs[0] as { permissions: string[] }).permissions).toHaveLength(162); // 18 modules × 9 actions (v3.5 : boutique en ligne)
   });
 
   it('refuse un appel sans connexion', async () => {

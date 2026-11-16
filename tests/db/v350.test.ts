@@ -76,7 +76,7 @@ describe('DF Marché', () => {
       expect(a.r.soldes).toHaveLength(1);
       expect(Number(a.r.soldes[0]!.prix)).toBe(6500);
       expect(a.r.soldes[0]!.solde_fin).toBeTruthy();
-      const r = await un(q<{ r: { total: number } }>(`select public.marche_produits('riz') r`));
+      const r = await un(q<{ r: { total: number } }>(`select public.marche_produits('huile') r`));
       expect(Number(r.r.total)).toBe(1);
       const b = await un(q<{ r: { zones: unknown[]; numero_wave: string } }>(`select public.marche_boutique('riz-et-cie') r`));
       expect(b.r.zones).toHaveLength(1);
