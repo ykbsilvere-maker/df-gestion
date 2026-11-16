@@ -139,7 +139,7 @@ describe('Crédits clients', () => {
       await q('savepoint c');
       await expect(q(`select public.encaisser_credit($1, 999999, $2, $3)`, [dossier, moyens.especes, s])).rejects.toThrow(/reste dû/);
       await q('rollback to savepoint c');
-      const totaux = await un(q<{ t: { especes_attendues: number; credits_especes: number; credits_encaisses: number } }>(`select prive.calculer_totaux_session($1) t`, [s]));
+      const totaux = await un(q<{ t: { especes_attendues: number; credits_especes: number; credits_encaisses: number } }>(`select public.journal_session($1) -> 'totaux' t`, [s]));
       return { e: e.r, t: totaux.t };
     });
     expect(Number(r.e.reste)).toBe(45000);
