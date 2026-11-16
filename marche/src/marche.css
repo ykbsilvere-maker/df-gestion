@@ -84,7 +84,7 @@ label { display: flex; flex-direction: column; gap: 5px; font-weight: 600; font-
 .affiche-rebours { margin: 0; }
 .affiche .rebours { background: rgba(0,0,0,0.3); color: #fff; }
 .affiche-image { display: grid; place-items: center; padding: 18px; }
-.affiche-image img { max-height: 260px; width: 100%; object-fit: contain; filter: drop-shadow(0 12px 22px rgba(0,0,0,0.4)); background: #fff; border-radius: 16px; }
+.affiche-image img { height: 260px; width: auto; max-width: 100%; aspect-ratio: 1; object-fit: cover; filter: drop-shadow(0 12px 22px rgba(0,0,0,0.4)); border-radius: 20px; }
 .affiche-image span { font-size: 6rem; }
 .affiche-points { position: absolute; bottom: 14px; left: 24px; display: flex; gap: 6px; }
 .affiche-points button { width: 9px; height: 9px; border-radius: 50%; border: 0; background: rgba(255,255,255,0.45); cursor: pointer; padding: 0; }
