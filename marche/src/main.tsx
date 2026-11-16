@@ -7,8 +7,8 @@ import '@fontsource/barlow/600.css';
 import '@fontsource/barlow/700.css';
 import '@fontsource/barlow/800.css';
 import './marche.css';
-import { EnTete, Pied } from './composants';
-import { Accueil, ListeBoutiques, Recherche } from './pages/Catalogue';
+import { Annonces, BarreOnglets, EnTete, Pied } from './composants';
+import { Accueil, Favoris, ListeBoutiques, Rayons, Recherche } from './pages/Catalogue';
 import { Boutique, Produit } from './pages/Boutique';
 import { Commander, Panier } from './pages/Commande';
 import { MesCommandes, Suivi } from './pages/Suivi';
@@ -21,10 +21,12 @@ function Cadre() {
   return (
     <>
       <EnTete />
-      <main className="page">
+      <main className="page" key={pathname.startsWith('/rayons') ? '/rayons' : pathname}>
         <Outlet />
       </main>
       <Pied />
+      <BarreOnglets />
+      <Annonces />
     </>
   );
 }
@@ -47,6 +49,9 @@ createRoot(document.getElementById('root')!).render(
           <Route path="soldes" element={<Recherche soldes />} />
           <Route path="recherche" element={<Recherche />} />
           <Route path="boutiques" element={<ListeBoutiques />} />
+          <Route path="rayons" element={<Rayons />} />
+          <Route path="rayons/:nom" element={<Rayons />} />
+          <Route path="favoris" element={<Favoris />} />
           <Route path="boutique/:slug" element={<Boutique />} />
           <Route path="produit/:id" element={<Produit />} />
           <Route path="panier" element={<Panier />} />

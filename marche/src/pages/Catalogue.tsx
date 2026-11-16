@@ -1,9 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { appeler, type Accueil as DonneesAccueil, type ProduitCarte, type Vitrine } from '../api';
-import { BanniereSoldes, CarteBoutique, Chargement, Erreur, GrilleProduits } from '../composants';
+import {
+  BanniereSoldes,
+  CarteBoutique,
+  Chargement,
+  Erreur,
+  GrilleProduits,
+  Rangee,
+  RangeeProduits,
+  Squelettes,
+  TitreRayon,
+  VentesFlash,
+  rayon,
+  salutation,
+} from '../composants';
+import { IcoBoutique, IcoCoeur, IcoFlamme, IcoRecommander, IcoSuivi } from '../icones';
+import { mesCommandes, useFavoris } from '../panier';
 
-/** Page d'accueil : soldes à l'affiche, catégories, boutiques, nouveautés et meilleures ventes. */
+/** Page d'accueil : affiches des soldes, raccourcis, ventes flash, rayons, boutiques, populaires, nouveautés. */
 export function Accueil() {
   const [d, setD] = useState<DonneesAccueil | null>(null);
   const [erreur, setErreur] = useState('');
@@ -17,53 +32,78 @@ export function Accueil() {
   }, [charger]);
   if (erreur) return <Erreur reessayer={charger}>{erreur}</Erreur>;
   if (!d) return <Chargement />;
+  const flash = [...d.soldes].sort((a, b) => (a.solde_fin ?? '9').localeCompare(b.solde_fin ?? '9'));
+  const derniere = mesCommandes()[0];
   return (
     <>
+      <section className="accueil-tete">
+        <p className="salut">{salutation()} 👋</p>
+        <h1>Qu’est-ce qu’on achète aujourd’hui ?</h1>
+      </section>
+
       {d.soldes.length > 0 ? (
         <BanniereSoldes soldes={d.soldes} />
       ) : (
         <section className="accroche">
-          <h1>Les boutiques de votre quartier, en ligne</h1>
+          <h2>Les boutiques de votre quartier, en ligne</h2>
           <p>Stock en direct, livraison ou retrait, paiement à la livraison ou par Mobile Money.</p>
         </section>
       )}
+
+      <nav className="raccourcis" aria-label="Raccourcis">
+        <Link to="/soldes"><span className="rond orange"><IcoFlamme /></span>Promos</Link>
+        <Link to="/boutiques"><span className="rond"><IcoBoutique /></span>Boutiques</Link>
+        <Link to={derniere ? `/suivi/${derniere.code}` : '/mes-commandes'}><span className="rond"><IcoSuivi /></span>Suivi</Link>
+        <Link to="/mes-commandes"><span className="rond"><IcoRecommander /></span>Recommander</Link>
+        <Link to="/favoris"><span className="rond rose"><IcoCoeur /></span>Favoris</Link>
+      </nav>
+
+      <VentesFlash soldes={flash} />
+
       {d.categories.length > 0 && (
-        <nav className="puces-categories" aria-label="Catégories">
-          {d.categories.map((c) => (
-            <Link key={c} to={`/recherche?categorie=${encodeURIComponent(c)}`}>{c}</Link>
-          ))}
-        </nav>
-      )}
-      {d.soldes.length > 0 && (
-        <section className="rayon">
-          <div className="rayon-titre"><h2>🔥 Soldes en cours</h2><Link to="/soldes">Tout voir →</Link></div>
-          <GrilleProduits produits={d.soldes.slice(0, 8)} />
+        <section className="section">
+          <TitreRayon titre="Nos rayons" lien={{ vers: '/rayons' }} />
+          <Rangee>
+            {d.categories.map((c) => {
+              const r = rayon(c);
+              return (
+                <Link key={c} to={`/rayons/${encodeURIComponent(c)}`} className="tuile-rayon" style={{ background: r.teinte }}>
+                  <span aria-hidden>{r.emoji}</span>
+                  <strong>{c}</strong>
+                </Link>
+              );
+            })}
+          </Rangee>
         </section>
       )}
-      <section className="rayon">
-        <div className="rayon-titre"><h2>Boutiques</h2><Link to="/boutiques">Toutes les boutiques →</Link></div>
+
+      <section className="section">
+        <TitreRayon titre="Choisissez votre boutique" lien={{ vers: '/boutiques', libelle: 'Toutes' }} />
         {d.boutiques.length ? (
-          <div className="grille-boutiques">{d.boutiques.slice(0, 6).map((v) => <CarteBoutique key={v.slug} v={v} />)}</div>
+          <Rangee large>{d.boutiques.map((v) => <CarteBoutique key={v.slug} v={v} />)}</Rangee>
         ) : (
           <p className="vide">Les premières boutiques arrivent bientôt.</p>
         )}
       </section>
+
       {d.populaires.length > 0 && (
-        <section className="rayon">
-          <div className="rayon-titre"><h2>Les plus commandés</h2></div>
-          <GrilleProduits produits={d.populaires} />
+        <section className="section">
+          <TitreRayon titre="Produits populaires" sous="Les plus commandés sur DF Marché" />
+          <RangeeProduits produits={d.populaires} />
         </section>
       )}
+
       {d.nouveautes.length > 0 && (
-        <section className="rayon">
-          <div className="rayon-titre"><h2>Nouveautés</h2><Link to="/recherche?tri=nouveautes">Tout voir →</Link></div>
+        <section className="section">
+          <TitreRayon titre="Nouveautés" lien={{ vers: '/recherche?tri=nouveautes' }} />
           <GrilleProduits produits={d.nouveautes} />
         </section>
       )}
+
       <section className="garanties">
         <div><span aria-hidden>📦</span><strong>Stock en direct</strong><p>Ce qui s’affiche est en rayon : la boutique met à jour depuis sa caisse.</p></div>
         <div><span aria-hidden>🛵</span><strong>Livraison ou retrait</strong><p>Choisissez votre zone et l’heure qui vous arrange.</p></div>
-        <div><span aria-hidden>📲</span><strong>Paiement simple</strong><p>À la livraison, ou par Wave, Orange Money, MTN, Moov directement à la boutique.</p></div>
+        <div><span aria-hidden>📲</span><strong>Paiement simple</strong><p>À la livraison, ou Wave, Orange Money, MTN, Moov directement à la boutique.</p></div>
         <div><span aria-hidden>⭐</span><strong>Avis vérifiés</strong><p>Seuls les clients livrés peuvent noter un produit.</p></div>
       </section>
     </>
@@ -72,8 +112,8 @@ export function Accueil() {
 
 const TRIS = [
   ['pertinence', 'Pertinence'],
-  ['prix_croissant', 'Prix croissant'],
-  ['prix_decroissant', 'Prix décroissant'],
+  ['prix_croissant', 'Prix ↑'],
+  ['prix_decroissant', 'Prix ↓'],
   ['nouveautes', 'Nouveautés'],
 ] as const;
 
@@ -96,23 +136,61 @@ export function Recherche({ soldes }: { soldes?: boolean }) {
     const n = new URLSearchParams(params);
     if (v) n.set(k, v);
     else n.delete(k);
-    setParams(n);
+    setParams(n, { replace: true });
   };
   return (
-    <section className="rayon">
-      <div className="rayon-titre">
-        <h1>{soldes ? '🔥 Tous les soldes' : q ? `Résultats pour « ${q} »` : categorie ?? 'Tous les produits'}</h1>
-        <select value={tri} onChange={(e) => maj('tri', e.target.value)} aria-label="Trier">
-          {TRIS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-        </select>
+    <section className="section">
+      <div className="entete-page">
+        <h1>{soldes ? '🔥 Tous les soldes' : q ? `« ${q} »` : categorie ?? 'Tous les produits'}</h1>
+        {r && <p>{r.total} produit{r.total > 1 ? 's' : ''}</p>}
       </div>
-      {categorie && <p><button className="puce-filtre" onClick={() => maj('categorie', null)}>{categorie} ✕</button></p>}
-      {erreur ? <Erreur>{erreur}</Erreur> : !r ? <Chargement /> : (
-        <>
-          <p className="secondaire">{r.total} produit{r.total > 1 ? 's' : ''}</p>
-          <GrilleProduits produits={r.produits} />
-        </>
-      )}
+      <div className="puces-filtres" role="tablist" aria-label="Trier">
+        {TRIS.map(([k, l]) => (
+          <button key={k} role="tab" aria-selected={tri === k} className={tri === k ? 'actif' : ''} onClick={() => maj('tri', k)}>{l}</button>
+        ))}
+        {categorie && <button className="actif" onClick={() => maj('categorie', null)}>{categorie} ✕</button>}
+      </div>
+      {erreur ? <Erreur>{erreur}</Erreur> : !r ? <Squelettes n={8} /> : <GrilleProduits produits={r.produits} />}
+    </section>
+  );
+}
+
+/** Rayons : liste des rayons à gauche, produits du rayon à droite (comme un rayon de supermarché). */
+export function Rayons() {
+  const { nom } = useParams();
+  const naviguer = useNavigate();
+  const [rayons, setRayons] = useState<string[] | null>(null);
+  const [r, setR] = useState<{ total: number; produits: ProduitCarte[] } | null>(null);
+  const [erreur, setErreur] = useState('');
+  useEffect(() => {
+    appeler<DonneesAccueil>('marche_accueil').then((x) => setRayons(x.categories)).catch((e: Error) => setErreur(e.message));
+    document.title = 'Rayons — DF Marché';
+  }, []);
+  const courant = nom ?? null;
+  useEffect(() => {
+    setR(null);
+    appeler<{ total: number; produits: ProduitCarte[] }>('marche_produits', { p_categorie: courant, p_limite: 96 })
+      .then(setR)
+      .catch((e: Error) => setErreur(e.message));
+  }, [courant]);
+  if (erreur) return <Erreur>{erreur}</Erreur>;
+  return (
+    <section className="page-rayons">
+      <nav className="liste-rayons" aria-label="Rayons">
+        <button className={!courant ? 'actif' : ''} onClick={() => naviguer('/rayons', { replace: true })}><span aria-hidden>🛍️</span>Tout</button>
+        {(rayons ?? []).map((c) => (
+          <button key={c} className={courant === c ? 'actif' : ''} onClick={() => naviguer(`/rayons/${encodeURIComponent(c)}`, { replace: true })}>
+            <span aria-hidden>{rayon(c).emoji}</span>{c}
+          </button>
+        ))}
+      </nav>
+      <div className="contenu-rayon">
+        <div className="entete-page">
+          <h1>{courant ?? 'Tous les rayons'}</h1>
+          {r && <p>{r.total} produit{r.total > 1 ? 's' : ''}</p>}
+        </div>
+        {r ? <GrilleProduits produits={r.produits} /> : <Squelettes n={6} />}
+      </div>
     </section>
   );
 }
@@ -132,16 +210,36 @@ export function ListeBoutiques() {
   const t = texte.trim().toLowerCase();
   const vues = d.filter((v) => (!activite || v.activite === activite) && (!t || `${v.nom} ${v.commune ?? ''} ${v.ville ?? ''}`.toLowerCase().includes(t)));
   return (
-    <section className="rayon">
-      <div className="rayon-titre"><h1>Choisissez votre boutique</h1></div>
-      <div className="filtres">
-        <input type="search" placeholder="Nom, commune…" value={texte} onChange={(e) => setTexte(e.target.value)} aria-label="Chercher une boutique" />
-        <select value={activite} onChange={(e) => setActivite(e.target.value)} aria-label="Activité">
-          <option value="">Toutes les activités</option>
-          {activites.map((a) => <option key={a}>{a}</option>)}
-        </select>
+    <section className="section">
+      <div className="entete-page"><h1>Choisissez votre boutique</h1><p>{d.length} boutique{d.length > 1 ? 's' : ''} près de chez vous</p></div>
+      <input className="champ-doux" type="search" placeholder="Nom de la boutique, commune…" value={texte} onChange={(e) => setTexte(e.target.value)} aria-label="Chercher une boutique" />
+      <div className="puces-filtres">
+        <button className={!activite ? 'actif' : ''} onClick={() => setActivite('')}>Toutes</button>
+        {activites.map((a) => <button key={a} className={activite === a ? 'actif' : ''} onClick={() => setActivite(a)}>{a}</button>)}
       </div>
       {vues.length ? <div className="grille-boutiques">{vues.map((v) => <CarteBoutique key={v.slug} v={v} />)}</div> : <p className="vide">Aucune boutique.</p>}
+    </section>
+  );
+}
+
+export function Favoris() {
+  const favoris = useFavoris();
+  useEffect(() => {
+    document.title = 'Mes favoris — DF Marché';
+  }, []);
+  return (
+    <section className="section">
+      <div className="entete-page"><h1>Mes favoris</h1><p>Gardés sur ce téléphone</p></div>
+      {favoris.length ? (
+        <GrilleProduits produits={favoris} />
+      ) : (
+        <div className="etat-vide">
+          <p className="grand-emoji" aria-hidden>🤍</p>
+          <h2>Pas encore de favoris</h2>
+          <p>Touchez le cœur d’un produit pour le retrouver ici.</p>
+          <Link className="bouton bouton-principal" to="/">Découvrir les produits</Link>
+        </div>
+      )}
     </section>
   );
 }

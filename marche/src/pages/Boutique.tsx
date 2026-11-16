@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { appeler, urlPublique, type FicheBoutique, type FicheProduit, type ProduitCarte, type Vitrine } from '../api';
 import {
+  BoutonFavori,
   Chargement,
   CompteARebours,
   Disponibilite,
@@ -11,11 +12,15 @@ import {
   ImageProduit,
   LogoBoutique,
   Prix,
+  RangeeProduits,
+  Squelettes,
+  WhatsappFlottant,
   fcfa,
   lienWhatsapp,
   remise,
   usePhotos,
 } from '../composants';
+import { IcoMoins, IcoPartager, IcoPlus, IcoRetour } from '../icones';
 import { ajouter } from '../panier';
 
 const MOYENS: [keyof Vitrine, string, string][] = [
@@ -93,9 +98,10 @@ export function Boutique() {
         </div>
         <div className="tete-actions">
           {wa && <a className="bouton bouton-whatsapp" href={lienWhatsapp(wa, `Bonjour ${v.nom}, je vous écris depuis DF Marché.`)} target="_blank" rel="noreferrer">WhatsApp</a>}
-          {v.telephone && <a className="bouton bouton-blanc" href={`tel:${v.telephone.replace(/\s/g, '')}`}>📞 Appeler</a>}
+          {v.telephone && <a className="bouton bouton-verre" href={`tel:${v.telephone.replace(/\s/g, '')}`}>📞 Appeler</a>}
         </div>
       </section>
+      <WhatsappFlottant tel={wa} message={`Bonjour ${v.nom}, je vous écris depuis DF Marché.`} />
       <div className="bandeau-infos">
         <span>{v.livraison ? `🛵 Livraison${v.zones?.length ? ` dès ${fcfa(Math.min(...v.zones.map((z) => Number(z.frais))))}` : ''}` : '🏪 Retrait seulement'}</span>
         {v.retrait && v.livraison && <span>🏪 Retrait gratuit</span>}
@@ -119,7 +125,7 @@ export function Boutique() {
               {v.categories.map((c) => <button key={c} className={categorie === c ? 'actif' : ''} onClick={() => setCategorie(c)}>{c}</button>)}
             </nav>
           )}
-          {produits ? <GrilleProduits produits={vus} sansBoutique /> : <Chargement />}
+          {produits ? <GrilleProduits produits={vus} sansBoutique /> : <Squelettes n={6} />}
         </section>
       )}
       {onglet === 'infos' && (
@@ -184,7 +190,6 @@ export function Produit() {
   const naviguer = useNavigate();
   const [p, setP] = useState<FicheProduit | null>(null);
   const [q, setQ] = useState(1);
-  const [ajoute, setAjoute] = useState(false);
   const [erreur, setErreur] = useState('');
   useEffect(() => {
     setP(null);
@@ -203,65 +208,68 @@ export function Produit() {
   const r = remise(p);
   const v = p.vitrine;
   const wa = v.whatsapp ?? v.telephone;
+  function partager() {
+    const lien = window.location.href;
+    if (navigator.share) void navigator.share({ title: p!.designation, text: `${p!.designation} à ${fcfa(p!.prix)} chez ${v.nom}`, url: lien }).catch(() => undefined);
+    else void navigator.clipboard?.writeText(lien);
+  }
   return (
-    <>
-      <p className="fil"><Link to="/">Accueil</Link> › <Link to={`/boutique/${v.slug}`}>{v.nom}</Link>{p.categorie && <> › {p.categorie}</>}</p>
+    <div className="page-produit">
       <section className="fiche-produit">
         <div className="fiche-image">
           <ImageProduit url={p.photo ? urls[p.photo] : undefined} alt={p.designation} grande />
-          {r > 0 && <span className="badge-solde grand">−{r} %</span>}
+          <button className="rond-flottant retour" onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/'))} aria-label="Retour"><IcoRetour /></button>
+          <div className="actions-image">
+            <button className="rond-flottant" onClick={partager} aria-label="Partager"><IcoPartager /></button>
+            <BoutonFavori p={p} flottant />
+          </div>
+          {r > 0 && <span className="badge-solde grand">−{r}%</span>}
         </div>
         <div className="fiche-texte">
+          <p className="fil"><Link to={`/boutique/${v.slug}`}>{v.nom}</Link>{p.categorie && <> · {p.categorie}</>}</p>
           <h1>{p.designation}</h1>
-          {p.marque && <p className="secondaire">{p.marque}</p>}
           <div className="fiche-meta">
             <Etoiles note={p.note} avis={p.avis} />
             {p.commandes > 0 && <span>· {p.commandes} commande{p.commandes > 1 ? 's' : ''}</span>}
           </div>
-          <Prix p={p} grand />
+          <div className="ligne-prix">
+            <Prix p={p} grand />
+            {dispo > 0 && (
+              <div className="quantite" aria-label="Quantité">
+                <button onClick={() => setQ((x) => Math.max(1, x - 1))} aria-label="Moins"><IcoMoins /></button>
+                <span>{q}</span>
+                <button onClick={() => setQ((x) => Math.min(dispo, x + 1))} aria-label="Plus"><IcoPlus /></button>
+              </div>
+            )}
+          </div>
           {r > 0 && p.solde_fin && (
-            <div className="encart-solde">🔥 Solde : vous économisez {fcfa(Number(p.prix_normal) - Number(p.prix))}. <CompteARebours fin={p.solde_fin} /></div>
+            <div className="encart-solde">🔥 Vous économisez <b>{fcfa(Number(p.prix_normal) - Number(p.prix))}</b> <CompteARebours fin={p.solde_fin} /></div>
           )}
           <Disponibilite d={dispo} unite={p.unite} />
-          {dispo > 0 && (
-            <div className="achat">
-              <div className="quantite" aria-label="Quantité">
-                <button onClick={() => setQ((x) => Math.max(1, x - 1))} aria-label="Moins">−</button>
-                <span>{q}</span>
-                <button onClick={() => setQ((x) => Math.min(dispo, x + 1))} aria-label="Plus">+</button>
-              </div>
-              <button className="bouton bouton-principal" onClick={() => { ajouter(p, q); setAjoute(true); }}>
-                {ajoute ? '✓ Dans le panier' : 'Ajouter au panier'}
-              </button>
-              {ajoute && <button className="bouton" onClick={() => naviguer('/panier')}>Voir le panier →</button>}
-            </div>
-          )}
+          {p.description && <div className="description">{p.description.split('\n').map((l, i) => <p key={i}>{l}</p>)}</div>}
+          <div className="barre-achat">
+            <button className="bouton bouton-principal large" disabled={dispo <= 0} onClick={() => ajouter(p, q)}>
+              {dispo <= 0 ? 'Indisponible' : <>Ajouter au panier · {fcfa(Number(p.prix) * q)}</>}
+            </button>
+          </div>
           <Link to={`/boutique/${v.slug}`} className="encart-boutique">
             <LogoBoutique v={v} />
             <span>
               <strong>Vendu par {v.nom}</strong>
-              <small>{[v.commune, v.ville].filter(Boolean).join(', ')} · {v.livraison ? '🛵 livraison' : ''}{v.livraison && v.retrait ? ' ou ' : ''}{v.retrait ? '🏪 retrait' : ''}</small>
+              <small>{[v.commune, v.ville].filter(Boolean).join(', ')} · {v.livraison ? '🛵 livraison' : ''}{v.livraison && v.retrait ? ' ou ' : ''}{v.retrait ? '🏪 retrait' : ''} · prêt en {v.delai_preparation} h</small>
             </span>
           </Link>
           <MoyensAcceptes v={v} />
-          {wa && (
-            <a className="bouton bouton-whatsapp" target="_blank" rel="noreferrer"
-              href={lienWhatsapp(wa, `Bonjour ${v.nom}, une question sur « ${p.designation} » (${fcfa(p.prix)}) vu sur DF Marché : `)}>
-              Poser une question sur WhatsApp
-            </a>
-          )}
         </div>
       </section>
-      {p.description && (
-        <section className="bloc"><h2>Description</h2>{p.description.split('\n').map((l, i) => <p key={i}>{l}</p>)}</section>
-      )}
       <section className="bloc">
-        <h2>Avis des clients</h2>
-        {p.avis_liste.length ? <ListeAvis avis={p.avis_liste} /> : <p className="vide">Pas encore d’avis. Les avis sont réservés aux clients qui ont reçu le produit.</p>}
+        <h2>Avis clients</h2>
+        {p.avis_liste.length ? <ListeAvis avis={p.avis_liste} /> : <p className="secondaire">Pas encore d’avis. Les avis sont réservés aux clients qui ont reçu le produit.</p>}
       </section>
       {p.similaires.length > 0 && (
-        <section className="rayon"><div className="rayon-titre"><h2>Aussi chez {v.nom}</h2></div><GrilleProduits produits={p.similaires} sansBoutique /></section>
+        <section className="section"><div className="titre-rayon"><h2>Vous aimerez aussi</h2></div><RangeeProduits produits={p.similaires} sansBoutique /></section>
       )}
-    </>
+      <WhatsappFlottant tel={wa} message={`Bonjour ${v.nom}, une question sur « ${p.designation} » (${fcfa(p.prix)}) vu sur DF Marché : `} />
+    </div>
   );
 }

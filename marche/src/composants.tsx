@@ -1,7 +1,18 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { urlPublique, urlsPhotos, type ProduitCarte, type Vitrine } from './api';
-import { ajouter, nombreArticles, usePanier } from './panier';
+import { ajouter, basculerFavori, nombreArticles, useAnnonces, useFavoris, usePanier } from './panier';
+import {
+  IcoAccueil,
+  IcoCoeur,
+  IcoCommandes,
+  IcoFleche,
+  IcoPanier,
+  IcoPlus,
+  IcoRayons,
+  IcoRecherche,
+  IcoWhatsapp,
+} from './icones';
 
 /* ---------- Formats ---------- */
 
@@ -21,6 +32,31 @@ export const lienWhatsapp = (tel: string | null | undefined, message: string) =>
 /** Fin d'un solde : dernier instant du jour de fin (Abidjan = UTC). */
 export const finSolde = (date: string) => new Date(`${date.slice(0, 10)}T23:59:59Z`);
 
+export function salutation(): string {
+  const h = new Date().getHours();
+  return h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir';
+}
+
+/** Pastille d'un rayon : emoji et teinte selon le nom. */
+const RAYONS: [RegExp, string, string][] = [
+  [/alim|épic|epic|riz|céréal/i, '🍚', '#fff1e6'],
+  [/boisson|eau|jus/i, '🥤', '#e8f6fb'],
+  [/fruit|légum|legum/i, '🥬', '#eaf7ea'],
+  [/viande|bouch|poisson/i, '🍗', '#fdeceb'],
+  [/t[ée]l[ée]phon|smartphone/i, '📱', '#eef0fb'],
+  [/access|chargeur|écouteur/i, '🎧', '#f1edfb'],
+  [/tissu|pagne|wax/i, '🧵', '#fdeef3'],
+  [/v[êe]tement|mode|robe/i, '👗', '#fbeef8'],
+  [/beaut|cosm/i, '💄', '#fdeef3'],
+  [/entretien|ménage|menage|savon/i, '🧼', '#e9f6f3'],
+  [/informat|ordinat/i, '💻', '#eef3fb'],
+  [/maison|cuisine|déco/i, '🏠', '#f6f1e8'],
+];
+export function rayon(nom: string): { emoji: string; teinte: string } {
+  const r = RAYONS.find(([re]) => re.test(nom));
+  return { emoji: r?.[1] ?? '🛍️', teinte: r?.[2] ?? '#f5efe8' };
+}
+
 /* ---------- Photos ---------- */
 
 export function usePhotos(chemins: (string | null | undefined)[]): Record<string, string> {
@@ -37,9 +73,10 @@ export function usePhotos(chemins: (string | null | undefined)[]): Record<string
 }
 
 export function ImageProduit({ url, alt, grande }: { url: string | undefined; alt: string; grande?: boolean }) {
+  const [chargee, setChargee] = useState(false);
   return (
-    <div className={`image-produit ${grande ? 'grande' : ''}`}>
-      {url ? <img src={url} alt={alt} loading="lazy" /> : <span aria-hidden>🛍️</span>}
+    <div className={`image-produit ${grande ? 'grande' : ''} ${url && !chargee ? 'en-charge' : ''}`}>
+      {url ? <img src={url} alt={alt} loading="lazy" onLoad={() => setChargee(true)} className={chargee ? 'visible' : ''} /> : <span aria-hidden>🛍️</span>}
     </div>
   );
 }
@@ -59,12 +96,17 @@ export function Etoiles({ note, avis, taille }: { note: number | null; avis?: nu
   );
 }
 
-export function CompteARebours({ fin, court }: { fin: string; court?: boolean }) {
-  const [maintenant, setMaintenant] = useState(Date.now());
+export function useMaintenant(pas = 1000) {
+  const [t, setT] = useState(Date.now());
   useEffect(() => {
-    const id = window.setInterval(() => setMaintenant(Date.now()), 1000);
+    const id = window.setInterval(() => setT(Date.now()), pas);
     return () => window.clearInterval(id);
-  }, []);
+  }, [pas]);
+  return t;
+}
+
+export function CompteARebours({ fin, court }: { fin: string; court?: boolean }) {
+  const maintenant = useMaintenant();
   const reste = Math.max(0, finSolde(fin).getTime() - maintenant);
   const j = Math.floor(reste / 86400000);
   const h = Math.floor((reste % 86400000) / 3600000);
@@ -74,7 +116,7 @@ export function CompteARebours({ fin, court }: { fin: string; court?: boolean })
   if (reste === 0) return <span className="rebours fini">Solde terminé</span>;
   return (
     <span className="rebours" aria-label={`Fin du solde dans ${j} jours ${h} heures ${m} minutes`}>
-      {!court && 'Se termine dans '}
+      <span aria-hidden>⏱</span> {!court && 'Fin dans '}
       {j > 0 && <b>{j} j </b>}
       <b>{deux(h)}</b>:<b>{deux(m)}</b>:<b>{deux(s)}</b>
     </span>
@@ -86,64 +128,120 @@ export function Prix({ p, grand }: { p: { prix: number; prix_normal: number }; g
   return (
     <span className={`prix ${grand ? 'grand' : ''}`}>
       <strong>{fcfa(p.prix)}</strong>
-      {r > 0 && <><s>{fcfa(p.prix_normal)}</s><em>−{r} %</em></>}
+      {r > 0 && <s>{fcfa(p.prix_normal)}</s>}
     </span>
   );
 }
 
 export function Disponibilite({ d, unite }: { d: number; unite?: string }) {
   const n = Number(d);
-  if (n <= 0) return <span className="dispo rupture">Rupture de stock</span>;
-  if (n <= 3) return <span className="dispo peu">Plus que {n} {unite && unite !== 'pièce' ? unite : ''} en stock</span>;
-  return <span className="dispo ok">En stock{n < 50 ? ` : ${n}` : ''}</span>;
+  if (n <= 0) return <span className="dispo rupture">● Rupture de stock</span>;
+  if (n <= 3) return <span className="dispo peu">● Plus que {n} {unite && unite !== 'pièce' ? unite : ''} en stock</span>;
+  return <span className="dispo ok">● En stock{n < 50 ? ` · ${n} disponibles` : ''}</span>;
+}
+
+export function Squelettes({ n = 6, rangee }: { n?: number; rangee?: boolean }) {
+  return (
+    <div className={rangee ? 'rangee' : 'grille-produits'} aria-busy="true" aria-label="Chargement">
+      {Array.from({ length: n }, (_, i) => (
+        <div key={i} className="carte-produit squelette">
+          <div className="image-produit" />
+          <span className="ligne-sq" />
+          <span className="ligne-sq courte" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function Chargement() {
-  return <div className="chargement" aria-live="polite"><span /><span /><span /></div>;
+  return (
+    <div className="page-squelette">
+      <div className="bloc-sq haut" />
+      <Squelettes n={8} />
+    </div>
+  );
 }
 
 export function Erreur({ children, reessayer }: { children: ReactNode; reessayer?: () => void }) {
   return (
     <div className="erreur" role="alert">
+      <p className="grand-emoji" aria-hidden>😕</p>
       <p>{children}</p>
       {reessayer && <button className="bouton" onClick={reessayer}>Réessayer</button>}
     </div>
   );
 }
 
-/* ---------- Cartes ---------- */
+/* ---------- Cartes produits ---------- */
+
+export function BoutonFavori({ p, flottant }: { p: ProduitCarte; flottant?: boolean }) {
+  const favoris = useFavoris();
+  const actif = favoris.some((x) => x.id === p.id);
+  return (
+    <button
+      type="button"
+      className={`bouton-favori ${actif ? 'actif' : ''} ${flottant ? 'flottant' : ''}`}
+      aria-pressed={actif}
+      aria-label={actif ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        basculerFavori(p);
+      }}
+    >
+      <IcoCoeur plein={actif} />
+    </button>
+  );
+}
+
+export function BoutonAjout({ p }: { p: ProduitCarte }) {
+  const [anim, setAnim] = useState(false);
+  const indispo = Number(p.disponible) <= 0;
+  return (
+    <button
+      type="button"
+      className={`bouton-ajout ${anim ? 'pulse' : ''}`}
+      disabled={indispo}
+      aria-label={indispo ? 'Indisponible' : `Ajouter ${p.designation} au panier`}
+      onClick={(e) => {
+        e.preventDefault();
+        ajouter(p);
+        setAnim(true);
+        window.setTimeout(() => setAnim(false), 500);
+      }}
+    >
+      <IcoPlus />
+    </button>
+  );
+}
 
 export function CarteProduit({ p, url, sansBoutique }: { p: ProduitCarte; url: string | undefined; sansBoutique?: boolean }) {
-  const [ajoute, setAjoute] = useState(false);
   const r = remise(p);
+  const rupture = Number(p.disponible) <= 0;
   return (
-    <article className="carte-produit">
+    <article className={`carte-produit ${rupture ? 'en-rupture' : ''}`}>
       <Link to={`/produit/${p.id}`} className="carte-produit-lien">
-        <ImageProduit url={url} alt={p.designation} />
-        {r > 0 && <span className="badge-solde">−{r} %</span>}
-        {Number(p.disponible) <= 0 && <span className="badge-rupture">Rupture</span>}
+        <div className="carte-produit-image">
+          <ImageProduit url={url} alt={p.designation} />
+          {r > 0 && <span className="badge-solde">−{r}%</span>}
+          {rupture && <span className="badge-rupture">Rupture</span>}
+          <BoutonFavori p={p} />
+        </div>
         <h3>{p.designation}</h3>
+        {!sansBoutique ? <span className="carte-produit-boutique">{p.boutique.nom}{p.boutique.commune ? ` · ${p.boutique.commune}` : ''}</span> : p.unite !== 'pièce' && <span className="carte-produit-boutique">{p.unite}</span>}
+        {(p.note || p.commandes > 0) && (
+          <span className="carte-produit-meta">
+            {p.note ? <><b className="etoile">★</b> {Number(p.note).toLocaleString('fr-FR')}</> : null}
+            {p.note && p.commandes > 0 ? ' · ' : ''}
+            {p.commandes > 0 && `${p.commandes} commande${p.commandes > 1 ? 's' : ''}`}
+          </span>
+        )}
       </Link>
-      <Prix p={p} />
-      {p.solde_fin && r > 0 && <CompteARebours fin={p.solde_fin} court />}
-      <div className="carte-produit-meta">
-        {p.note ? <Etoiles note={p.note} avis={p.avis} taille="petite" /> : null}
-        {p.commandes > 0 && <span>{p.commandes} commande{p.commandes > 1 ? 's' : ''}</span>}
+      <div className="carte-produit-pied">
+        <Prix p={p} />
+        <BoutonAjout p={p} />
       </div>
-      {!sansBoutique && (
-        <Link to={`/boutique/${p.boutique.slug}`} className="carte-produit-boutique">🏪 {p.boutique.nom}{p.boutique.commune ? ` · ${p.boutique.commune}` : ''}</Link>
-      )}
-      <button
-        className="bouton bouton-panier"
-        disabled={Number(p.disponible) <= 0}
-        onClick={() => {
-          ajouter(p);
-          setAjoute(true);
-          window.setTimeout(() => setAjoute(false), 1400);
-        }}
-      >
-        {Number(p.disponible) <= 0 ? 'Indisponible' : ajoute ? '✓ Ajouté' : '+ Panier'}
-      </button>
     </article>
   );
 }
@@ -153,12 +251,52 @@ export function GrilleProduits({ produits, sansBoutique }: { produits: ProduitCa
   if (!produits.length) return <p className="vide">Aucun produit pour le moment.</p>;
   return (
     <div className="grille-produits">
-      {produits.map((p) => (
-        <CarteProduit key={p.id} p={p} url={p.photo ? urls[p.photo] : undefined} sansBoutique={sansBoutique} />
+      {produits.map((p, i) => (
+        <div key={p.id} className="apparition" style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}>
+          <CarteProduit p={p} url={p.photo ? urls[p.photo] : undefined} sansBoutique={sansBoutique} />
+        </div>
       ))}
     </div>
   );
 }
+
+/** Rangée qui défile horizontalement (téléphone : au doigt ; ordinateur : flèches). */
+export function Rangee({ children, large }: { children: ReactNode; large?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const defiler = (sens: number) => ref.current?.scrollBy({ left: sens * ref.current.clientWidth * 0.85, behavior: 'smooth' });
+  return (
+    <div className="rangee-cadre">
+      <button type="button" className="rangee-fleche gauche" onClick={() => defiler(-1)} aria-label="Précédent"><span style={{ transform: 'rotate(180deg)', display: 'flex' }}><IcoFleche /></span></button>
+      <div className={`rangee ${large ? 'large' : ''}`} ref={ref}>{children}</div>
+      <button type="button" className="rangee-fleche droite" onClick={() => defiler(1)} aria-label="Suivant"><IcoFleche /></button>
+    </div>
+  );
+}
+
+export function RangeeProduits({ produits, sansBoutique }: { produits: ProduitCarte[]; sansBoutique?: boolean }) {
+  const urls = usePhotos(produits.map((p) => p.photo));
+  return (
+    <Rangee>
+      {produits.map((p) => (
+        <CarteProduit key={p.id} p={p} url={p.photo ? urls[p.photo] : undefined} sansBoutique={sansBoutique} />
+      ))}
+    </Rangee>
+  );
+}
+
+export function TitreRayon({ titre, lien, sous }: { titre: ReactNode; lien?: { vers: string; libelle?: string }; sous?: ReactNode }) {
+  return (
+    <div className="titre-rayon">
+      <div>
+        <h2>{titre}</h2>
+        {sous && <p>{sous}</p>}
+      </div>
+      {lien && <Link to={lien.vers} className="pastille-lien">{lien.libelle ?? 'Voir tout'}</Link>}
+    </div>
+  );
+}
+
+/* ---------- Boutiques ---------- */
 
 export function Monogramme({ nom, couleur }: { nom: string; couleur?: string | null }) {
   const lettres = nom.replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter((m) => m.length > 1).slice(0, 2).map((m) => m[0]!.toUpperCase()).join('') || '?';
@@ -175,54 +313,71 @@ export function CarteBoutique({ v }: { v: Vitrine }) {
   return (
     <Link to={`/boutique/${v.slug}`} className="carte-boutique">
       <div className="carte-boutique-couverture" style={couverture ? { backgroundImage: `url(${couverture})` } : undefined}>
-        <LogoBoutique v={v} />
+        {v.livraison && <span className="puce-verre">🛵 Livraison</span>}
       </div>
       <div className="carte-boutique-texte">
-        <h3>{v.nom}</h3>
-        <p>{[v.activite, v.commune ?? v.ville].filter(Boolean).join(' · ')}</p>
-        <div className="carte-boutique-meta">
-          {v.note ? <Etoiles note={v.note} avis={v.avis} taille="petite" /> : <span className="nouveau">Nouveau</span>}
-          <span>{v.produits} produit{v.produits > 1 ? 's' : ''}</span>
-          {v.livraison && <span>🛵 Livraison</span>}
+        <LogoBoutique v={v} />
+        <div>
+          <h3>{v.nom}</h3>
+          <p>{[v.activite, v.commune ?? v.ville].filter(Boolean).join(' · ')}</p>
+          <div className="carte-boutique-meta">
+            {v.note ? <span><b className="etoile">★</b> {Number(v.note).toLocaleString('fr-FR')} ({v.avis})</span> : <span className="nouveau">Nouveau</span>}
+            <span>{v.produits} produit{v.produits > 1 ? 's' : ''}</span>
+            <span>Prêt en {v.delai_preparation} h</span>
+          </div>
         </div>
       </div>
     </Link>
   );
 }
 
-/* ---------- Bannière des soldes (page d'accueil) ---------- */
+/* ---------- Accueil : affiches des soldes et ventes flash ---------- */
 
 export function BanniereSoldes({ soldes }: { soldes: ProduitCarte[] }) {
   const [i, setI] = useState(0);
-  const urls = usePhotos(soldes.slice(0, 8).map((p) => p.photo));
+  const affiches = soldes.slice(0, 6);
+  const urls = usePhotos(affiches.map((p) => p.photo));
+  const depart = useRef<number | null>(null);
   useEffect(() => {
-    if (soldes.length < 2) return;
-    const id = window.setInterval(() => setI((x) => (x + 1) % Math.min(8, soldes.length)), 6000);
+    if (affiches.length < 2) return;
+    const id = window.setInterval(() => setI((x) => (x + 1) % affiches.length), 5500);
     return () => window.clearInterval(id);
-  }, [soldes.length]);
-  if (!soldes.length) return null;
-  const affiches = soldes.slice(0, 8);
+  }, [affiches.length, i]);
+  if (!affiches.length) return null;
   return (
-    <section className="banniere-soldes" aria-label="Soldes en cours" aria-roledescription="carrousel">
-      {affiches.map((p, k) => (
-        <Link key={p.id} to={`/produit/${p.id}`} className={`affiche ${k === i ? 'active' : ''}`} aria-hidden={k !== i} tabIndex={k === i ? 0 : -1}>
-          <div className="affiche-texte">
-            <span className="affiche-etiquette">🔥 SOLDE −{remise(p)} %</span>
-            <h2>{p.designation}</h2>
-            <p className="affiche-boutique">chez {p.boutique.nom}{p.boutique.commune ? `, ${p.boutique.commune}` : ''}</p>
-            <Prix p={p} grand />
-            {p.solde_fin && <p className="affiche-rebours"><CompteARebours fin={p.solde_fin} /></p>}
-            <span className="bouton bouton-blanc">J’en profite →</span>
-          </div>
-          <div className="affiche-image">
-            {p.photo && urls[p.photo] ? <img src={urls[p.photo]} alt="" /> : <span aria-hidden>🏷️</span>}
-          </div>
-        </Link>
-      ))}
+    <section
+      className="banniere-soldes"
+      aria-label="Soldes à l’affiche"
+      aria-roledescription="carrousel"
+      onTouchStart={(e) => (depart.current = e.touches[0]!.clientX)}
+      onTouchEnd={(e) => {
+        if (depart.current === null) return;
+        const dx = e.changedTouches[0]!.clientX - depart.current;
+        if (Math.abs(dx) > 40) setI((x) => (x + (dx < 0 ? 1 : affiches.length - 1)) % affiches.length);
+        depart.current = null;
+      }}
+    >
+      <div className="affiches" style={{ transform: `translateX(-${i * 100}%)` }}>
+        {affiches.map((p, k) => (
+          <Link key={p.id} to={`/produit/${p.id}`} className="affiche" aria-hidden={k !== i} tabIndex={k === i ? 0 : -1}>
+            <div className="affiche-image">
+              {p.photo && urls[p.photo] ? <img src={urls[p.photo]} alt="" /> : <span aria-hidden>🏷️</span>}
+              <span className="affiche-remise">−{remise(p)}%</span>
+            </div>
+            <div className="affiche-texte">
+              <span className="affiche-etiquette">Solde chez {p.boutique.nom}</span>
+              <h2>{p.designation}</h2>
+              <p className="affiche-prix"><strong>{fcfa(p.prix)}</strong> au lieu de <s>{fcfa(p.prix_normal)}</s></p>
+              {p.solde_fin && <CompteARebours fin={p.solde_fin} />}
+              <span className="bouton bouton-principal petit">J’en profite</span>
+            </div>
+          </Link>
+        ))}
+      </div>
       {affiches.length > 1 && (
         <div className="affiche-points">
           {affiches.map((p, k) => (
-            <button key={p.id} className={k === i ? 'actif' : ''} onClick={() => setI(k)} aria-label={`Solde ${k + 1}`} />
+            <button key={p.id} className={k === i ? 'actif' : ''} onClick={() => setI(k)} aria-label={`Affiche ${k + 1}`} />
           ))}
         </div>
       )}
@@ -230,58 +385,154 @@ export function BanniereSoldes({ soldes }: { soldes: ProduitCarte[] }) {
   );
 }
 
-/* ---------- En-tête et pied ---------- */
+/** Bloc « Ventes flash » : soldes qui finissent le plus tôt, avec le compte à rebours commun. */
+export function VentesFlash({ soldes }: { soldes: ProduitCarte[] }) {
+  const urls = usePhotos(soldes.map((p) => p.photo));
+  if (!soldes.length) return null;
+  const fin = [...soldes].map((p) => p.solde_fin).filter((x): x is string => !!x).sort()[0];
+  return (
+    <section className="ventes-flash">
+      <div className="ventes-flash-tete">
+        <div>
+          <h2>⚡ Ventes flash</h2>
+          {fin && <CompteARebours fin={fin} />}
+        </div>
+        <Link to="/soldes" className="rond-lien" aria-label="Tous les soldes"><IcoFleche /></Link>
+      </div>
+      <Rangee>
+        {soldes.map((p) => (
+          <article key={p.id} className="flash-carte">
+            <Link to={`/produit/${p.id}`}>
+              <ImageProduit url={p.photo ? urls[p.photo] : undefined} alt={p.designation} />
+              <span className="badge-solde">−{remise(p)}%</span>
+              <h3>{p.designation}</h3>
+            </Link>
+            <div className="carte-produit-pied">
+              <Prix p={p} />
+              <BoutonAjout p={p} />
+            </div>
+            <div className="jauge" title={`${p.commandes} commandes`}>
+              <span style={{ width: `${Math.min(100, 15 + p.commandes * 2)}%` }} />
+            </div>
+            <small className="jauge-texte">{Number(p.disponible) > 0 ? `${p.disponible} restants` : 'Épuisé'}</small>
+          </article>
+        ))}
+      </Rangee>
+    </section>
+  );
+}
+
+/* ---------- En-tête, onglets, pied ---------- */
 
 export function EnTete() {
   const panier = usePanier();
+  const favoris = useFavoris();
   const n = nombreArticles(panier);
   const naviguer = useNavigate();
   const [params] = useSearchParams();
+  const { pathname } = useLocation();
   const [texte, setTexte] = useState(params.get('q') ?? '');
+  const [defile, setDefile] = useState(false);
+  const [bond, setBond] = useState(false);
+  const precedent = useRef(n);
+  useEffect(() => {
+    const f = () => setDefile(window.scrollY > 8);
+    window.addEventListener('scroll', f, { passive: true });
+    return () => window.removeEventListener('scroll', f);
+  }, []);
+  useEffect(() => {
+    if (n > precedent.current) {
+      setBond(true);
+      window.setTimeout(() => setBond(false), 500);
+    }
+    precedent.current = n;
+  }, [n]);
   function chercher(e: FormEvent) {
     e.preventDefault();
     naviguer(`/recherche?q=${encodeURIComponent(texte.trim())}`);
   }
+  // Fiche produit sur téléphone : la photo occupe le haut, l'en-tête se fait discret.
+  const fiche = pathname.startsWith('/produit/');
   return (
-    <header className="entete">
+    <header className={`entete ${defile ? 'defile' : ''} ${fiche ? 'sur-fiche' : ''}`}>
       <div className="entete-ligne">
         <Link to="/" className="marque" aria-label="DF Marché, accueil">
-          <img src="/icone-marche.svg" alt="" width={36} height={36} />
+          <img src="/icone-marche.svg" alt="" width={34} height={34} />
           <span>DF <b>Marché</b></span>
         </Link>
         <form className="recherche" role="search" onSubmit={chercher}>
-          <input type="search" value={texte} onChange={(e) => setTexte(e.target.value)} placeholder="Riz, téléphone, pagne, boutique…" aria-label="Rechercher" />
-          <button aria-label="Chercher">🔎</button>
+          <IcoRecherche />
+          <input type="search" value={texte} onChange={(e) => setTexte(e.target.value)} placeholder="Riz, téléphone, pagne, boutique…" aria-label="Rechercher" enterKeyHint="search" />
         </form>
-        <Link to="/panier" className="lien-panier" aria-label={`Panier : ${n} article(s)`}>
-          🛒{n > 0 && <span className="compteur">{n}</span>}
-        </Link>
+        <nav className="entete-actions" aria-label="Raccourcis">
+          <NavLink to="/rayons" className="action-ordi"><IcoRayons /><span>Rayons</span></NavLink>
+          <NavLink to="/mes-commandes" className="action-ordi"><IcoCommandes /><span>Commandes</span></NavLink>
+          <NavLink to="/favoris" className="action-ordi"><IcoCoeur /><span>Favoris</span>{favoris.length > 0 && <i className="compteur doux">{favoris.length}</i>}</NavLink>
+          <NavLink to="/panier" className={`action-panier ${bond ? 'bond' : ''}`} aria-label={`Panier : ${n} article(s)`}>
+            <IcoPanier /><span>Panier</span>{n > 0 && <i className="compteur">{n}</i>}
+          </NavLink>
+        </nav>
       </div>
-      <nav className="entete-nav">
-        <NavLink to="/" end>Accueil</NavLink>
-        <NavLink to="/soldes">🔥 Soldes</NavLink>
-        <NavLink to="/boutiques">Boutiques</NavLink>
-        <NavLink to="/mes-commandes">Mes commandes</NavLink>
-      </nav>
     </header>
+  );
+}
+
+export function BarreOnglets() {
+  const panier = usePanier();
+  const favoris = useFavoris();
+  const n = nombreArticles(panier);
+  return (
+    <nav className="barre-onglets" aria-label="Navigation principale">
+      <NavLink to="/" end><IcoAccueil /><span>Accueil</span></NavLink>
+      <NavLink to="/rayons"><IcoRayons /><span>Rayons</span></NavLink>
+      <NavLink to="/panier" className="onglet-panier"><span className="bulle-panier"><IcoPanier />{n > 0 && <i className="compteur">{n}</i>}</span><span>Panier</span></NavLink>
+      <NavLink to="/favoris"><IcoCoeur /><span>Favoris</span>{favoris.length > 0 && <i className="point" />}</NavLink>
+      <NavLink to="/mes-commandes"><IcoCommandes /><span>Commandes</span></NavLink>
+    </nav>
+  );
+}
+
+export function Annonces() {
+  const annonces = useAnnonces();
+  return (
+    <div className="annonces" aria-live="polite">
+      {annonces.map((a) => (
+        <div key={a.id} className="annonce">
+          <span>{a.texte}</span>
+          {a.lien && <Link to={a.lien.vers}>{a.lien.libelle}</Link>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Bouton WhatsApp flottant (page d'une boutique ou d'un produit). */
+export function WhatsappFlottant({ tel, message }: { tel: string | null | undefined; message: string }) {
+  if (!tel) return null;
+  return (
+    <a className="whatsapp-flottant" href={lienWhatsapp(tel, message)} target="_blank" rel="noreferrer" aria-label="Écrire à la boutique sur WhatsApp">
+      <IcoWhatsapp />
+    </a>
   );
 }
 
 export function Pied() {
   return (
     <footer className="pied">
-      <div>
-        <strong>DF Marché</strong>
-        <p>Les boutiques de votre quartier, en ligne. Stock et prix à jour en direct depuis leur caisse.</p>
-      </div>
-      <div>
-        <strong>Payer en confiance</strong>
-        <p>Vous payez directement la boutique : à la livraison, ou par Wave, Orange Money, MTN ou Moov sur son numéro. Ne donnez jamais votre code secret.</p>
-      </div>
-      <div>
-        <strong>Vous êtes commerçant ?</strong>
-        <p>Vendez en ligne avec DF Gestion. Intéressé ? Abonnez-vous et laissez-moi un message.</p>
-        <p className="propulse"><img src="/logo-decodeur.png" alt="" height={22} /> Propulsé par Le Décodeur Financier</p>
+      <div className="pied-grille">
+        <div>
+          <Link to="/" className="marque"><img src="/icone-marche.svg" alt="" width={30} height={30} /><span>DF <b>Marché</b></span></Link>
+          <p>Les boutiques de votre quartier, en ligne. Stock et prix à jour en direct depuis leur caisse.</p>
+        </div>
+        <div>
+          <strong>Payer en confiance</strong>
+          <p>Vous payez directement la boutique : à la livraison, ou par Wave, Orange Money, MTN ou Moov sur son numéro. Ne donnez jamais votre code secret.</p>
+        </div>
+        <div>
+          <strong>Vous êtes commerçant ?</strong>
+          <p>Vendez en ligne avec DF Gestion. Intéressé ? Abonnez-vous et laissez-moi un message.</p>
+          <p className="propulse"><img src="/logo-decodeur.png" alt="" height={22} /> Propulsé par Le Décodeur Financier</p>
+        </div>
       </div>
     </footer>
   );

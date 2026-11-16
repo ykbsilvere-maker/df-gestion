@@ -70,6 +70,7 @@ export function ajouter(p: ProduitCarte, quantite = 1) {
     ? b.articles.map((a) => (a.id === p.id ? { ...a, quantite: Math.min(max, a.quantite + quantite), prix: p.prix, disponible: max } : a))
     : [...b.articles, { id: p.id, designation: p.designation, photo: p.photo, prix: Number(p.prix), prix_normal: Number(p.prix_normal), disponible: max, quantite: Math.min(max, quantite) }];
   ecrire({ ...etat, [b.slug]: { ...b, articles } });
+  annoncer(`${p.designation} ajouté au panier`, { vers: '/panier', libelle: 'Voir' });
 }
 
 export function changerQuantite(slug: string, id: string, quantite: number) {
@@ -136,4 +137,59 @@ export function memoriserClient(c: ClientMemo) {
   } catch {
     /* rien */
   }
+}
+
+/* Favoris : produits gardés sur l'appareil (fiche résumée pour l'affichage hors ligne). */
+const CLE_FAV = 'dfm_favoris';
+let favoris: ProduitCarte[] = (() => {
+  try {
+    return JSON.parse(localStorage.getItem(CLE_FAV) ?? '[]') as ProduitCarte[];
+  } catch {
+    return [];
+  }
+})();
+const abonnesFav = new Set<() => void>();
+export function useFavoris(): ProduitCarte[] {
+  return useSyncExternalStore(
+    (f) => {
+      abonnesFav.add(f);
+      return () => abonnesFav.delete(f);
+    },
+    () => favoris,
+  );
+}
+export function basculerFavori(p: ProduitCarte): boolean {
+  const deja = favoris.some((x) => x.id === p.id);
+  favoris = deja ? favoris.filter((x) => x.id !== p.id) : [p, ...favoris].slice(0, 100);
+  try {
+    localStorage.setItem(CLE_FAV, JSON.stringify(favoris));
+  } catch {
+    /* rien */
+  }
+  abonnesFav.forEach((f) => f());
+  annoncer(deja ? 'Retiré des favoris' : '♥ Ajouté aux favoris');
+  return !deja;
+}
+
+/* Petites annonces en bas d'écran (« Ajouté au panier »). */
+export interface Annonce { id: number; texte: string; lien?: { vers: string; libelle: string } }
+let annonces: Annonce[] = [];
+const abonnesAnn = new Set<() => void>();
+export function annoncer(texte: string, lien?: Annonce['lien']) {
+  const a = { id: Date.now() + Math.random(), texte, lien };
+  annonces = [...annonces.slice(-1), a];
+  abonnesAnn.forEach((f) => f());
+  window.setTimeout(() => {
+    annonces = annonces.filter((x) => x.id !== a.id);
+    abonnesAnn.forEach((f) => f());
+  }, 2600);
+}
+export function useAnnonces(): Annonce[] {
+  return useSyncExternalStore(
+    (f) => {
+      abonnesAnn.add(f);
+      return () => abonnesAnn.delete(f);
+    },
+    () => annonces,
+  );
 }
