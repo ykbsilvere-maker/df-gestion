@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { appeler, supabase, erreurLisible, type FicheBoutique } from '../api';
+import { appeler, supabase, erreurLisible, type BonAchat, type FicheBoutique } from '../api';
+import { useCompte } from '../compte';
+import { codeMemorise, memoriserCode, texteBon } from './Compte';
 import { Chargement, Erreur, ImageProduit, fcfa, usePhotos } from '../composants';
 import type { PanierBoutique } from '../panier';
 import { A_LA_LIVRAISON, CartePaiement, LogoPaiement, moyensEnLigne, numeroDe, type Moyen } from '../paiement';
@@ -53,16 +55,17 @@ function Reassurance() {
   );
 }
 
-function CarteRecap({ b, urls, children, titre = 'Récapitulatif', frais }: {
+function CarteRecap({ b, urls, children, titre = 'Récapitulatif', frais, remise }: {
   b: PanierBoutique;
   urls: Record<string, string>;
   children?: ReactNode;
   titre?: string;
   frais?: { libelle: string; montant: number | null };
+  remise?: { code: string; montant: number } | null;
 }) {
   const nb = b.articles.reduce((s, a) => s + a.quantite, 0);
   const sousTotal = b.articles.reduce((s, a) => s + a.prix * a.quantite, 0);
-  const total = sousTotal + (frais?.montant ?? 0);
+  const total = sousTotal - (remise?.montant ?? 0) + (frais?.montant ?? 0);
   return (
     <aside className="carte-recap">
       <header>
@@ -80,6 +83,7 @@ function CarteRecap({ b, urls, children, titre = 'Récapitulatif', frais }: {
       </ul>
       <dl className="recap-totaux">
         <dt>Sous-total ({nb} art.)</dt><dd>{fcfa(sousTotal)}</dd>
+        {remise && <><dt className="remise">🎟️ Code {remise.code}</dt><dd className="remise">−{fcfa(remise.montant)}</dd></>}
         <dt>🛵 {frais?.libelle ?? 'Livraison'}</dt>
         <dd className={frais?.montant == null ? 'a-venir' : ''}>{frais == null ? 'À l’étape suivante' : frais.montant == null ? 'À choisir' : frais.montant ? fcfa(frais.montant) : 'Gratuit'}</dd>
         <dt className="total">Total</dt><dd className="total">{fcfa(total)}</dd>
@@ -160,7 +164,7 @@ const versSaisie = (d: Date) => {
   return z.toISOString().slice(0, 16);
 };
 
-interface Fait { id: string; numero: string; code_suivi: string; total: number; justificatif: 'ok' | 'echec' | null; enLigne: boolean; moyen: string }
+interface Fait { id: string; numero: string; code_suivi: string; total: number; justificatif: 'ok' | 'echec' | null; enLigne: boolean; moyen: string; especes: number | null }
 
 export function Commander() {
   const { slug } = useParams();
@@ -172,8 +176,18 @@ export function Commander() {
   const [f, setF] = useState({
     nom: memo.nom ?? '', telephone: memo.telephone ?? '', email: memo.email ?? '', mode: '' as '' | 'livraison' | 'retrait', zone: '',
     adresse: memo.adresse ?? '', repere: memo.repere ?? '', quand: 'vite' as 'vite' | 'choisir', souhaite: '', note: '',
-    choix: '', payeur: '', reference: '', accepte: false,
+    choix: '', payeur: '', reference: '', accepte: false, especes: '', code: slug ? codeMemorise(slug) ?? '' : '',
   });
+  const { compte } = useCompte();
+  const [bon, setBon] = useState<BonAchat | null>(null);
+  const [erreurCode, setErreurCode] = useState('');
+  useEffect(() => {
+    if (compte)
+      setF((y) => ({
+        ...y, nom: y.nom || compte.nom, telephone: y.telephone || compte.telephone || '', adresse: y.adresse || compte.adresse || '',
+        repere: y.repere || compte.repere || '',
+      }));
+  }, [compte]);
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [fichier, setFichier] = useState<File | null>(null);
   const [erreur, setErreur] = useState('');
@@ -194,7 +208,25 @@ export function Commander() {
       })
       .catch((e: Error) => setErreur(e.message));
     document.title = 'Finaliser la commande — DF Marché';
+    const memo = slug ? codeMemorise(slug) : null;
+    if (memo) void appliquerCode(memo, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
+
+  async function appliquerCode(code: string, silencieux = false) {
+    setErreurCode('');
+    if (!code.trim()) return setBon(null);
+    try {
+      const k = await appeler<BonAchat>('marche_code_promo', { p_boutique: slug, p_code: code });
+      setBon(k);
+      memoriserCode(slug!, k.code);
+      setF((y) => ({ ...y, code: k.code }));
+    } catch (x) {
+      setBon(null);
+      if (!silencieux) setErreurCode((x as Error).message);
+      else memoriserCode(slug!, null);
+    }
+  }
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [etape, fait]);
@@ -206,7 +238,11 @@ export function Commander() {
   const zone = v.zones?.find((z) => z.id === f.zone);
   const sousTotal = b.articles.reduce((s, a) => s + a.prix * a.quantite, 0);
   const frais = f.mode === 'livraison' ? Number(zone?.frais ?? 0) : 0;
-  const total = sousTotal + frais;
+  const remiseCode = bon && sousTotal >= Number(bon.minimum)
+    ? Math.min(sousTotal, bon.type === 'pourcent' ? Math.round((sousTotal * Number(bon.valeur)) / 100) : Number(bon.valeur)) : 0;
+  const total = sousTotal - remiseCode + frais;
+  const especes = f.especes === 'exact' ? total : Number(f.especes.replace(/\D/g, '')) || 0;
+  const billets = [5000, 10000, 20000, 50000].filter((x) => x > total).slice(0, 3);
   const enLigne = moyensEnLigne(v);
   const choisi: Moyen | undefined = f.choix === 'livraison' ? A_LA_LIVRAISON : enLigne.find((m) => m.cle === f.choix);
   const numero = numeroDe(v, choisi);
@@ -241,6 +277,7 @@ export function Commander() {
     const enLignePaye = choisi.code !== 'livraison';
     if (enLignePaye && f.payeur.replace(/[^0-9]/g, '').length < 8) return setErreur('Indiquez le numéro qui a effectué le paiement.');
     if (enLignePaye && !fichier && !f.reference.trim()) return setErreur('Joignez la capture du paiement (ou au moins la référence de la transaction).');
+    if (!enLignePaye && f.especes && f.especes !== 'exact' && especes < total) return setErreur(`Le billet indiqué doit couvrir ${fcfa(total)}.`);
     if (!f.accepte) return setErreur('Cochez « J’ai lu et j’accepte les conditions de vente ».');
     setEnCours(true);
     try {
@@ -251,6 +288,7 @@ export function Commander() {
           latitude: position?.lat ?? null, longitude: position?.lng ?? null,
           souhaite_le: f.quand === 'choisir' && f.souhaite ? new Date(f.souhaite).toISOString() : null,
           note: f.note || null, paiement: choisi.code, paiement_autre: choisi.autre?.id ?? null,
+          code_promo: bon?.code ?? null, especes_remis: !enLignePaye && f.especes ? especes : null,
           numero_payeur: enLignePaye ? f.payeur : null, reference_paiement: f.reference || null,
           lignes: b!.articles.map((a) => ({ produit_id: a.id, quantite: a.quantite })),
         },
@@ -266,7 +304,8 @@ export function Commander() {
           justificatif = 'echec';
         }
       }
-      setFait({ ...r, justificatif, enLigne: enLignePaye, moyen: choisi.libelle });
+      setFait({ ...r, justificatif, enLigne: enLignePaye, moyen: choisi.libelle, especes: !enLignePaye && f.especes ? especes : null });
+      memoriserCode(slug!, null);
       viderBoutique(slug!);
     } catch (x) {
       setErreur((x as Error).message);
@@ -282,6 +321,7 @@ export function Commander() {
         <div className="commande-grille">
           <div className="commande-principal">
             <h1 className="titre-etape">Vos <em>informations</em></h1>
+            {!compte && <p className="info-retrait">👤 Déjà client ? <Link to={`/compte/connexion?retour=/commander/${v.slug}`}>Connectez-vous</Link> pour remplir vos informations et garder l’historique. Ou continuez sans compte.</p>}
             <div className="bloc">
               <h2 className="titre-bloc"><span aria-hidden>👤</span>Coordonnées et livraison</h2>
               {erreur && <p className="alerte" role="alert">⚠️ {erreur}</p>}
@@ -342,7 +382,7 @@ export function Commander() {
             </div>
             <p className="secondaire petit">🛡️ Vos données servent uniquement au traitement de votre commande.</p>
           </div>
-          <CarteRecap b={b} urls={urls} titre="Votre commande" frais={recapFrais}>
+          <CarteRecap b={b} urls={urls} titre="Votre commande" frais={recapFrais} remise={remiseCode ? { code: bon!.code, montant: remiseCode } : null}>
             <button className="bouton bouton-principal large">🔒 Continuer</button>
             <Link className="lien-retour" to="/panier">← Retour au panier</Link>
           </CarteRecap>
@@ -373,29 +413,59 @@ export function Commander() {
           </div>
 
           <div className="bloc">
+            <h2 className="titre-bloc"><span aria-hidden>🎟️</span>Code promo</h2>
+            <div className="code-promo-saisie">
+              <input value={f.code} onChange={(e) => maj({ code: e.target.value.toUpperCase() })} placeholder="Avez-vous un code ?" aria-label="Code promo" maxLength={20} />
+              {bon ? (
+                <button type="button" className="bouton" onClick={() => { setBon(null); maj({ code: '' }); memoriserCode(slug!, null); }}>Retirer</button>
+              ) : (
+                <button type="button" className="bouton bouton-principal" onClick={() => void appliquerCode(f.code)}>Appliquer</button>
+              )}
+            </div>
+            {bon && (remiseCode > 0
+              ? <p className="code-ok">✓ {bon.libelle || 'Code'} {texteBon(bon)} : vous économisez <b>{fcfa(remiseCode)}</b></p>
+              : <p className="alerte">Ce code demande au moins {fcfa(bon.minimum)} d’achats.</p>)}
+            {erreurCode && <p className="alerte">⚠️ {erreurCode}{/connectez-vous/i.test(erreurCode) && <> — <Link to={`/compte/connexion?retour=/commander/${v.slug}`}>se connecter</Link></>}</p>}
+
             <h2 className="titre-bloc"><span aria-hidden>💳</span>Mode de paiement</h2>
-            <div className="logos-paiement" role="radiogroup" aria-label="Moyen de paiement">
-              {enLigne.map((m) => (
-                <button type="button" role="radio" aria-checked={f.choix === m.cle} key={m.cle} className={f.choix === m.cle ? 'actif' : ''}
-                  style={{ ['--marque' as string]: m.couleur }} onClick={() => maj({ choix: m.cle })}>
-                  <LogoPaiement m={m} taille={52} />
-                  <span>{m.libelle}</span>
-                  <small>Payer maintenant</small>
+            <div className="familles-paiement" role="radiogroup" aria-label="Mode de paiement">
+              {enLigne.length > 0 && (
+                <button type="button" role="radio" aria-checked={f.choix !== 'livraison'} className={f.choix !== 'livraison' ? 'actif' : ''}
+                  onClick={() => maj({ choix: f.choix !== 'livraison' ? f.choix : enLigne[0]!.cle })}>
+                  <span aria-hidden>📲</span><strong>Mobile Money</strong><small>Payer maintenant</small>
                 </button>
-              ))}
+              )}
               {v.paiement_livraison && (
-                <button type="button" role="radio" aria-checked={f.choix === 'livraison'} className={f.choix === 'livraison' ? 'actif' : ''}
-                  style={{ ['--marque' as string]: A_LA_LIVRAISON.couleur }} onClick={() => maj({ choix: 'livraison' })}>
-                  <LogoPaiement m={A_LA_LIVRAISON} taille={52} />
-                  <span>{f.mode === 'retrait' ? 'Au retrait' : 'À la livraison'}</span>
-                  <small>Espèces ou Mobile Money</small>
+                <button type="button" role="radio" aria-checked={f.choix === 'livraison'} className={f.choix === 'livraison' ? 'actif' : ''} onClick={() => maj({ choix: 'livraison' })}>
+                  <span aria-hidden>💵</span><strong>Espèces</strong><small>{f.mode === 'retrait' ? 'À la caisse, au retrait' : 'Au livreur, à la livraison'}</small>
                 </button>
               )}
             </div>
-            {f.choix === 'livraison' && (
-              <p className="info-retrait">💵 Vous payez {f.mode === 'retrait' ? 'à la caisse en récupérant' : 'au livreur en recevant'} votre commande.</p>
+            {f.choix !== 'livraison' && enLigne.length > 1 && (
+              <div className="logos-paiement" role="radiogroup" aria-label="Moyen Mobile Money">
+                {enLigne.map((m) => (
+                  <button type="button" role="radio" aria-checked={f.choix === m.cle} key={m.cle} className={f.choix === m.cle ? 'actif' : ''}
+                    style={{ ['--marque' as string]: m.couleur }} onClick={() => maj({ choix: m.cle })}>
+                    <LogoPaiement m={m} taille={44} />
+                    <span>{m.libelle}</span>
+                  </button>
+                ))}
+              </div>
             )}
-            {choisi && choisi.code !== 'livraison' && numero && (
+            {f.choix === 'livraison' && (
+              <div className="bloc-especes">
+                <p>💵 Avec quel montant paierez-vous ? <small>La boutique prépare votre monnaie.</small></p>
+                <div className="choix-cartes petites">
+                  <button type="button" className={f.especes === 'exact' ? 'actif' : ''} onClick={() => maj({ especes: 'exact' })}>Montant exact<small>{fcfa(total)}</small></button>
+                  {billets.map((x) => (
+                    <button type="button" key={x} className={f.especes === String(x) ? 'actif' : ''} onClick={() => maj({ especes: String(x) })}>{fcfa(x)}<small>monnaie {fcfa(x - total)}</small></button>
+                  ))}
+                </div>
+                <label>Autre montant<input value={f.especes === 'exact' || billets.map(String).includes(f.especes) ? '' : f.especes} onChange={(e) => maj({ especes: e.target.value.replace(/\D/g, '') })} inputMode="numeric" placeholder="Ex. 25000" /></label>
+                {especes > total && <p className="code-ok">La boutique vous rendra <b>{fcfa(especes - total)}</b>.</p>}
+              </div>
+            )}
+            {choisi && choisi.code !== 'livraison' && (numero || choisi.autre?.lien) && (
               <div className="instructions-paiement">
                 <CartePaiement m={choisi} numero={numero} montant={total} beneficiaire={v.beneficiaire} lienWave={v.lien_wave} />
                 <ol className="etapes-paiement">
@@ -421,7 +491,7 @@ export function Commander() {
             <button className="bouton bouton-principal large" disabled={enCours}>{enCours ? 'Envoi…' : `✅ Confirmer la commande · ${fcfa(total)}`}</button>
           </div>
         </div>
-        <CarteRecap b={b} urls={urls} titre="Votre commande" frais={recapFrais}>
+        <CarteRecap b={b} urls={urls} titre="Votre commande" frais={recapFrais} remise={remiseCode ? { code: bon!.code, montant: remiseCode } : null}>
           <button className="bouton bouton-principal large" disabled={enCours}>{enCours ? 'Envoi…' : '✅ Confirmer la commande'}</button>
           <button type="button" className="lien-retour bouton-lien" onClick={() => setEtape(1)}>← Modifier mes informations</button>
         </CarteRecap>
@@ -452,7 +522,7 @@ function Confirmation({ fait, boutique }: { fait: Fait; boutique: string }) {
             {fait.justificatif === 'echec' && <><br />⚠️ La capture n’a pas pu être envoyée : renvoyez-la depuis le suivi.</>}
           </p>
         ) : (
-          <p className="info-retrait">💵 Vous paierez à la remise de la commande.</p>
+          <p className="info-retrait">💵 Vous paierez en espèces à la remise de la commande{fait.especes && fait.especes > fait.total ? ` avec ${fcfa(fait.especes)} : la boutique prépare ${fcfa(fait.especes - fait.total)} de monnaie` : ''}.</p>
         )}
         <p className="secondaire">Gardez votre code de suivi : il permet de suivre la commande et de télécharger le reçu.</p>
         <div className="confirmation-actions">

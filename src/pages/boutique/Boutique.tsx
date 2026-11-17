@@ -10,6 +10,8 @@ import { Vignette, reduire } from '../../components/PhotoProduit';
 import { useIdentite } from '../../lib/identite';
 import { useImpression } from '../../impression/impression';
 import { BonCommandeWeb } from './BonCommande';
+import { MettreEnSolde } from './Promotions';
+import { deposerImage, reduireImage, supprimerImage } from '../../lib/images';
 import {
   PAIEMENTS,
   STATUTS,
@@ -38,6 +40,9 @@ export function BoutiqueModule() {
         </NavLink>
         <NavLink to="/boutique/produits">
           <span className="onglet-icone" aria-hidden>🏷️</span>Produits en ligne
+        </NavLink>
+        <NavLink to="/boutique/promos">
+          <span className="onglet-icone" aria-hidden>🎟️</span>Codes promo
         </NavLink>
         {peut('boutique.modifier') && (
           <NavLink to="/boutique/vitrine">
@@ -257,6 +262,9 @@ export interface DetailCommande {
   justificatif_path: string | null;
   paiement_statut: StatutPaiement;
   paiement_libelle?: string | null;
+  remise?: number;
+  code_promo?: string | null;
+  especes_remis?: number | null;
   statut: StatutCommande;
   motif: string | null;
   created_at: string;
@@ -423,8 +431,10 @@ export function FicheCommandeWeb() {
             </tbody>
             <tfoot>
               <tr><td colSpan={3}>Articles</td><td className="nombre">{montant(c.sous_total)}</td></tr>
+              {Number(c.remise) > 0 && <tr><td colSpan={3}>🎟️ Code {c.code_promo}</td><td className="nombre">−{montant(c.remise)}</td></tr>}
               {c.mode === 'livraison' && <tr><td colSpan={3}>Livraison ({c.zone_nom})</td><td className="nombre">{montant(c.frais_livraison)}</td></tr>}
               <tr className="ligne-total"><td colSpan={3}>Total</td><td className="nombre">{montant(c.total)}</td></tr>
+              {c.especes_remis ? <tr><td colSpan={3}>💵 Le client paiera avec {montant(c.especes_remis)} : monnaie à préparer</td><td className="nombre"><strong>{montant(Number(c.especes_remis) - Number(c.total))}</strong></td></tr> : null}
             </tfoot>
           </table>
         </section>
@@ -544,6 +554,7 @@ export function ProduitsEnLigne() {
   const [recherche, setRecherche] = useState('');
   const [choix, setChoix] = useState<Set<string>>(new Set());
   const [edition, setEdition] = useState<ProduitVitrine | null>(null);
+  const [solde, setSolde] = useState<ProduitVitrine | null>(null);
   const [texte, setTexte] = useState('');
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
@@ -671,7 +682,8 @@ export function ProduitsEnLigne() {
                     </td>
                     <td className="nombre">
                       <strong>{montant(p.prix)}</strong>
-                      {Number(p.prix) < Number(p.prix_vente) && <div className="secondaire"><span className="prix-barre">{montant(p.prix_vente)}</span> 🏷️ solde</div>}
+                      {Number(p.prix) < Number(p.prix_vente) ? <div className="secondaire"><span className="prix-barre">{montant(p.prix_vente)}</span> 🏷️ solde</div>
+                        : peut('promotions.creer') && <div><button className="bouton-lien" onClick={() => setSolde(p)}>🔥 Mettre en solde</button></div>}
                     </td>
                     <td className="nombre">
                       {Number(p.disponible) > 0 ? Number(p.disponible) : <Pastille ton="rouge">Rupture</Pastille>}
@@ -697,6 +709,8 @@ export function ProduitsEnLigne() {
           bannière et un compte à rebours, et disparaît à sa date de fin.
         </p>
       </section>
+      <MettreEnSolde org={org} produit={solde} onFermer={() => setSolde(null)}
+        onFait={(m) => { setSolde(null); setInfo(m); void charger(); }} />
       <Fenetre titre={edition ? `Description en ligne — ${edition.designation}` : ''} ouverte={!!edition} onFermer={() => setEdition(null)}>
         <form className="formulaire" onSubmit={enregistrerTexte}>
           <Champ label="Description" aide="Ce que le client doit savoir : taille, couleur, garantie, conseils d’usage…">
@@ -746,7 +760,7 @@ interface Vitrine {
   delai_preparation: number;
   commande_minimum: number;
 }
-interface AutrePaiement { id?: string; libelle: string; numero: string; instructions?: string | null }
+interface AutrePaiement { id?: string; libelle: string; numero: string | null; instructions?: string | null; logo?: string | null; lien?: string | null }
 type MoyenOptionnel = 'numero_mtn' | 'numero_moov' | 'numero_djamo';
 const OPTIONNELS: { champ: MoyenOptionnel; libelle: string; logo: string }[] = [
   { champ: 'numero_mtn', libelle: 'MTN MoMo', logo: '/paiement/mtn.svg' },
@@ -769,6 +783,8 @@ export function MaVitrine() {
   const magasins = useMagasins(org);
   const [v, setV] = useState<Vitrine | null>(null);
   const [ajoutes, setAjoutes] = useState<MoyenOptionnel[]>([]);
+  const [fraisRapide, setFraisRapide] = useState('1 000');
+  const { identite, recharger: rechargerIdentite } = useIdentite();
   const [zones, setZones] = useState<Zone[]>([]);
   const [stats, setStats] = useState<{ publies: number; actifs: number; sans_photo: number } | null>(null);
   const [nouvelle, setNouvelle] = useState<Zone>({ nom: '', frais: 1000, delai: '', actif: true });
@@ -812,6 +828,44 @@ export function MaVitrine() {
     if (error) return setErreur(messageErreur(error));
     setInfo(publier === true ? 'Votre boutique est en ligne sur DF Marché.' : publier === false ? 'Boutique retirée de DF Marché.' : 'Vitrine enregistrée.');
     await charger();
+  }
+
+  async function changerLogo(f: File | undefined) {
+    if (!f) return;
+    setErreur('');
+    try {
+      const blob = await reduireImage(f, 600, 'image/png');
+      const chemin = await deposerImage('logos', org, 'logo', blob);
+      const ancien = identite?.organisation.logo_path;
+      const { error } = await supabase.from('organisations').update({ logo_path: chemin }).eq('id', org);
+      if (error) throw error;
+      if (ancien) await supprimerImage('logos', ancien);
+      await rechargerIdentite();
+      setInfo('Logo mis à jour : il s’affiche sur DF Marché, vos reçus et vos documents.');
+    } catch (e) {
+      setErreur(messageErreur(e));
+    }
+  }
+
+  async function logoMoyen(i: number, f: File | undefined) {
+    if (!f) return;
+    setErreur('');
+    try {
+      const blob = await reduire(f, 256);
+      const chemin = `${org}/paiement-${Date.now()}.jpg`;
+      const { error } = await supabase.storage.from('vitrines').upload(chemin, blob, { contentType: 'image/jpeg' });
+      if (error) return setErreur(messageErreur(error));
+      majAutre(i, { logo: chemin });
+    } catch (e) {
+      setErreur(messageErreur(e));
+    }
+  }
+
+  async function fraisUnique() {
+    const frais = lireMontant(fraisRapide);
+    if (frais === null) return setErreur('Indiquez le prix de la livraison.');
+    await enregistrerZone({ nom: 'Livraison à domicile', frais, delai: null, actif: true });
+    setInfo('Prix de livraison enregistré : il s’affiche au client à la commande.');
   }
 
   async function ajouterPhoto(f: File | undefined) {
@@ -918,6 +972,16 @@ export function MaVitrine() {
             <input value={v.horaires ?? ''} onChange={(e) => maj({ horaires: e.target.value })} maxLength={300} />
           </Champ>
 
+          <h2>Logo</h2>
+          <div className="logo-vitrine">
+            {identite?.logoUrl ? <img src={identite.logoUrl} alt="Logo" /> : <span aria-hidden>🏪</span>}
+            <label className="bouton bouton-discret">
+              <input type="file" accept="image/*" hidden onChange={(e) => { void changerLogo(e.target.files?.[0]); e.target.value = ''; }} />
+              {identite?.logoUrl ? 'Changer le logo' : 'Ajouter mon logo'}
+            </label>
+            <span className="secondaire">Affiché sur DF Marché (boutique, cercles de l’accueil), vos reçus et documents.</span>
+          </div>
+
           <h2>Photos de la boutique</h2>
           <div className="photos-vitrine">
             {v.photos.map((p, i) => (
@@ -934,7 +998,7 @@ export function MaVitrine() {
               </label>
             )}
           </div>
-          <p className="secondaire">Devanture, intérieur, rayons : 6 photos au plus. La première sert de bannière. Le logo vient de Personnalisation.</p>
+          <p className="secondaire">Devanture, intérieur, rayons : 6 photos au plus. La première sert de bannière.</p>
 
           <h2>Contact et localisation</h2>
           <div className="grille-2">
@@ -977,9 +1041,16 @@ export function MaVitrine() {
               ))}
               {(v.autres_paiements ?? []).map((a, i) => (
                 <div className="moyen-vitrine autre" key={a.id ?? `n${i}`}>
-                  <span className="logo-autre" aria-hidden>{(a.libelle || '?').slice(0, 1).toUpperCase()}</span>
-                  <Champ label="Nom du moyen"><input value={a.libelle} maxLength={30} placeholder="Ex. Ria, Western Union, compte bancaire…" onChange={(e) => majAutre(i, { libelle: e.target.value })} /></Champ>
-                  <Champ label="Numéro"><input value={a.numero} inputMode="tel" onChange={(e) => majAutre(i, { numero: e.target.value })} /></Champ>
+                  <label className="logo-autre modifiable" title="Choisir le logo">
+                    <input type="file" accept="image/*" hidden onChange={(e) => { void logoMoyen(i, e.target.files?.[0]); e.target.value = ''; }} />
+                    {a.logo ? <img src={urlVitrine(a.logo)} alt="" /> : (a.libelle || '+').slice(0, 1).toUpperCase()}
+                    <small>logo</small>
+                  </label>
+                  <Champ label="Nom du moyen"><input value={a.libelle} maxLength={30} placeholder="Ex. Wave Business, banque…" onChange={(e) => majAutre(i, { libelle: e.target.value })} /></Champ>
+                  <Champ label="Numéro (facultatif)"><input value={a.numero ?? ''} inputMode="tel" onChange={(e) => majAutre(i, { numero: e.target.value || null })} /></Champ>
+                  <Champ label="Lien de paiement (facultatif)" aide="Mettez {montant} dans le lien pour qu’il reçoive le montant à payer, ex. https://…/payer?amount={montant}">
+                    <input value={a.lien ?? ''} inputMode="url" placeholder="https://…" onChange={(e) => majAutre(i, { lien: e.target.value || null })} />
+                  </Champ>
                   <button type="button" className="bouton-lien lien-danger" onClick={() => maj({ autres_paiements: (v.autres_paiements ?? []).filter((_, j) => j !== i) })}>Retirer</button>
                 </div>
               ))}
@@ -992,7 +1063,7 @@ export function MaVitrine() {
                 </button>
               ))}
               {(v.autres_paiements ?? []).length < 5 && (
-                <button type="button" className="puce-moyen" onClick={() => maj({ autres_paiements: [...(v.autres_paiements ?? []), { libelle: '', numero: '' }] })}>✚ Autre…</button>
+                <button type="button" className="puce-moyen" onClick={() => maj({ autres_paiements: [...(v.autres_paiements ?? []), { libelle: '', numero: null, lien: null, logo: null }] })}>✚ Autre (logo + lien)…</button>
               )}
             </div>
             <p className="secondaire">Seuls les moyens dont vous donnez le numéro sont proposés au client. Videz un numéro (ou « Retirer ») pour arrêter un moyen.</p>
@@ -1010,8 +1081,12 @@ export function MaVitrine() {
 
           <section className="carte formulaire">
             <h2>Retrait et livraison</h2>
-            <label className="case"><input type="checkbox" checked={v.retrait} onChange={(e) => maj({ retrait: e.target.checked })} /> Retrait en boutique (gratuit)</label>
-            <label className="case"><input type="checkbox" checked={v.livraison} onChange={(e) => maj({ livraison: e.target.checked })} /> Livraison</label>
+            <div className="cartes-reception">
+              <label className={v.livraison ? 'actif' : ''}><input type="checkbox" checked={v.livraison} onChange={(e) => maj({ livraison: e.target.checked })} />
+                <span aria-hidden>🏠</span><strong>Livraison à domicile</strong><small>{zones.length ? `${zones.filter((z) => z.actif).length} zone(s), dès ${montant(Math.min(...zones.map((z) => Number(z.frais))))}` : 'Prix à indiquer ci-dessous'}</small></label>
+              <label className={v.retrait ? 'actif' : ''}><input type="checkbox" checked={v.retrait} onChange={(e) => maj({ retrait: e.target.checked })} />
+                <span aria-hidden>🏪</span><strong>Récupération au magasin</strong><small>Gratuit</small></label>
+            </div>
             <div className="grille-2">
               <Champ label="Temps de préparation (heures)"><input type="number" min={0} max={168} value={v.delai_preparation} onChange={(e) => maj({ delai_preparation: Number(e.target.value) })} /></Champ>
               <Champ label="Commande minimum">
@@ -1021,6 +1096,17 @@ export function MaVitrine() {
             </div>
             {v.livraison && (
               <>
+                {!zones.length && (
+                  <div className="frais-rapide">
+                    <Champ label="Prix de la livraison (même prix partout)">
+                      <span className="champ-avec-bouton">
+                        <input value={fraisRapide} onChange={(e) => setFraisRapide(e.target.value)} inputMode={clavierMontant()} />
+                        <button type="button" className="bouton bouton-principal" onClick={() => void fraisUnique()}>Enregistrer</button>
+                      </span>
+                    </Champ>
+                    <p className="secondaire">Ou un prix par commune dans le tableau ci-dessous.</p>
+                  </div>
+                )}
                 <h3>Zones et frais de livraison</h3>
                 <table className="tableau tableau-compact">
                   <thead><tr><th>Commune / zone</th><th className="nombre">Frais</th><th>Délai</th><th>Active</th></tr></thead>

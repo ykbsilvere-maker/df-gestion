@@ -5,19 +5,20 @@ import { ajouter, basculerFavori, nombreArticles, useAnnonces, useFavoris, usePa
 import {
   IcoAccueil,
   IcoCoeur,
-  IcoCommandes,
   IcoFleche,
   IcoPanier,
   IcoPlus,
   IcoRayons,
   IcoRecherche,
   IcoWhatsapp,
+  IcoCompte,
 } from './icones';
+import { useCompte } from './compte';
 
 /* ---------- Formats ---------- */
 
 export const fcfa = (v: number | string | null | undefined) =>
-  `${Math.round(Number(v ?? 0)).toLocaleString('fr-FR').replace(/ | /g, ' ')} F`;
+  `${Math.round(Number(v ?? 0)).toLocaleString('fr-FR').replace(/ | /g, ' ')} FCFA`;
 
 export const remise = (p: { prix: number; prix_normal: number }) =>
   Number(p.prix) < Number(p.prix_normal) ? Math.round((1 - Number(p.prix) / Number(p.prix_normal)) * 100) : 0;
@@ -452,6 +453,11 @@ export function BanniereSoldes({ soldes }: { soldes: ProduitCarte[] }) {
         depart.current = null;
       }}
     >
+      {/* Fond animé : les produits de l'affiche flottent, flous, derrière le texte. */}
+      <div className="banniere-fond" aria-hidden>
+        {affiches.map((p, k) => (p.photo && urls[p.photo] ? <img key={p.id} src={urls[p.photo]} alt="" className={`flou flou-${k % 6} ${k === i ? 'courant' : ''}`} /> : null))}
+        {affiches[i]?.photo && urls[affiches[i]!.photo!] && <img key={`grand-${i}`} src={urls[affiches[i]!.photo!]} alt="" className="flou-grand" />}
+      </div>
       <div className="affiches" style={{ transform: `translateX(-${i * 100}%)` }}>
         {affiches.map((p, k) => (
           <Link key={p.id} to={`/produit/${p.id}`} className={`affiche ${k === i ? 'courante' : ''}`} aria-hidden={k !== i} tabIndex={k === i ? 0 : -1}>
@@ -520,6 +526,7 @@ export function VentesFlash({ soldes }: { soldes: ProduitCarte[] }) {
 /* ---------- En-tête, onglets, pied ---------- */
 
 export function EnTete() {
+  const { compte } = useCompte();
   const panier = usePanier();
   const favoris = useFavoris();
   const n = nombreArticles(panier);
@@ -561,7 +568,7 @@ export function EnTete() {
         </form>
         <nav className="entete-actions" aria-label="Raccourcis">
           <NavLink to="/rayons" className="action-ordi"><IcoRayons /><span>Rayons</span></NavLink>
-          <NavLink to="/mes-commandes" className="action-ordi"><IcoCommandes /><span>Commandes</span></NavLink>
+          <NavLink to="/compte" className="action-ordi"><IcoCompte /><span>{compte ? compte.nom.split(' ')[0] : 'Compte'}</span></NavLink>
           <NavLink to="/favoris" className="action-ordi"><IcoCoeur /><span>Favoris</span>{favoris.length > 0 && <i className="compteur doux">{favoris.length}</i>}</NavLink>
           <NavLink to="/panier" className={`action-panier ${bond ? 'bond' : ''}`} aria-label={`Panier : ${n} article(s)`}>
             <IcoPanier /><span>Panier</span>{n > 0 && <i className="compteur">{n}</i>}
@@ -581,6 +588,7 @@ export function EnTete() {
 }
 
 export function BarreOnglets() {
+  const { compte } = useCompte();
   const panier = usePanier();
   const favoris = useFavoris();
   const n = nombreArticles(panier);
@@ -590,7 +598,7 @@ export function BarreOnglets() {
       <NavLink to="/rayons"><IcoRayons /><span>Rayons</span></NavLink>
       <NavLink to="/panier" className="onglet-panier"><span className="bulle-panier"><IcoPanier />{n > 0 && <i className="compteur">{n}</i>}</span><span>Panier</span></NavLink>
       <NavLink to="/favoris"><IcoCoeur /><span>Favoris</span>{favoris.length > 0 && <i className="point" />}</NavLink>
-      <NavLink to="/mes-commandes"><IcoCommandes /><span>Commandes</span></NavLink>
+      <NavLink to="/compte"><IcoCompte /><span>Compte</span>{compte && <i className="point vert" />}</NavLink>
     </nav>
   );
 }
@@ -664,9 +672,20 @@ export function Pied() {
           <p className="logos-pied">
             {['wave.png', 'orange.png'].map((f) => <img key={f} src={`/paiement/${f}`} alt="" width={30} height={30} loading="lazy" />)}<span>Wave · Orange Money · à la livraison</span>
           </p>
-          <p><Link to="/conditions">Conditions générales de vente</Link> · <Link to="/mes-commandes">Suivre ma commande</Link></p>
         </div>
-        <div>
+        <div className="pied-liens">
+          <strong>Aide</strong>
+          <Link to="/mes-commandes">Suivre ma commande</Link>
+          <Link to="/compte">Mon compte</Link>
+          <Link to="/compte/bons">Bons d’achat</Link>
+          <Link to="/boutiques">Les boutiques</Link>
+        </div>
+        <div className="pied-liens">
+          <strong>Informations</strong>
+          <Link to="/conditions">Conditions générales de vente</Link>
+          <Link to="/confidentialite">Politique de confidentialité</Link>
+        </div>
+        <div className="pied-commercant">
           <strong>Vous êtes commerçant ?</strong>
           <p>Vendez en ligne avec DF Gestion. Intéressé ? Abonnez-vous et laissez-moi un message.</p>
           <p className="propulse"><img src="/logo-decodeur.png" alt="" height={22} /> Propulsé par Le Décodeur Financier</p>

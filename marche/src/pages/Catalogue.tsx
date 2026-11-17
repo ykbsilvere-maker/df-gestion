@@ -101,7 +101,8 @@ export function Accueil() {
         <Link to="/soldes"><span className="rond orange"><IcoFlamme /></span>Promos</Link>
         <Link to="/boutiques"><span className="rond"><IcoBoutique /></span>Boutiques</Link>
         <Link to={derniere ? `/suivi/${derniere.code}` : '/mes-commandes'}><span className="rond"><IcoSuivi /></span>Suivi</Link>
-        <Link to="/mes-commandes"><span className="rond"><IcoRecommander /></span>Recommander</Link>
+        <Link to="/compte/commandes"><span className="rond"><IcoRecommander /></span>Recommander</Link>
+        <Link to="/compte/bons"><span className="rond orange" aria-hidden>🎟️</span>Bons d’achat</Link>
         <Link to="/favoris"><span className="rond rose"><IcoCoeur /></span>Favoris</Link>
       </nav>
 

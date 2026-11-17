@@ -6,9 +6,12 @@ declare global {
   }
 }
 
-/** Client public (clé « publishable ») : le site ne lit que ce que les fonctions publiques exposent. */
+/**
+ * Client public (clé « publishable ») : le site ne lit que ce que les fonctions publiques exposent.
+ * Un client peut ouvrir un compte : sa session reste sur ce navigateur (clé « dfm-compte »).
+ */
 export const supabase = createClient(window.DFG_CONFIG?.supabaseUrl ?? 'http://localhost', window.DFG_CONFIG?.supabaseAnonKey ?? 'cle-absente', {
-  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'dfm-compte' },
 });
 
 export function erreurLisible(e: unknown): string {
@@ -135,7 +138,7 @@ export interface FicheBoutique extends Vitrine {
 export type StatutCommande = 'nouvelle' | 'confirmee' | 'prete' | 'en_livraison' | 'livree' | 'annulee';
 export type Paiement = 'livraison' | 'wave' | 'orange_money' | 'mtn' | 'moov' | 'djamo' | 'autre';
 /** Moyen de paiement ajouté par la boutique (nom et numéro). */
-export interface AutrePaiement { id: string; libelle: string; numero: string; instructions?: string | null }
+export interface AutrePaiement { id: string; libelle: string; numero: string | null; instructions?: string | null; logo?: string | null; lien?: string | null }
 
 export interface Suivi {
   id: string;
@@ -145,6 +148,9 @@ export interface Suivi {
   paiement: Paiement;
   paiement_statut: 'a_la_livraison' | 'a_verifier' | 'confirme' | 'refuse';
   paiement_libelle?: string | null;
+  remise?: number;
+  code_promo?: string | null;
+  especes_remis?: number | null;
   mode: 'livraison' | 'retrait';
   zone: string | null;
   adresse: string | null;
@@ -194,3 +200,41 @@ export async function urlsPhotos(chemins: (string | null | undefined)[]): Promis
 
 export const urlPublique = (espace: 'vitrines' | 'logos', chemin: string | null | undefined) =>
   chemin ? supabase.storage.from(espace).getPublicUrl(chemin).data.publicUrl : null;
+
+/* ---------- Compte client ---------- */
+
+export interface Compte {
+  id: string;
+  nom: string;
+  telephone: string | null;
+  adresse: string | null;
+  repere: string | null;
+  commune: string | null;
+  email: string;
+  depuis: string;
+  commandes: number;
+}
+
+export interface BonAchat {
+  code: string;
+  libelle: string | null;
+  type: 'pourcent' | 'montant';
+  valeur: number;
+  minimum: number;
+  fin: string | null;
+  personnel: boolean;
+  boutique: { slug: string; nom: string } | null;
+}
+
+export interface CommandeCompte {
+  numero: string;
+  code: string;
+  boutique: string;
+  slug: string;
+  total: number;
+  statut: string;
+  paiement: Paiement;
+  paiement_statut: string;
+  date: string;
+  articles: number;
+}

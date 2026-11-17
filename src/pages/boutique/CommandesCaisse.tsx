@@ -35,6 +35,17 @@ const CODES: Record<Paiement, string> = { livraison: 'especes', wave: 'wave', or
  * puis encaisse : la commande devient une vente de la session (stock, rapport de caisse, comptabilité)
  * et le ticket de caisse s'imprime. Les frais de livraison restent hors vente.
  */
+/** Lignes du ticket : la remise du code promo répartie au prorata (le reste sur la dernière ligne). */
+function repartirRemise(d: DetailCommande) {
+  const total = Number(d.remise ?? 0);
+  let reste = total;
+  return d.lignes.map((l, i) => {
+    const part = i === d.lignes.length - 1 ? reste : Math.floor((total * Number(l.montant)) / Math.max(1, Number(d.sous_total)));
+    reste -= part;
+    return { designation: l.designation, quantite: Number(l.quantite), prix_unitaire: Number(l.prix_unitaire), remise: part };
+  });
+}
+
 export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }: {
   org: string;
   sessionId: string;
@@ -132,10 +143,10 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
         numero: v.numero,
         date: new Date(),
         client: `${detail.client_nom} (${detail.numero})`,
-        lignes: detail.lignes.map((l) => ({ designation: l.designation, quantite: Number(l.quantite), prix_unitaire: Number(l.prix_unitaire) })),
+        lignes: repartirRemise(detail),
         reglements: [{
           moyen: m?.libelle ?? libellePaiement(detail.paiement, detail.paiement_libelle),
-          montant: Number(detail.sous_total),
+          montant: Number(detail.sous_total) - Number(detail.remise ?? 0),
           reference: reference.trim() || detail.reference_paiement || detail.numero_payeur || undefined,
         }],
       });
@@ -224,7 +235,8 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
                       <>
                         <p className="secondaire">
                           {c.paiement === 'livraison'
-                            ? 'Le client paie maintenant les articles.'
+                            ? <>Le client paie maintenant les articles{Number(detail?.remise) > 0 ? ` (code ${detail?.code_promo} : −${montant(detail?.remise)})` : ''}.
+                              {detail?.especes_remis ? <span className="monnaie-a-preparer"> 💵 Il donnera <b>{montant(detail.especes_remis)}</b> : préparez <b>{montant(Number(detail.especes_remis) - Number(detail.sous_total) + Number(detail.remise ?? 0))}</b> de monnaie.</span> : null}</>
                             : <>Déjà payé par {libellePaiement(c.paiement, detail?.paiement_libelle)} <Pastille ton="vert">reçu</Pastille>{detail?.reference_paiement ? ` · réf. ${detail.reference_paiement}` : ''}</>}
                           {c.mode === 'livraison' && ' Les frais de livraison ne passent pas en caisse.'}
                         </p>

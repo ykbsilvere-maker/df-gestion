@@ -3,6 +3,21 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.8.** **Comptes clients, codes promo, espèces** (migration 035). Sur DF Marché, un **espace « Mon compte »**
+façon Jumia : connexion ou création par **téléphone (ou e-mail) + mot de passe**, mes commandes sur tous les appareils,
+**bons d'achat**, favoris, consultés récemment, carnet d'adresses, gestion du compte, politique de confidentialité,
+déconnexion. Sans compte, la commande marche comme avant (infos gardées sur le navigateur). **Codes promo** (onglet
+« Codes promo » de Boutique en ligne) : pourcentage ou montant, minimum d'achat, date de fin, nombre d'utilisations,
+**pour tout le monde ou réservés à un compte client** (retrouvé par son e-mail ou son téléphone), affichés ou non dans les
+bons d'achat, **partageables** par un lien `/offre/<boutique>/<CODE>` qui applique le code automatiquement ; la caisse
+encaisse la remise sans droit de remise. **Paiement en deux familles : Mobile Money ou Espèces** ; en espèces le client
+indique son billet (montant exact, 10 000, 20 000…) et la caisse voit **la monnaie à préparer**. **Moyens ajoutés avec
+logo et lien de paiement** (`{montant}` dans le lien reçoit le montant ; un lien Wave reçoit `amount`). Ma vitrine :
+**logo de la boutique**, cartes « Livraison à domicile / Récupération au magasin » et **prix de livraison unique**.
+Produits en ligne : **« 🔥 Mettre en solde »** (−10 à −50 %, 3 jours à 1 mois). **La caisse sonne** quand une commande en
+ligne arrive (badge, vibration, notification). Site : fond de l'affiche animé avec les produits en flou, montants en
+**FCFA** et tailles réduites, frise de suivi entièrement verte une fois la commande remise, pied de page enrichi.
+
 **Version 3.7.** **Parcours de commande en étapes et galerie photos** (migration 034). Sur DF Marché, la commande
 suit un fil **Panier → Informations → Récapitulatif et paiement → Confirmation** : panier avec carte « Récapitulatif »
 et garanties (paiement sécurisé, stock en direct, reçu), formulaire « Coordonnées et livraison » (indicatif +225, cartes

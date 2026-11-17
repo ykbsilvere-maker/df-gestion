@@ -13,6 +13,7 @@ import { Boutique, Produit } from './pages/Boutique';
 import { Commander, Panier } from './pages/Commande';
 import { MesCommandes, Suivi } from './pages/Suivi';
 import { Conditions, Recu } from './pages/Recu';
+import { Bons, CommandesCompte, Confidentialite, Connexion, MonCompte, Offre, Profil, VusRecemment } from './pages/Compte';
 
 const CIBLES_ONDE =
   'button, .bouton, .carte-boutique, .tuile-rayon, .raccourcis .rond, .liste-commandes a, .encart-boutique, .pastille-lien, .entete-sous a, .rond-lien, .affiche';
@@ -77,6 +78,14 @@ createRoot(document.getElementById('root')!).render(
           <Route path="rayons" element={<Rayons />} />
           <Route path="rayons/:nom" element={<Rayons />} />
           <Route path="favoris" element={<Favoris />} />
+          <Route path="compte" element={<MonCompte />} />
+          <Route path="compte/connexion" element={<Connexion />} />
+          <Route path="compte/commandes" element={<CommandesCompte />} />
+          <Route path="compte/bons" element={<Bons />} />
+          <Route path="compte/profil" element={<Profil />} />
+          <Route path="compte/vus" element={<VusRecemment />} />
+          <Route path="confidentialite" element={<Confidentialite />} />
+          <Route path="offre/:slug/:code" element={<Offre />} />
           <Route path="boutique/:slug" element={<Boutique />} />
           <Route path="produit/:id" element={<Produit />} />
           <Route path="panier" element={<Panier />} />

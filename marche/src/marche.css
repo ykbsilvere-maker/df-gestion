@@ -910,3 +910,122 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
   .fiche-image:has(.galerie-produit) .badge-solde.grand { left: 100px; bottom: auto; top: 76px; }
 }
 @media (max-width: 480px) { .prix-bouton { display: none; } }
+
+/* =====================================================================
+   v3.8 — Fond animé de l'affiche, compte client, code promo, espèces
+   ===================================================================== */
+.banniere-fond { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.banniere-fond .flou { position: absolute; width: 42%; aspect-ratio: 1; object-fit: cover; border-radius: 50%; filter: blur(16px) saturate(1.4); opacity: 0.22;
+  animation: derive 18s ease-in-out infinite alternate; transition: opacity 1.2s ease; }
+.banniere-fond .flou.courant { opacity: 0.42; }
+.banniere-fond .flou-0 { top: -12%; left: -14%; }
+.banniere-fond .flou-1 { top: 4%; right: -16%; animation-duration: 22s; animation-delay: -4s; }
+.banniere-fond .flou-2 { bottom: -18%; left: 6%; animation-duration: 20s; animation-delay: -8s; }
+.banniere-fond .flou-3 { bottom: -10%; right: -8%; animation-duration: 24s; animation-delay: -2s; }
+.banniere-fond .flou-4 { top: 34%; left: -22%; animation-duration: 26s; animation-delay: -12s; }
+.banniere-fond .flou-5 { top: 30%; right: -24%; animation-duration: 19s; animation-delay: -6s; }
+.banniere-fond .flou-grand { position: absolute; left: 50%; top: 32%; width: 115%; aspect-ratio: 1; object-fit: cover; border-radius: 50%; transform: translate(-50%, -50%);
+  filter: blur(42px) saturate(1.5); opacity: 0.38; animation: respire 9s ease-in-out infinite, entree-fond 1.2s ease both; }
+@keyframes derive {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate(18%, 12%) scale(1.15) rotate(12deg); }
+  100% { transform: translate(-10%, 20%) scale(0.95) rotate(-8deg); }
+}
+@keyframes respire { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -52%) scale(1.08); } }
+@keyframes entree-fond { from { opacity: 0; } }
+.banniere-soldes .affiches { position: relative; z-index: 1; }
+.banniere-soldes .affiche-points { z-index: 2; }
+.affiche.courante .affiche-image { animation: flotte 4.5s ease-in-out infinite, arrivee 0.8s var(--ressort) both; }
+@keyframes flotte { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes arrivee { from { transform: scale(0.82) rotate(-6deg); opacity: 0.4; } }
+@media (prefers-reduced-motion: reduce) { .banniere-fond .flou, .banniere-fond .flou-grand, .affiche.courante .affiche-image { animation: none; } }
+
+/* Tailles plus sobres (FCFA) */
+.affiche h2 { font-size: clamp(1.3rem, 4.2vw, 2rem); }
+.affiche-prix strong { font-size: 1.45rem; }
+.suivi-total { font-size: 1.15rem; white-space: nowrap; }
+.carte-produit .prix strong, .prix-carte strong { font-size: 1rem; }
+.recap-totaux .total { font-size: 1.15rem !important; }
+.detail-commande td:last-child { white-space: nowrap; }
+.detail-commande .remise td, .recap-totaux .remise { color: var(--vert); font-weight: 600; }
+
+/* Compte client */
+.page-compte { max-width: 760px; margin: 0 auto; padding: 12px 16px 120px; }
+.page-compte.etroite { max-width: 520px; }
+.compte-tete { display: flex; align-items: center; gap: 14px; background: var(--degrade); color: #fff; border-radius: var(--rayon-l); padding: 18px; box-shadow: var(--ombre-forte); }
+.compte-tete h1 { margin: 0; font-size: 1.3rem; color: #fff; }
+.compte-tete small { opacity: 0.85; }
+.avatar { width: 56px; height: 56px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); display: grid; place-items: center; font-size: 1.5rem; font-weight: 800; flex: none; }
+.compte-invite { text-align: center; display: grid; gap: 10px; justify-items: center; background: var(--surface); border-radius: var(--rayon-l); padding: 24px 18px; box-shadow: var(--ombre); }
+.compte-invite h1 { margin: 0; font-size: 1.8rem; }
+.compte-invite p { margin: 0; color: var(--encre-douce); max-width: 420px; }
+.compte-invite .bouton { width: 100%; max-width: 380px; justify-content: center; }
+.compte-section { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--encre-douce); margin: 22px 4px 8px; }
+.liste-compte { background: var(--surface); border-radius: var(--rayon); box-shadow: var(--ombre); overflow: hidden; }
+.ligne-compte { display: flex; align-items: center; gap: 12px; padding: 14px 16px; color: var(--encre); text-decoration: none; border-bottom: 1px solid var(--trait); font-weight: 500; }
+.ligne-compte:last-child { border-bottom: 0; }
+.ligne-compte > span:nth-child(2) { flex: 1; }
+.ligne-compte-ico { width: 34px; height: 34px; border-radius: 10px; background: var(--rose); display: grid; place-items: center; font-size: 1rem; }
+.ligne-compte small { background: var(--rose); color: var(--rouge); font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+.ligne-compte .chevron { color: var(--encre-douce); font-size: 1.3rem; }
+.bouton-deconnexion { display: block; margin: 22px auto; border: 0; background: none; color: var(--rouge); font: inherit; font-weight: 700; font-size: 1.05rem; cursor: pointer; }
+.onglets-connexion { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface); border-radius: 999px; padding: 4px; box-shadow: var(--ombre); margin-bottom: 14px; }
+.onglets-connexion button { border: 0; background: none; border-radius: 999px; padding: 10px; font: inherit; font-weight: 700; cursor: pointer; color: var(--encre-douce); min-height: 0; }
+.onglets-connexion button.actif { background: var(--degrade); color: #fff; }
+.formulaire-compte { display: grid; gap: 12px; }
+.formulaire-compte h1 { margin: 0; font-size: 1.4rem; }
+.formulaire-compte label { display: grid; gap: 4px; font-weight: 600; font-size: 0.9rem; }
+.voir-mdp { border: 0; background: var(--fond); padding: 0 12px; cursor: pointer; min-height: 0; }
+.succes { background: #e9f7ef; color: var(--vert); border-radius: 12px; padding: 10px 12px; margin: 0; }
+.cartes-commandes { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.cartes-commandes a { display: grid; gap: 4px; background: var(--surface); border-radius: 16px; padding: 14px; box-shadow: var(--ombre); color: var(--encre); text-decoration: none; }
+.cartes-commandes a > div { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cartes-commandes small { color: var(--encre-douce); }
+.pastille-statut { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--fond); color: var(--encre-douce); }
+.pastille-statut.vert { background: #e9f7ef; color: var(--vert); }
+.pastille-statut.bleu { background: #e8f1fd; color: #1d5fbf; }
+.pastille-statut.rouge { background: var(--rose); color: var(--rouge); }
+.bons { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.bons li { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; background: var(--surface); border-radius: 16px; box-shadow: var(--ombre); overflow: hidden; }
+.bons li.personnel { box-shadow: 0 0 0 2px #f0b429, var(--ombre); }
+.bon-valeur { align-self: stretch; display: grid; place-items: center; background: var(--degrade); color: #fff; font-weight: 800; font-size: 1.15rem; position: relative; }
+.bon-valeur::after { content: ''; position: absolute; right: -7px; top: 0; bottom: 0; width: 14px; background: radial-gradient(circle at 7px 7px, var(--surface) 5px, transparent 5.5px) 0 0 / 14px 14px repeat-y; }
+.bon-corps { display: grid; gap: 2px; padding: 12px 14px; }
+.bon-corps small { color: var(--encre-douce); }
+.bon-code { font-family: ui-monospace, monospace; letter-spacing: 0.08em; font-weight: 700; color: var(--rouge); }
+.bons .bouton { margin-right: 12px; }
+.point.vert { background: var(--vert); }
+
+/* Offre partagée */
+.page-offre { max-width: 1100px; margin: 0 auto; padding: 12px 16px 120px; }
+.offre-carte { position: relative; overflow: hidden; text-align: center; color: #fff; display: grid; justify-items: center; gap: 6px; padding: 28px 18px; border-radius: var(--rayon-l);
+  background: radial-gradient(120% 120% at 85% 10%, #b3212b 0%, #3a1216 55%, #181311 100%); box-shadow: var(--ombre-forte); margin-bottom: 20px; }
+.offre-carte > * { position: relative; z-index: 1; }
+.offre-fond { position: absolute !important; inset: 0; z-index: 0 !important; background: radial-gradient(circle at 20% 80%, rgba(255, 210, 120, 0.25), transparent 40%), radial-gradient(circle at 80% 20%, rgba(255, 120, 120, 0.25), transparent 45%); animation: respire-offre 8s ease-in-out infinite; }
+@keyframes respire-offre { 50% { transform: scale(1.12); } }
+.offre-carte .logo-boutique, .offre-carte .monogramme { width: 64px; height: 64px; border-radius: 18px; background: #fff; }
+.offre-boutique { margin: 4px 0 0; opacity: 0.9; }
+.offre-valeur { margin: 0; font-size: 3rem; font-weight: 800; line-height: 1; color: #ffd27a; text-shadow: 0 6px 24px rgba(0, 0, 0, 0.35); animation: rebond 0.7s var(--ressort); }
+.offre-carte p { margin: 0; }
+.offre-code { background: rgba(255, 255, 255, 0.14); padding: 6px 14px; border-radius: 999px; font-size: 0.9rem; }
+.offre-carte .bouton { margin-top: 10px; max-width: 360px; width: 100%; justify-content: center; }
+
+/* Panier : code promo et espèces */
+.code-promo-saisie { display: flex; gap: 8px; }
+.code-promo-saisie input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+.code-ok { color: var(--vert); background: #e9f7ef; border-radius: 12px; padding: 8px 12px; margin: 8px 0; font-size: 0.9rem; }
+.familles-paiement { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.familles-paiement button { display: grid; justify-items: center; gap: 2px; padding: 14px 8px; border-radius: 16px; border: 2px solid var(--trait); background: #fff; font: inherit; cursor: pointer; transition: all 0.25s var(--ressort); }
+.familles-paiement button span { font-size: 1.6rem; }
+.familles-paiement button small { color: var(--encre-douce); font-size: 0.75rem; text-align: center; }
+.familles-paiement button.actif { border-color: var(--rouge); background: linear-gradient(160deg, #fff, var(--peche)); box-shadow: 0 0 0 4px rgba(179, 33, 43, 0.1); transform: translateY(-2px); }
+.bloc-especes { background: var(--fond); border-radius: 16px; padding: 12px; display: grid; gap: 10px; }
+.bloc-especes p { margin: 0; font-weight: 600; }
+.bloc-especes p small { display: block; font-weight: 400; color: var(--encre-douce); }
+.bloc-especes .choix-cartes button small { display: block; font-size: 0.72rem; color: var(--encre-douce); }
+.bloc-especes label { display: grid; gap: 4px; font-size: 0.85rem; font-weight: 600; }
+.pied-liens { display: grid; gap: 8px; align-content: start; }
+.pied-liens a { color: inherit; opacity: 0.85; text-decoration: none; }
+.pied-liens a:hover { opacity: 1; text-decoration: underline; }
+@media (min-width: 900px) { .pied-grille { grid-template-columns: 1.3fr 1.3fr 0.8fr 1fr 1.2fr !important; } }
+.raccourcis .rond[aria-hidden] { font-size: 1.3rem; }

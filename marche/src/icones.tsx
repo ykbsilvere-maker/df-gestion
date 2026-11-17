@@ -24,3 +24,4 @@ export const IcoTelephone = () => (<svg {...base} aria-hidden><path d="M5 3h3l2 
 export const IcoPartager = () => (<svg {...base} aria-hidden><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4" /></svg>);
 export const IcoFleche = () => (<svg {...base} aria-hidden><path d="M9 5l7 7-7 7" /></svg>);
 export const IcoFermer = () => (<svg {...base} aria-hidden><path d="M6 6l12 12M18 6 6 18" /></svg>);
+export const IcoCompte = () => (<svg {...base} aria-hidden><circle cx="12" cy="8" r="4" /><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6" /></svg>);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AutrePaiement, Paiement, Vitrine } from './api';
+import { urlPublique, type AutrePaiement, type Paiement, type Vitrine } from './api';
 import { fcfa } from './composants';
 
 /**
@@ -35,9 +35,10 @@ export const A_LA_LIVRAISON: Moyen = { code: 'livraison', cle: 'livraison', libe
 // Un moyen ajouté qui porte le nom d'un opérateur connu reprend son logo et sa couleur.
 const connu = (libelle: string) => MOYENS.find((m) => new RegExp(m.libelle.split(' ')[0]!, 'i').test(libelle));
 const versAutre = (a: AutrePaiement): Moyen => ({
-  code: 'autre', cle: `autre:${a.id}`, libelle: a.libelle, couleur: connu(a.libelle)?.couleur ?? '#5b4a3f', logo: connu(a.libelle)?.logo,
+  code: 'autre', cle: `autre:${a.id}`, libelle: a.libelle, couleur: connu(a.libelle)?.couleur ?? '#5b4a3f',
+  logo: (a.logo ? urlPublique('vitrines', a.logo) : null) ?? connu(a.libelle)?.logo,
   ussd: connu(a.libelle)?.ussd, autre: a,
-  aide: a.instructions || `Envoyez le montant au numéro ci-dessus avec ${a.libelle}.`,
+  aide: a.instructions || (a.lien ? `Touchez « Payer avec ${a.libelle} » : le montant est déjà rempli.` : `Envoyez le montant au numéro ci-dessus avec ${a.libelle}.`),
 });
 
 /** Le moyen d'une commande (pour un moyen ajouté, son nom vient de la commande). */
@@ -91,8 +92,21 @@ function Copier({ texte, libelle }: { texte: string; libelle: string }) {
 }
 
 /** Carte « Payez maintenant » : montant, numéro de la boutique et bouton qui ouvre l'appli ou le code. */
-export function CartePaiement({ m, numero, montant, beneficiaire, lienWave }: { m: Moyen; numero: string; montant: number; beneficiaire: string; lienWave?: string | null }) {
-  const brut = numero.replace(/[^0-9]/g, '');
+/** Lien de paiement avec le montant : « {montant} » est remplacé ; un lien Wave reçoit « amount ». */
+export function lienAvecMontant(lien: string, montant: number): string {
+  const m = String(Math.round(montant));
+  if (lien.includes('{montant}')) return lien.split('{montant}').join(m);
+  try {
+    const u = new URL(lien);
+    if (/(^|\.)wave\.com$/.test(u.hostname) && !u.searchParams.has('amount')) u.searchParams.set('amount', m);
+    return u.toString();
+  } catch {
+    return lien;
+  }
+}
+
+export function CartePaiement({ m, numero, montant, beneficiaire, lienWave }: { m: Moyen; numero: string | null; montant: number; beneficiaire: string; lienWave?: string | null }) {
+  const brut = (numero ?? '').replace(/[^0-9]/g, '');
   return (
     <div className="carte-paiement" style={{ ['--marque' as string]: m.couleur }}>
       <div className="carte-paiement-tete">
@@ -102,20 +116,24 @@ export function CartePaiement({ m, numero, montant, beneficiaire, lienWave }: { 
           <strong>{fcfa(montant)}</strong>
         </div>
       </div>
-      <div className="carte-paiement-numero">
-        <span>Au numéro de la boutique</span>
-        <strong className="numero">{numero}</strong>
-        <small>{beneficiaire}</small>
-      </div>
+      {numero && (
+        <div className="carte-paiement-numero">
+          <span>Au numéro de la boutique</span>
+          <strong className="numero">{numero}</strong>
+          <small>{beneficiaire}</small>
+        </div>
+      )}
       <div className="carte-paiement-actions">
-        {m.code === 'wave' && lienWave ? (
-          <a className="bouton bouton-marque" href={lienWave} target="_blank" rel="noreferrer">Ouvrir Wave et payer</a>
+        {m.autre?.lien ? (
+          <a className="bouton bouton-marque" href={lienAvecMontant(m.autre.lien, montant)} target="_blank" rel="noreferrer">Payer {fcfa(montant)} avec {m.libelle}</a>
+        ) : m.code === 'wave' && lienWave ? (
+          <a className="bouton bouton-marque" href={lienAvecMontant(lienWave, montant)} target="_blank" rel="noreferrer">Ouvrir Wave et payer {fcfa(montant)}</a>
         ) : m.code === 'wave' && ANDROID ? (
           <a className="bouton bouton-marque" href={APPLI_WAVE}>Ouvrir l’appli Wave</a>
         ) : m.ussd ? (
           <a className="bouton bouton-marque" href={versUssd(m.ussd)}>Ouvrir {m.libelle} ({m.ussd})</a>
         ) : null}
-        <Copier texte={brut} libelle="Copier le numéro" />
+        {brut && <Copier texte={brut} libelle="Copier le numéro" />}
         <Copier texte={String(Math.round(montant))} libelle="Copier le montant" />
       </div>
       {m.aide && <p className="secondaire petit">{m.aide} Ne communiquez jamais votre code secret : ni la boutique ni DF Marché ne vous le demanderont.</p>}

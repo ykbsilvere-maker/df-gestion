@@ -115,8 +115,9 @@ export function Suivi() {
         <p className={`phrase-statut ${s.statut}`}>{PHRASES[s.statut]}{s.statut === 'annulee' && s.motif ? ` Motif : ${s.motif}` : ''}</p>
         {s.statut !== 'annulee' && (
           <ol className="frise">
-            {etapes.map(([k, l, i]) => (
-              <li key={k} className={s.dates[k] ? 'faite' : ''}>
+            {etapes.map(([k, l, i], n) => (
+              // Une étape sautée (ex. « prête ») passe au vert dès qu'une étape suivante est atteinte.
+              <li key={k} className={s.dates[k] || etapes.slice(n + 1).some(([x]) => s.dates[x]) ? 'faite' : ''}>
                 <span aria-hidden>{i}</span>
                 <strong>{l}</strong>
                 <small>{s.dates[k] ? new Date(s.dates[k]!).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</small>
@@ -166,8 +167,10 @@ export function Suivi() {
             {s.lignes.map((l) => (
               <tr key={l.produit_id}><td>{Number(l.quantite)} × <Link to={`/produit/${l.produit_id}`}>{l.designation}</Link></td><td>{fcfa(l.montant)}</td></tr>
             ))}
+            {Number(s.remise) > 0 && <tr className="remise"><td>🎟️ Code {s.code_promo}</td><td>−{fcfa(s.remise)}</td></tr>}
             {s.mode === 'livraison' && <tr><td>Livraison {s.zone}</td><td>{fcfa(s.frais_livraison)}</td></tr>}
             <tr className="total"><td>Total</td><td>{fcfa(s.total)}</td></tr>
+            {s.especes_remis ? <tr><td>💵 Vous payez avec {fcfa(s.especes_remis)}</td><td>monnaie {fcfa(Number(s.especes_remis) - Number(s.total))}</td></tr> : null}
           </tbody>
         </table>
         <p className="secondaire">

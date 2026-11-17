@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { CreditsCaisse } from '../pages/credits/CreditsCaisse';
 import { CommandesCaisse } from '../pages/boutique/CommandesCaisse';
+import { useAlerteCommandes } from '../pages/boutique/Promotions';
 import { useIdentite } from '../lib/identite';
 import { clavierMontant, deviseCourante, lireMontant, montant, saisieMontant } from '../lib/argent';
 import { messageErreur } from '../lib/format';
@@ -612,6 +613,7 @@ function PointDeVente({
   const { peut } = useSession();
   const { identite } = useIdentite();
   const enLigne = useEnLigne();
+  const alerte = useAlerteCommandes(org, enLigne && peut('boutique.consulter'));
   const { imprimerTicket, imprimerA4, format, caseA4, choisirCase } = useImpressionCaisse();
 
   const [produits, setProduits] = useState<ProduitCaisse[]>([]);
@@ -985,9 +987,10 @@ function PointDeVente({
             Crédits
           </button>
           {peut('boutique.consulter') && (
-            <button type="button" className="bouton bouton-discret" onClick={() => setFenetre('commandes')} disabled={!enLigne}>
+            <button type="button" className={`bouton bouton-discret ${alerte.nouvelle ? 'sonne' : ''}`} onClick={() => { alerte.vu(); setFenetre('commandes'); }} disabled={!enLigne}>
               <Ico>🌐</Ico>
               Commandes en ligne
+              {alerte.nombre > 0 && <span className="badge-alerte">{alerte.nombre}</span>}
             </button>
           )}
           <button type="button" className="bouton bouton-discret" onClick={() => void rapportX()} disabled={!enLigne}>

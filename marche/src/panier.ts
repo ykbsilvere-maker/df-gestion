@@ -131,9 +131,9 @@ export function clientMemorise(): Partial<ClientMemo> {
     return {};
   }
 }
-export function memoriserClient(c: ClientMemo) {
+export function memoriserClient(c: Partial<ClientMemo>) {
   try {
-    localStorage.setItem(CLE_CLIENT, JSON.stringify(c));
+    localStorage.setItem(CLE_CLIENT, JSON.stringify({ ...clientMemorise(), ...c }));
   } catch {
     /* rien */
   }

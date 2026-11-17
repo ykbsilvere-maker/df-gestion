@@ -98,6 +98,7 @@ export function Recu() {
           </tbody>
           <tfoot>
             <tr><td colSpan={3}>Sous-total</td><td>{fcfa(s.sous_total)}</td></tr>
+            {Number(s.remise) > 0 && <tr><td colSpan={3}>Code promo {s.code_promo}</td><td>−{fcfa(s.remise)}</td></tr>}
             {s.mode === 'livraison' && <tr><td colSpan={3}>Frais de livraison</td><td>{fcfa(s.frais_livraison)}</td></tr>}
             <tr className="recu-total"><td colSpan={3}>TOTAL</td><td>{fcfa(s.total)}</td></tr>
           </tfoot>
