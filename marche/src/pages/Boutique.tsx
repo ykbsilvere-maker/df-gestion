@@ -276,7 +276,7 @@ export function Produit() {
             </button>
             {dispo > 0 && (
               <button className="bouton bouton-principal large" onClick={() => { ajouter(p, q); naviguer(`/commander/${v.slug}`); }}>
-                ⚡ Commander · {fcfa(Number(p.prix) * q)}
+                ⚡ Commander<span className="prix-bouton"> · {fcfa(Number(p.prix) * q)}</span>
               </button>
             )}
           </div>

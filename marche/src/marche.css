@@ -903,3 +903,10 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
 .etapes-accueil small { color: var(--encre-douce); font-size: 0.78rem; }
 .logos-pied { align-items: center; }
 .logos-pied span { font-size: 0.85rem; opacity: 0.85; }
+.fiche-image:has(.galerie-produit) .badge-solde.grand { bottom: 96px; }
+.barre-achat.double { background: var(--surface); padding: 8px 0; }
+@media (min-width: 900px) {
+  .fiche-image:has(.galerie-produit) .rond-flottant.retour { left: 100px; }
+  .fiche-image:has(.galerie-produit) .badge-solde.grand { left: 100px; bottom: auto; top: 76px; }
+}
+@media (max-width: 480px) { .prix-bouton { display: none; } }

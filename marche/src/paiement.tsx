@@ -32,8 +32,11 @@ export const MOYENS: Moyen[] = [
 ];
 export const A_LA_LIVRAISON: Moyen = { code: 'livraison', cle: 'livraison', libelle: 'À la livraison', logo: '/paiement/especes.svg', couleur: '#1f8a65' };
 
+// Un moyen ajouté qui porte le nom d'un opérateur connu reprend son logo et sa couleur.
+const connu = (libelle: string) => MOYENS.find((m) => new RegExp(m.libelle.split(' ')[0]!, 'i').test(libelle));
 const versAutre = (a: AutrePaiement): Moyen => ({
-  code: 'autre', cle: `autre:${a.id}`, libelle: a.libelle, couleur: '#5b4a3f', autre: a,
+  code: 'autre', cle: `autre:${a.id}`, libelle: a.libelle, couleur: connu(a.libelle)?.couleur ?? '#5b4a3f', logo: connu(a.libelle)?.logo,
+  ussd: connu(a.libelle)?.ussd, autre: a,
   aide: a.instructions || `Envoyez le montant au numéro ci-dessus avec ${a.libelle}.`,
 });
 
