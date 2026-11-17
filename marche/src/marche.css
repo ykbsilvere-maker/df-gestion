@@ -1290,3 +1290,10 @@ input, select, textarea { min-height: 46px; border-radius: 12px; padding: 10px 1
 @media (prefers-reduced-motion: reduce) {
   .hero-flotte, .appel-panier-images img, .defilant-piste, .stepper, .stepper-q, .grille-fraiche, .fondu { animation: none !important; }
 }
+/* Retouches 3.9 */
+.bandeau-annonces { background: var(--vert-fonce); }
+label .facultatif { align-self: flex-start; margin: -2px 0 0; }
+.flash-carte .carte-produit-pied { justify-content: space-between; align-items: flex-end; }
+.flash-carte .prix { align-items: flex-start; }
+.flash-carte .prix strong { color: #dc2626; }
+.bandeau-infos span { box-shadow: none; border: 1px solid var(--trait); }
