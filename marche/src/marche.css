@@ -758,3 +758,5 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
 .accordeon-corps { padding: 0 18px 16px; color: #4a423c; line-height: 1.55; animation: apparait 0.3s var(--doux); }
 .accordeon-corps p { margin: 0 0 8px; }
 .carte-paiement .secondaire { color: #fff; }
+.recu-paiement dl { min-width: 0; }
+.recu-paiement dd { min-width: 0; overflow-wrap: anywhere; }
