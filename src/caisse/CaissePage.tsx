@@ -669,10 +669,13 @@ function PointDeVente({
   const avecCode = useMemo(() => appliquerCode(panier, codePromo), [panier, codePromo]);
   const total = totalLignes(avecCode.lignes);
   const [parametres, setParametres] = useSearchParams();
+  const [commandeInitiale, setCommandeInitiale] = useState<string | null>(null);
   useEffect(() => {
     if (parametres.get('commandes') === '1') {
       setFenetre('commandes');
+      setCommandeInitiale(parametres.get('commande'));
       parametres.delete('commandes');
+      parametres.delete('commande');
       setParametres(parametres, { replace: true });
     }
   }, [parametres, setParametres]);
@@ -1382,7 +1385,7 @@ function PointDeVente({
         {fenetre === 'credits' && <CreditsCaisse org={org} sessionId={sessionCaisse.id} moyens={moyens} enLigne={enLigne} />}
       </Fenetre>
       <Fenetre titre="Commandes en ligne à remettre" ouverte={fenetre === 'commandes'} onFermer={() => setFenetre(null)} large>
-        {fenetre === 'commandes' && <CommandesCaisse org={org} sessionId={sessionCaisse.id} moyens={moyens} enLigne={enLigne}
+        {fenetre === 'commandes' && <CommandesCaisse org={org} sessionId={sessionCaisse.id} moyens={moyens} enLigne={enLigne} commandeInitiale={commandeInitiale}
           onImprimer={async (v) => {
             if (identite && impressionAuto) await imprimerTicket(<Recu identite={identite} vente={{ ...v, caissier, magasin: caisse.magasin_nom }} format={format} />);
             void chargerArticles();

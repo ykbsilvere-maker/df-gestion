@@ -367,7 +367,7 @@ function Affectation({ c, onFait }: { c: DetailCommande; onFait: (texte: string)
 
 export function FicheCommandeWeb() {
   const { id } = useParams();
-  const { peut, organisation } = useSession();
+  const { peut, organisation, session } = useSession();
   const naviguer = useNavigate();
   const [c, setC] = useState<DetailCommande | null>(null);
   const [justificatif, setJustificatif] = useState<string | null>(null);
@@ -480,6 +480,19 @@ export function FicheCommandeWeb() {
           />
         )}
         {!termine && !peutValider && c.caissier_nom && <p className="secondaire">👤 Affectée à {c.caissier_nom}</p>}
+        {!termine && !c.vente && ['confirmee', 'prete', 'en_livraison'].includes(c.statut) && peut('caisse.creer')
+          && (peutValider || (c.caissier_id && c.caissier_id === session?.user.id)) && (
+          <div className="remise-colis">
+            <button className="bouton bouton-principal" onClick={() => naviguer(`/caisse?commandes=1&commande=${c.id}`)}>
+              🧾 Remettre et encaisser
+            </button>
+            <span className="secondaire">
+              Ouvre votre caisse sur cette commande : {c.statut === 'confirmee' ? 'cochez chaque article rassemblé, puis ' : ''}remettez le colis
+              {c.mode === 'livraison' ? ' (au livreur ou au client)' : ' au client'} et encaissez{c.paiement === 'livraison' ? ` ${c.total.toLocaleString('fr-FR')} FCFA` : ''}.
+              La commande passe à « {c.mode === 'livraison' ? 'Livrée' : 'Remise'} ».
+            </span>
+          </div>
+        )}
         {!termine && peutValider && (
           <div className="actions-commande">
             {suivant && (

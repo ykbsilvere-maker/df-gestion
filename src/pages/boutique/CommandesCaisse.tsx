@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { messageErreur } from '../../lib/format';
@@ -48,8 +48,10 @@ function repartirRemise(d: DetailCommande) {
   });
 }
 
-export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }: {
+export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer, commandeInitiale }: {
   org: string;
+  /** Ouverte depuis la fiche d'une commande : elle est choisie d'office. */
+  commandeInitiale?: string | null;
   sessionId: string;
   moyens: MoyenPaiement[];
   enLigne: boolean;
@@ -81,6 +83,19 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
   useEffect(() => {
     if (enLigne) void charger();
   }, [charger, enLigne]);
+  const dejaChoisie = useRef(false);
+  useEffect(() => {
+    if (dejaChoisie.current || !commandeInitiale || !liste) return;
+    const c = liste.find((x) => x.id === commandeInitiale);
+    if (c) {
+      dejaChoisie.current = true;
+      choisir(c);
+    } else if (liste) {
+      dejaChoisie.current = true;
+      setErreur('Cette commande n’est pas dans vos commandes à remettre : elle doit vous être affectée par la gérante.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liste, commandeInitiale]);
 
   const chargerDetail = useCallback(async (id: string) => {
     const { data, error } = await supabase.rpc('commande_web_detail', { p_id: id });
