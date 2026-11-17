@@ -2532,3 +2532,5 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 @media (prefers-reduced-motion: reduce) {
   .lucarne, .code-carte, .clients-grille li, .page-catalogue tbody tr, .affectation, .qr-offre-image { animation: none; }
 }
+.barre-recherche .recherche-catalogue input[type='search']:focus { box-shadow: none !important; border: 0 !important; outline: none !important; }
+.recherche-catalogue input[type='search']::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
