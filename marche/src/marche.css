@@ -1395,3 +1395,6 @@ label .facultatif { align-self: flex-start; margin: -2px 0 0; }
 
 /* Apparitions plus discrètes et plus tôt */
 .avec-revele .revele { transform: translateY(14px); transition-duration: 0.5s; }
+.raccourcis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.carte-paiement-benef { color: inherit; opacity: 0.92; }
+.carte-paiement-benef b { color: inherit; }
