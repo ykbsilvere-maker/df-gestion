@@ -195,6 +195,30 @@ export function BoutonFavori({ p, flottant }: { p: ProduitCarte; flottant?: bool
   );
 }
 
+/** Une pastille s'envole du bouton vers le panier. */
+export function envol(depuis: HTMLElement | null) {
+  const cibles = [...document.querySelectorAll<HTMLElement>('.bulle-panier, .action-panier')].filter((e) => e.offsetParent !== null);
+  const cible = cibles[0];
+  if (!depuis || !cible || typeof depuis.animate !== 'function') return;
+  const a = depuis.getBoundingClientRect();
+  const b = cible.getBoundingClientRect();
+  const p = document.createElement('span');
+  p.className = 'envol';
+  p.style.left = `${a.left + a.width / 2 - 11}px`;
+  p.style.top = `${a.top + a.height / 2 - 11}px`;
+  document.body.appendChild(p);
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2);
+  const dy = b.top + b.height / 2 - (a.top + a.height / 2);
+  p.animate(
+    [
+      { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+      { transform: `translate(${dx * 0.5}px, ${Math.min(dy, 0) * 0.5 - 90}px) scale(1.25)`, opacity: 1, offset: 0.45 },
+      { transform: `translate(${dx}px, ${dy}px) scale(0.3)`, opacity: 0.5 },
+    ],
+    { duration: 650, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+  ).onfinish = () => p.remove();
+}
+
 export function BoutonAjout({ p }: { p: ProduitCarte }) {
   const [anim, setAnim] = useState(false);
   const indispo = Number(p.disponible) <= 0;
@@ -206,6 +230,7 @@ export function BoutonAjout({ p }: { p: ProduitCarte }) {
       aria-label={indispo ? 'Indisponible' : `Ajouter ${p.designation} au panier`}
       onClick={(e) => {
         e.preventDefault();
+        envol(e.currentTarget);
         ajouter(p);
         setAnim(true);
         window.setTimeout(() => setAnim(false), 500);
@@ -226,6 +251,7 @@ export function CarteProduit({ p, url, sansBoutique }: { p: ProduitCarte; url: s
           <ImageProduit url={url} alt={p.designation} />
           {r > 0 && <span className="badge-solde">−{r}%</span>}
           {rupture && <span className="badge-rupture">Rupture</span>}
+          {!rupture && p.commandes >= 30 && <span className="badge-top">Meilleure vente</span>}
           <BoutonFavori p={p} />
         </div>
         <h3>{p.designation}</h3>
@@ -359,7 +385,7 @@ export function BanniereSoldes({ soldes }: { soldes: ProduitCarte[] }) {
     >
       <div className="affiches" style={{ transform: `translateX(-${i * 100}%)` }}>
         {affiches.map((p, k) => (
-          <Link key={p.id} to={`/produit/${p.id}`} className="affiche" aria-hidden={k !== i} tabIndex={k === i ? 0 : -1}>
+          <Link key={p.id} to={`/produit/${p.id}`} className={`affiche ${k === i ? 'courante' : ''}`} aria-hidden={k !== i} tabIndex={k === i ? 0 : -1}>
             <div className="affiche-image">
               {p.photo && urls[p.photo] ? <img src={urls[p.photo]} alt="" /> : <span aria-hidden>🏷️</span>}
               <span className="affiche-remise">−{remise(p)}%</span>
@@ -394,7 +420,7 @@ export function VentesFlash({ soldes }: { soldes: ProduitCarte[] }) {
     <section className="ventes-flash">
       <div className="ventes-flash-tete">
         <div>
-          <h2>⚡ Ventes flash</h2>
+          <h2><i aria-hidden>⚡</i> Ventes flash</h2>
           {fin && <CompteARebours fin={fin} />}
         </div>
         <Link to="/soldes" className="rond-lien" aria-label="Tous les soldes"><IcoFleche /></Link>
@@ -473,6 +499,14 @@ export function EnTete() {
           </NavLink>
         </nav>
       </div>
+      <nav className="entete-sous" aria-label="Rubriques">
+        <NavLink to="/soldes" className={({ isActive }) => `chaud ${isActive ? 'active' : ''}`}>🔥 Soldes</NavLink>
+        <NavLink to="/boutiques">Boutiques</NavLink>
+        <NavLink to="/rayons">Rayons</NavLink>
+        <NavLink to="/recherche?tri=nouveautes">Nouveautés</NavLink>
+        <NavLink to="/mes-commandes">Suivre ma commande</NavLink>
+        <NavLink to="/favoris">Favoris</NavLink>
+      </nav>
     </header>
   );
 }

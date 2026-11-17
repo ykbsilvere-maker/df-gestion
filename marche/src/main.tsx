@@ -13,6 +13,28 @@ import { Boutique, Produit } from './pages/Boutique';
 import { Commander, Panier } from './pages/Commande';
 import { MesCommandes, Suivi } from './pages/Suivi';
 
+const CIBLES_ONDE =
+  'button, .bouton, .carte-boutique, .tuile-rayon, .raccourcis .rond, .liste-commandes a, .encart-boutique, .pastille-lien, .entete-sous a, .rond-lien, .affiche';
+
+/** Onde qui part du doigt (ou de la souris) sur tout ce qui se touche. */
+document.addEventListener(
+  'pointerdown',
+  (e) => {
+    const el = (e.target as HTMLElement | null)?.closest<HTMLElement>(CIBLES_ONDE);
+    if (!el || (el as HTMLButtonElement).disabled) return;
+    const r = el.getBoundingClientRect();
+    const t = Math.max(r.width, r.height) * 2.2;
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+    el.classList.add('a-onde');
+    const v = document.createElement('span');
+    v.className = 'vague';
+    v.style.cssText = `width:${t}px;height:${t}px;left:${e.clientX - r.left - t / 2}px;top:${e.clientY - r.top - t / 2}px`;
+    el.appendChild(v);
+    window.setTimeout(() => v.remove(), 650);
+  },
+  { passive: true },
+);
+
 function Cadre() {
   const { pathname } = useLocation();
   useEffect(() => {

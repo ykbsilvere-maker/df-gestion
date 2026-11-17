@@ -15,6 +15,7 @@ import {
   RangeeProduits,
   Squelettes,
   WhatsappFlottant,
+  envol,
   fcfa,
   lienWhatsapp,
   remise,
@@ -248,7 +249,7 @@ export function Produit() {
           <Disponibilite d={dispo} unite={p.unite} />
           {p.description && <div className="description">{p.description.split('\n').map((l, i) => <p key={i}>{l}</p>)}</div>}
           <div className="barre-achat">
-            <button className="bouton bouton-principal large" disabled={dispo <= 0} onClick={() => ajouter(p, q)}>
+            <button className="bouton bouton-principal large" disabled={dispo <= 0} onClick={(e) => { envol(e.currentTarget); ajouter(p, q); }}>
               {dispo <= 0 ? 'Indisponible' : <>Ajouter au panier · {fcfa(Number(p.prix) * q)}</>}
             </button>
           </div>

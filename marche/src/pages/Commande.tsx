@@ -53,9 +53,12 @@ export function Panier() {
       {boutiques.length > 1 && <p className="secondaire">Vos articles viennent de {boutiques.length} boutiques : chaque boutique prépare et livre sa commande.</p>}
       {boutiques.map((b) => {
         const total = b.articles.reduce((s, a) => s + a.prix * a.quantite, 0);
+        const nb = b.articles.reduce((s, a) => s + a.quantite, 0);
         return (
           <div key={b.slug} className="bloc panier-boutique">
             <h2><Link to={`/boutique/${b.slug}`}>🏪 {b.nom}</Link></h2>
+            <p className="sous-total-panier"><span>Sous-total ({nb} article{nb > 1 ? 's' : ''})</span><strong>{fcfa(total)}</strong></p>
+            <Link className="bouton bouton-principal large" to={`/commander/${b.slug}`}>Passer la commande ({nb} article{nb > 1 ? 's' : ''})</Link>
             <ul className="lignes-panier">
               {b.articles.map((a) => (
                 <li key={a.id}>
@@ -75,8 +78,7 @@ export function Panier() {
             </ul>
             <div className="panier-pied">
               <button className="bouton-lien" onClick={() => viderBoutique(b.slug)}>Vider</button>
-              <span>Articles : <strong>{fcfa(total)}</strong></span>
-              <Link className="bouton bouton-principal" to={`/commander/${b.slug}`}>Commander chez {b.nom} →</Link>
+              <Link className="bouton" to={`/boutique/${b.slug}`}>+ Ajouter des articles</Link>
             </div>
           </div>
         );
