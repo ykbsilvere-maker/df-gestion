@@ -72,11 +72,70 @@ export function usePhotos(chemins: (string | null | undefined)[]): Record<string
   return urls;
 }
 
-export function ImageProduit({ url, alt, grande }: { url: string | undefined; alt: string; grande?: boolean }) {
+const ILLUSTRATIONS: [RegExp, string, number][] = [
+  [/\briz\b|attiéké|attieke|semoule|mil\b/i, '🍚', 38],
+  [/huile|beurre|margarine/i, '🫒', 48],
+  [/sucre|bonbon|chocolat/i, '🍬', 330],
+  [/lait|yaourt|fromage/i, '🥛', 205],
+  [/\beau\b|minérale/i, '💧', 195],
+  [/jus|boisson|soda|coca|sirop|bissap/i, '🧃', 15],
+  [/bière|biere|vin\b|liqueur/i, '🍺', 40],
+  [/café|cafe|thé\b|the\b|nescafé/i, '☕', 25],
+  [/farine|pain|baguette|gâteau|gateau/i, '🍞', 35],
+  [/biscuit|cookie|gaufre/i, '🍪', 30],
+  [/pâte|pates|spaghetti|macaroni|nouille|indomie/i, '🍝', 45],
+  [/sardine|thon|conserve|boîte|boite|tomate concentrée/i, '🥫', 5],
+  [/poisson|thon|maquereau|crevette/i, '🐟', 200],
+  [/poulet|viande|boeuf|bœuf|saucisse/i, '🍗', 20],
+  [/oeuf|œuf/i, '🥚', 40],
+  [/tomate/i, '🍅', 5],
+  [/oignon|ail\b|piment|cube|maggi|épice|epice|sel\b/i, '🧂', 28],
+  [/banane|plantain|igname|manioc|fruit|légume|legume/i, '🍌', 55],
+  [/savon|lessive|omo|détergent|detergent|javel|eau de javel/i, '🧼', 190],
+  [/couche|bébé|bebe|biberon/i, '👶', 210],
+  [/crème|creme|pommade|lotion|parfum|cosmét|cosmet|déodorant|maquillage|rouge à lèvres/i, '💄', 325],
+  [/mèche|meche|perruque|cheveu/i, '💇', 300],
+  [/téléphone|telephone|smartphone|iphone|samsung|tecno|itel|infinix/i, '📱', 220],
+  [/chargeur|câble|cable|batterie|power ?bank|adaptateur/i, '🔌', 230],
+  [/écouteur|ecouteur|casque|enceinte|airpods|haut-parleur/i, '🎧', 260],
+  [/ordinateur|laptop|pc\b|clavier|souris|clé usb|cle usb/i, '💻', 225],
+  [/télé|tele|tv\b|téléviseur|decodeur|décodeur/i, '📺', 235],
+  [/montre/i, '⌚', 240],
+  [/ampoule|lampe|torche|led\b/i, '💡', 50],
+  [/ventilateur|climatiseur|frigo|réfrigérateur|congélateur/i, '🌀', 190],
+  [/pagne|wax|tissu|robe|chemise|pantalon|t-shirt|tee-shirt|habit|vêtement|vetement/i, '👗', 340],
+  [/chaussure|basket|sandale|tapette|soulier/i, '👟', 10],
+  [/sac\b|sacoche|valise/i, '👜', 25],
+  [/cahier|livre|stylo|crayon|bic\b|fourniture|cartable/i, '📓', 215],
+  [/ciment|fer\b|brique|tôle|tole|peinture|clou/i, '🧱', 15],
+  [/gaz|bouteille de gaz/i, '🔥', 10],
+  [/médicament|medicament|pharma|paracétamol/i, '💊', 150],
+  [/jouet|ballon|poupée/i, '🧸', 30],
+];
+
+/** Visuel de remplacement quand le produit n'a pas encore de photo : icône et teinte selon son nom ou son rayon. */
+export function illustration(designation: string, categorie?: string | null): { emoji: string; teinte: number } {
+  const texte = `${designation} ${categorie ?? ''}`;
+  for (const [re, emoji, teinte] of ILLUSTRATIONS) if (re.test(texte)) return { emoji, teinte };
+  let h = 0;
+  for (const c of categorie || designation) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return { emoji: '🛍️', teinte: h };
+}
+
+export function ImageProduit({ url, alt, grande, categorie }: { url: string | undefined; alt: string; grande?: boolean; categorie?: string | null }) {
   const [chargee, setChargee] = useState(false);
+  if (!url) {
+    const { emoji, teinte } = illustration(alt, categorie);
+    return (
+      <div className={`image-produit sans-photo ${grande ? 'grande' : ''}`} style={{ ['--teinte' as string]: teinte }}>
+        <span className="emoji-produit" aria-hidden>{emoji}</span>
+        {grande && <span className="sans-photo-texte">{categorie || 'Photo bientôt disponible'}</span>}
+      </div>
+    );
+  }
   return (
-    <div className={`image-produit ${grande ? 'grande' : ''} ${url && !chargee ? 'en-charge' : ''}`}>
-      {url ? <img src={url} alt={alt} loading="lazy" onLoad={() => setChargee(true)} className={chargee ? 'visible' : ''} /> : <span aria-hidden>🛍️</span>}
+    <div className={`image-produit ${grande ? 'grande' : ''} ${!chargee ? 'en-charge' : ''}`}>
+      <img src={url} alt={alt} loading="lazy" onLoad={() => setChargee(true)} className={chargee ? 'visible' : ''} />
     </div>
   );
 }
@@ -248,10 +307,10 @@ export function CarteProduit({ p, url, sansBoutique }: { p: ProduitCarte; url: s
     <article className={`carte-produit ${rupture ? 'en-rupture' : ''}`}>
       <Link to={`/produit/${p.id}`} className="carte-produit-lien">
         <div className="carte-produit-image">
-          <ImageProduit url={url} alt={p.designation} />
+          <ImageProduit url={url} alt={p.designation} categorie={p.categorie} />
           {r > 0 && <span className="badge-solde">−{r}%</span>}
           {rupture && <span className="badge-rupture">Rupture</span>}
-          {!rupture && p.commandes >= 30 && <span className="badge-top">Meilleure vente</span>}
+          {!rupture && (p.arrivage ? <span className="badge-arrivage">Nouvel arrivage</span> : (p.commandes >= 30 || Number(p.vendus ?? 0) >= 50) && <span className="badge-top">Meilleure vente</span>)}
           <BoutonFavori p={p} />
         </div>
         <h3>{p.designation}</h3>
@@ -263,6 +322,7 @@ export function CarteProduit({ p, url, sansBoutique }: { p: ProduitCarte; url: s
             {p.commandes > 0 && `${p.commandes} commande${p.commandes > 1 ? 's' : ''}`}
           </span>
         )}
+        {Number(p.vendus ?? 0) >= 3 && <span className="carte-produit-vendus">🔥 {Math.round(Number(p.vendus))} vendus ce mois</span>}
       </Link>
       <div className="carte-produit-pied">
         <Prix p={p} />
@@ -429,7 +489,7 @@ export function VentesFlash({ soldes }: { soldes: ProduitCarte[] }) {
         {soldes.map((p) => (
           <article key={p.id} className="flash-carte">
             <Link to={`/produit/${p.id}`}>
-              <ImageProduit url={p.photo ? urls[p.photo] : undefined} alt={p.designation} />
+              <ImageProduit url={p.photo ? urls[p.photo] : undefined} alt={p.designation} categorie={p.categorie} />
               <span className="badge-solde">−{remise(p)}%</span>
               <h3>{p.designation}</h3>
             </Link>
@@ -591,7 +651,11 @@ export function Pied() {
         </div>
         <div>
           <strong>Payer en confiance</strong>
-          <p>Vous payez directement la boutique : à la livraison, ou par Wave, Orange Money, MTN ou Moov sur son numéro. Ne donnez jamais votre code secret.</p>
+          <p>Vous payez directement la boutique : à la livraison, ou par Mobile Money sur son numéro officiel. Ne donnez jamais votre code secret.</p>
+          <p className="logos-pied">
+            {['orange.png', 'moov.png', 'wave.png', 'mtn.svg', 'djamo.png'].map((f) => <img key={f} src={`/paiement/${f}`} alt="" width={30} height={30} loading="lazy" />)}
+          </p>
+          <p><Link to="/conditions">Conditions générales de vente</Link> · <Link to="/mes-commandes">Suivre ma commande</Link></p>
         </div>
         <div>
           <strong>Vous êtes commerçant ?</strong>

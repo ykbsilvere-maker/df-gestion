@@ -47,6 +47,10 @@ export interface ProduitCarte {
   note: number | null;
   avis: number;
   commandes: number;
+  /** Vendus en caisse les 30 derniers jours (DF Gestion). */
+  vendus?: number;
+  /** Date du dernier réapprovisionnement, s'il a moins de 10 jours. */
+  arrivage?: string | null;
 }
 
 export interface Zone {
@@ -79,6 +83,9 @@ export interface Vitrine {
   numero_orange: string | null;
   numero_mtn: string | null;
   numero_moov: string | null;
+  numero_djamo?: string | null;
+  lien_wave?: string | null;
+  conditions?: string | null;
   beneficiaire: string;
   retrait: boolean;
   livraison: boolean;
@@ -103,6 +110,7 @@ export interface Accueil {
   soldes: ProduitCarte[];
   boutiques: Vitrine[];
   nouveautes: ProduitCarte[];
+  arrivages?: ProduitCarte[];
   populaires: ProduitCarte[];
   categories: string[];
   activites: string[];
@@ -122,7 +130,7 @@ export interface FicheBoutique extends Vitrine {
 }
 
 export type StatutCommande = 'nouvelle' | 'confirmee' | 'prete' | 'en_livraison' | 'livree' | 'annulee';
-export type Paiement = 'livraison' | 'wave' | 'orange_money' | 'mtn' | 'moov';
+export type Paiement = 'livraison' | 'wave' | 'orange_money' | 'mtn' | 'moov' | 'djamo';
 
 export interface Suivi {
   id: string;
@@ -141,8 +149,15 @@ export interface Suivi {
   total: number;
   justificatif: boolean;
   motif: string | null;
+  numero_payeur: string | null;
+  reference_paiement: string | null;
+  paiement_confirme_le: string | null;
+  client_telephone: string;
+  repere: string | null;
+  created_at: string;
+  vente: string | null;
   dates: Record<'passee' | 'confirmee' | 'prete' | 'expediee' | 'livree' | 'annulee', string | null>;
-  boutique: { nom: string; slug: string; telephone: string | null; whatsapp: string | null; adresse: string | null; commune: string | null; beneficiaire: string; numero_paiement: string | null };
+  boutique: { nom: string; slug: string; telephone: string | null; whatsapp: string | null; adresse: string | null; commune: string | null; beneficiaire: string; numero_paiement: string | null; lien_wave: string | null; ville: string | null };
   lignes: { produit_id: string; designation: string; quantite: number; prix_unitaire: number; montant: number; avis: number | null }[];
 }
 

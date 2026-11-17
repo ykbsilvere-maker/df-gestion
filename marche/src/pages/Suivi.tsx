@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { appeler, type Suivi as DonneesSuivi } from '../api';
 import { Chargement, Erreur, fcfa, lienWhatsapp } from '../composants';
 import { mesCommandes } from '../panier';
-import { LIBELLES_PAIEMENT, envoyerJustificatif } from './Commande';
+import { CartePaiement, LogoPaiement, moyen } from '../paiement';
+import { envoyerJustificatif } from './Commande';
 
 const ETAPES = [
   ['passee', 'Reçue', '📨'],
@@ -81,7 +82,7 @@ export function Suivi() {
   const wa = s.boutique.whatsapp;
   const messageBoutique =
     `Bonjour ${s.boutique.nom}, je viens de passer la commande ${s.numero} sur DF Marché (${fcfa(s.total)}, ` +
-    `${s.mode === 'livraison' ? `livraison ${s.zone ?? ''}` : 'retrait en boutique'}, paiement ${LIBELLES_PAIEMENT[s.paiement].libelle}).\nSuivi : ${lien}`;
+    `${s.mode === 'livraison' ? `livraison ${s.zone ?? ''}` : 'retrait en boutique'}, paiement ${moyen(s.paiement).libelle}).\nSuivi : ${lien}`;
   const etapes = ETAPES.filter(([k]) => s.mode === 'livraison' || k !== 'expediee');
   const attentePaiement = s.paiement !== 'livraison' && s.paiement_statut !== 'confirme' && s.statut !== 'annulee' && s.statut !== 'livree';
 
@@ -136,17 +137,34 @@ export function Suivi() {
 
       {attentePaiement && (
         <div className={`bloc paiement-attente ${s.paiement_statut === 'refuse' ? 'refuse' : ''}`}>
-          <h2>Paiement {LIBELLES_PAIEMENT[s.paiement].libelle}</h2>
+          <h2>Paiement {moyen(s.paiement).libelle}</h2>
           {s.paiement_statut === 'refuse' && <p className="alerte">La boutique n’a pas reçu le paiement{s.motif ? ` : ${s.motif}` : ''}. Vérifiez et renvoyez la capture.</p>}
-          <p>
-            Montant : <strong>{fcfa(s.total)}</strong> au <strong className="numero">{s.boutique.numero_paiement}</strong> ({s.boutique.beneficiaire}).
-          </p>
-          <p>{s.justificatif ? '📎 Capture reçue par la boutique.' : 'Pas encore de capture du paiement.'}</p>
+          {s.boutique.numero_paiement && (
+            <CartePaiement m={moyen(s.paiement)} numero={s.boutique.numero_paiement} montant={s.total} beneficiaire={s.boutique.beneficiaire} lienWave={s.boutique.lien_wave} />
+          )}
+          {(s.numero_payeur || s.reference_paiement) && (
+            <p className="secondaire">Payé depuis {s.numero_payeur ?? '—'}{s.reference_paiement ? ` · réf. ${s.reference_paiement}` : ''}</p>
+          )}
+          <p>{s.justificatif ? '📎 Capture reçue : la boutique vérifie le paiement.' : 'Pas encore de capture du paiement.'}</p>
           <label className="depot">
             <input type="file" accept="image/*,application/pdf" onChange={(e) => void deposer(e.target.files?.[0])} />
             <span>{s.justificatif ? 'Envoyer une autre capture' : '📎 Joindre la capture du paiement'}</span>
           </label>
           {depot && <p className="secondaire">{depot}</p>}
+        </div>
+      )}
+
+      {s.paiement !== 'livraison' && s.paiement_statut === 'confirme' && (
+        <div className="bloc paiement-confirme">
+          <LogoPaiement m={moyen(s.paiement)} taille={44} />
+          <div>
+            <strong>Paiement {moyen(s.paiement).libelle} confirmé ✓</strong>
+            <small>
+              {s.paiement_confirme_le ? `le ${new Date(s.paiement_confirme_le).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
+              {s.reference_paiement ? ` · réf. ${s.reference_paiement}` : ''}
+            </small>
+          </div>
+          <Link className="bouton bouton-principal" to={`/recu/${s.code_suivi}`}>🧾 Mon reçu</Link>
         </div>
       )}
 
@@ -168,6 +186,7 @@ export function Suivi() {
         <p className="actions-suivi">
           {wa && <a className="bouton bouton-whatsapp" href={lienWhatsapp(wa, `Bonjour ${s.boutique.nom}, au sujet de ma commande ${s.numero} : `)} target="_blank" rel="noreferrer">WhatsApp</a>}
           {s.boutique.telephone && <a className="bouton" href={`tel:${s.boutique.telephone.replace(/\s/g, '')}`}>📞 Appeler la boutique</a>}
+          <Link className="bouton" to={`/recu/${s.code_suivi}`}>🧾 {s.paiement_statut === 'confirme' ? 'Télécharger le reçu' : 'Bon de commande'}</Link>
           <button className="bouton" onClick={() => void navigator.clipboard?.writeText(lien)}>🔗 Copier le lien de suivi</button>
         </p>
       </div>

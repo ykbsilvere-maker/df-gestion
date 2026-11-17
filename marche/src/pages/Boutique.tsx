@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { A_LA_LIVRAISON, LogoPaiement, moyensEnLigne } from '../paiement';
 import { appeler, urlPublique, type FicheBoutique, type FicheProduit, type ProduitCarte, type Vitrine } from '../api';
 import {
   BoutonFavori,
@@ -219,7 +220,7 @@ export function Produit() {
     <div className="page-produit">
       <section className="fiche-produit">
         <div className="fiche-image">
-          <ImageProduit url={p.photo ? urls[p.photo] : undefined} alt={p.designation} grande />
+          <ImageProduit url={p.photo ? urls[p.photo] : undefined} alt={p.designation} categorie={p.categorie} grande />
           <button className="rond-flottant retour" onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/'))} aria-label="Retour"><IcoRetour /></button>
           <div className="actions-image">
             <button className="rond-flottant" onClick={partager} aria-label="Partager"><IcoPartager /></button>
@@ -233,6 +234,8 @@ export function Produit() {
           <div className="fiche-meta">
             <Etoiles note={p.note} avis={p.avis} />
             {p.commandes > 0 && <span>· {p.commandes} commande{p.commandes > 1 ? 's' : ''}</span>}
+            {Number(p.vendus ?? 0) >= 3 && <span className="vendus">· 🔥 {Math.round(Number(p.vendus))} vendus ce mois</span>}
+            {p.arrivage && <span className="badge-arrivage en-ligne">Nouvel arrivage</span>}
           </div>
           <div className="ligne-prix">
             <Prix p={p} grand />
@@ -253,6 +256,12 @@ export function Produit() {
             <button className="bouton bouton-principal large" disabled={dispo <= 0} onClick={(e) => { envol(e.currentTarget); ajouter(p, q); }}>
               {dispo <= 0 ? 'Indisponible' : <>Ajouter au panier · {fcfa(Number(p.prix) * q)}</>}
             </button>
+          </div>
+          <div className="paiements-acceptes">
+            <span>Paiement</span>
+            {moyensEnLigne(v).map((m) => <LogoPaiement key={m.code} m={m} taille={28} />)}
+            {v.paiement_livraison && <LogoPaiement m={A_LA_LIVRAISON} taille={28} />}
+            <small>{[...moyensEnLigne(v).map((m) => m.libelle), ...(v.paiement_livraison ? ['à la livraison'] : [])].join(' · ')}</small>
           </div>
           <Link to={`/boutique/${v.slug}`} className="encart-boutique">
             <LogoBoutique v={v} />

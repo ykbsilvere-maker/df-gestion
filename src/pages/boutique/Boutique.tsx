@@ -7,6 +7,9 @@ import { messageErreur } from '../../lib/format';
 import { clavierMontant, lireMontant, montant } from '../../lib/argent';
 import { Alerte, Champ, EnTetePage, Fenetre, MontantFort, Pastille, Vide } from '../../components/ui';
 import { Vignette, reduire } from '../../components/PhotoProduit';
+import { useIdentite } from '../../lib/identite';
+import { useImpression } from '../../impression/impression';
+import { BonCommandeWeb } from './BonCommande';
 import {
   PAIEMENTS,
   STATUTS,
@@ -228,7 +231,7 @@ export function CommandesWeb() {
   );
 }
 
-interface DetailCommande {
+export interface DetailCommande {
   id: string;
   organisation_id: string;
   numero: string;
@@ -264,6 +267,8 @@ interface DetailCommande {
   vente: { id: string; numero: string } | null;
   commandes_client: number;
   numero_boutique: string | null;
+  paiement_confirme_le: string | null;
+  confirme_par: string | null;
 }
 
 export function FicheCommandeWeb() {
@@ -278,6 +283,8 @@ export function FicheCommandeWeb() {
   const [motif, setMotif] = useState<null | { pour: 'annulee' | 'paiement'; texte: string }>(null);
   const [enCours, setEnCours] = useState(false);
   const peutValider = peut('boutique.valider');
+  const { identite } = useIdentite();
+  const { imprimer } = useImpression();
 
   const charger = useCallback(async () => {
     const { data, error } = await supabase.rpc('commande_web_detail', { p_id: id });
@@ -349,6 +356,9 @@ export function FicheCommandeWeb() {
               WhatsApp au client
             </a>
             <a className="bouton bouton-discret" href={`tel:${c.client_telephone.replace(/\s/g, '')}`}>📞 Appeler</a>
+            <button className="bouton bouton-discret" onClick={() => void imprimer(<BonCommandeWeb c={c} o={identite?.organisation} logoUrl={identite?.logoUrl ?? null} />, 'a4')}>
+              🧾 {c.paiement_statut === 'confirme' ? 'Imprimer le reçu' : 'Imprimer le bon'}
+            </button>
           </>
         }
       />
@@ -452,6 +462,9 @@ export function FicheCommandeWeb() {
               <>
                 <p>
                   <Pastille ton={STATUTS_PAIEMENT[c.paiement_statut].ton}>{STATUTS_PAIEMENT[c.paiement_statut].libelle}</Pastille>
+                  {c.paiement_statut === 'confirme' && c.paiement_confirme_le && (
+                    <span className="secondaire"> le {heure(c.paiement_confirme_le)}{c.confirme_par ? ` par ${c.confirme_par}` : ''}</span>
+                  )}
                 </p>
                 <dl className="details-commande">
                   <dt>Payé depuis</dt><dd>{c.numero_payeur ?? '—'}</dd>
@@ -467,7 +480,7 @@ export function FicheCommandeWeb() {
                   <p className="secondaire">Pas encore de capture du paiement.</p>
                 )}
                 <p className="secondaire">Vérifiez sur le téléphone de la boutique que la somme est bien arrivée avant de confirmer.</p>
-                {!termine && peutValider && c.paiement_statut !== 'confirme' && (
+                {!termine && (peutValider || (c.mode === 'retrait' && peut('caisse.creer'))) && c.paiement_statut !== 'confirme' && (
                   <div className="actions-commande">
                     <button className="bouton bouton-principal" disabled={enCours} onClick={() => void paiement(true)}>✅ Paiement reçu</button>
                     <button className="bouton bouton-discret" onClick={() => setMotif({ pour: 'paiement', texte: '' })}>Pas reçu</button>
@@ -721,6 +734,9 @@ interface Vitrine {
   numero_orange: string | null;
   numero_mtn: string | null;
   numero_moov: string | null;
+  numero_djamo?: string | null;
+  lien_wave?: string | null;
+  conditions?: string | null;
   beneficiaire: string | null;
   retrait: boolean;
   livraison: boolean;
@@ -760,7 +776,7 @@ export function MaVitrine() {
         slug: r.slug_propose || 'ma-boutique', publiee: false, magasin_id: '', nom: organisation!.nom, activite: null, slogan: null,
         description: null, telephone: null, whatsapp: null, email: null, ville: 'Abidjan', commune: null, adresse: null, latitude: null,
         longitude: null, horaires: 'Lundi au samedi, 8 h – 20 h', photos: [], paiement_livraison: true, numero_wave: null, numero_orange: null,
-        numero_mtn: null, numero_moov: null, beneficiaire: null, retrait: true, livraison: true, delai_preparation: 2, commande_minimum: 0,
+        numero_mtn: null, numero_moov: null, numero_djamo: null, lien_wave: null, conditions: null, beneficiaire: null, retrait: true, livraison: true, delai_preparation: 2, commande_minimum: 0,
       },
     );
   }, [org, organisation]);
@@ -935,9 +951,18 @@ export function MaVitrine() {
               <Champ label="Numéro Orange Money"><input value={v.numero_orange ?? ''} onChange={(e) => maj({ numero_orange: e.target.value })} inputMode="tel" /></Champ>
               <Champ label="Numéro MTN MoMo"><input value={v.numero_mtn ?? ''} onChange={(e) => maj({ numero_mtn: e.target.value })} inputMode="tel" /></Champ>
               <Champ label="Numéro Moov Money"><input value={v.numero_moov ?? ''} onChange={(e) => maj({ numero_moov: e.target.value })} inputMode="tel" /></Champ>
+              <Champ label="Numéro Djamo"><input value={v.numero_djamo ?? ''} onChange={(e) => maj({ numero_djamo: e.target.value })} inputMode="tel" /></Champ>
             </div>
+            <p className="secondaire">Seuls les moyens dont vous donnez le numéro sont proposés au client. Laissez vide un moyen que vous n’acceptez pas.</p>
+            <Champ label="Lien de paiement Wave (facultatif)" aide="Votre lien marchand pay.wave.com : le bouton du site ouvre alors directement Wave avec votre compte">
+              <input value={v.lien_wave ?? ''} onChange={(e) => maj({ lien_wave: e.target.value })} inputMode="url" placeholder="https://pay.wave.com/m/…" />
+            </Champ>
             <Champ label="Nom du bénéficiaire affiché" aide="Le nom qui apparaît chez le client au moment du transfert">
               <input value={v.beneficiaire ?? ''} onChange={(e) => maj({ beneficiaire: e.target.value })} maxLength={80} />
+            </Champ>
+            <Champ label="Vos conditions de vente (facultatif)" aide="Retours, échanges, garantie… Affichées sur la page « Conditions » du site, avant les conditions générales">
+              <textarea rows={4} value={v.conditions ?? ''} onChange={(e) => maj({ conditions: e.target.value })} maxLength={8000}
+                placeholder="Ex. Échange possible sous 48 h avec le reçu, article non utilisé." />
             </Champ>
           </section>
 

@@ -2,14 +2,13 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { appeler, supabase, erreurLisible, type FicheBoutique, type Paiement } from '../api';
 import { Chargement, Erreur, ImageProduit, LogoBoutique, fcfa, usePhotos } from '../composants';
+import { A_LA_LIVRAISON, CartePaiement, LogoPaiement, moyen as moyenDe, moyensEnLigne, numeroDe } from '../paiement';
 import { changerQuantite, clientMemorise, memoriserClient, memoriserCommande, usePanier, viderBoutique } from '../panier';
 
-export const LIBELLES_PAIEMENT: Record<Paiement, { libelle: string; couleur: string; champ?: 'numero_wave' | 'numero_orange' | 'numero_mtn' | 'numero_moov' }> = {
-  livraison: { libelle: 'À la livraison', couleur: '#555' },
-  wave: { libelle: 'Wave', couleur: '#1dc8f2', champ: 'numero_wave' },
-  orange_money: { libelle: 'Orange Money', couleur: '#ff7900', champ: 'numero_orange' },
-  mtn: { libelle: 'MTN MoMo', couleur: '#ffcb05', champ: 'numero_mtn' },
-  moov: { libelle: 'Moov Money', couleur: '#0066b3', champ: 'numero_moov' },
+/** Libellés courts des moyens de paiement (repris par le suivi). */
+export const LIBELLES_PAIEMENT: Record<Paiement, { libelle: string }> = {
+  livraison: { libelle: 'À la livraison' }, wave: { libelle: 'Wave' }, orange_money: { libelle: 'Orange Money' },
+  mtn: { libelle: 'MTN MoMo' }, moov: { libelle: 'Moov Money' }, djamo: { libelle: 'Djamo' },
 };
 
 /** Envoie la capture du paiement (image réduite) puis la rattache à la commande. */
@@ -62,7 +61,7 @@ export function Panier() {
             <ul className="lignes-panier">
               {b.articles.map((a) => (
                 <li key={a.id}>
-                  <ImageProduit url={a.photo ? urls[a.photo] : undefined} alt="" />
+                  <ImageProduit url={a.photo ? urls[a.photo] : undefined} alt={a.designation} />
                   <div>
                     <Link to={`/produit/${a.id}`}>{a.designation}</Link>
                     <small>{fcfa(a.prix)}{a.prix < a.prix_normal && <s> {fcfa(a.prix_normal)}</s>}</small>
@@ -103,7 +102,7 @@ export function Commander() {
   const [f, setF] = useState({
     nom: memo.nom ?? '', telephone: memo.telephone ?? '', email: memo.email ?? '', mode: '' as '' | 'livraison' | 'retrait', zone: '',
     adresse: memo.adresse ?? '', repere: memo.repere ?? '', quand: 'vite' as 'vite' | 'choisir', souhaite: '', note: '',
-    paiement: '' as '' | Paiement, payeur: '', reference: '',
+    paiement: '' as '' | Paiement, payeur: '', reference: '', accepte: false,
   });
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [fichier, setFichier] = useState<File | null>(null);
@@ -119,7 +118,7 @@ export function Commander() {
         setF((y) => ({
           ...y,
           mode: y.mode || (x.livraison ? 'livraison' : 'retrait'),
-          paiement: y.paiement || (x.paiement_livraison ? 'livraison' : x.numero_wave ? 'wave' : x.numero_orange ? 'orange_money' : x.numero_mtn ? 'mtn' : 'moov'),
+          paiement: y.paiement || (moyensEnLigne(x)[0]?.code ?? 'livraison'),
         }));
       })
       .catch((e: Error) => setErreur(e.message));
@@ -133,8 +132,8 @@ export function Commander() {
   const sousTotal = b.articles.reduce((s, a) => s + a.prix * a.quantite, 0);
   const frais = f.mode === 'livraison' ? Number(zone?.frais ?? 0) : 0;
   const total = sousTotal + frais;
-  const moyens = (Object.keys(LIBELLES_PAIEMENT) as Paiement[]).filter((k) => (k === 'livraison' ? v.paiement_livraison : !!v[LIBELLES_PAIEMENT[k].champ!]));
-  const numero = f.paiement && f.paiement !== 'livraison' ? (v[LIBELLES_PAIEMENT[f.paiement].champ!] as string | null) : null;
+  const enLigne = moyensEnLigne(v);
+  const numero = f.paiement ? numeroDe(v, f.paiement) : null;
   const minimum = new Date(Date.now() + Math.max(1, v.delai_preparation) * 3600000);
   const maj = (x: Partial<typeof f>) => setF((y) => ({ ...y, ...x }));
 
@@ -150,6 +149,7 @@ export function Commander() {
     e.preventDefault();
     setErreur('');
     if (f.mode === 'livraison' && !f.zone) return setErreur('Choisissez votre zone de livraison.');
+    if (!f.accepte) return setErreur('Cochez « J’ai lu et j’accepte les conditions de vente ».');
     if (f.paiement && f.paiement !== 'livraison' && !fichier && !f.reference.trim())
       return setErreur('Joignez la capture du paiement (ou au moins la référence de la transaction).');
     setEnCours(true);
@@ -241,24 +241,39 @@ export function Commander() {
 
         <div className="bloc">
           <h2>3. Paiement</h2>
-          <div className="choix-cartes paiements">
-            {moyens.map((k) => (
-              <button type="button" key={k} className={f.paiement === k ? 'actif' : ''} style={{ borderLeftColor: LIBELLES_PAIEMENT[k].couleur }} onClick={() => maj({ paiement: k })}>
-                <strong>{LIBELLES_PAIEMENT[k].libelle}</strong>
-                <small>{k === 'livraison' ? (f.mode === 'retrait' ? 'Vous payez au retrait' : 'Vous payez au livreur') : 'Transfert direct à la boutique'}</small>
-              </button>
-            ))}
+          <div className="choix-paiement" role="radiogroup" aria-label="Moyen de paiement">
+            {enLigne.length > 0 && <p className="sous-titre-paiement">Payer maintenant, directement à la boutique</p>}
+            <div className="logos-paiement">
+              {enLigne.map((m) => (
+                <button type="button" role="radio" aria-checked={f.paiement === m.code} key={m.code} className={f.paiement === m.code ? 'actif' : ''}
+                  style={{ ['--marque' as string]: m.couleur }} onClick={() => maj({ paiement: m.code })}>
+                  <LogoPaiement m={m} taille={52} />
+                  <span>{m.libelle}</span>
+                </button>
+              ))}
+              {v.paiement_livraison && (
+                <button type="button" role="radio" aria-checked={f.paiement === 'livraison'} className={f.paiement === 'livraison' ? 'actif' : ''}
+                  style={{ ['--marque' as string]: A_LA_LIVRAISON.couleur }} onClick={() => maj({ paiement: 'livraison' })}>
+                  <LogoPaiement m={A_LA_LIVRAISON} taille={52} />
+                  <span>{f.mode === 'retrait' ? 'Au retrait' : 'À la livraison'}</span>
+                </button>
+              )}
+            </div>
           </div>
+          {f.paiement === 'livraison' && (
+            <p className="secondaire">Vous payez {f.mode === 'retrait' ? 'à la caisse en récupérant' : 'au livreur en recevant'} votre commande : espèces ou Mobile Money.</p>
+          )}
           {f.paiement && f.paiement !== 'livraison' && numero && (
             <div className="instructions-paiement">
-              <p>
-                Envoyez <strong>{fcfa(total)}</strong> par <strong>{LIBELLES_PAIEMENT[f.paiement].libelle}</strong> au{' '}
-                <strong className="numero">{numero}</strong> ({v.beneficiaire}).
-              </p>
-              <p className="secondaire">Ne communiquez jamais votre code secret : la boutique n’en a pas besoin. La commande est confirmée dès que la boutique voit le paiement.</p>
+              <CartePaiement m={moyenDe(f.paiement)} numero={numero} montant={total} beneficiaire={v.beneficiaire} lienWave={v.lien_wave} />
+              <ol className="etapes-paiement">
+                <li>Envoyez <strong>{fcfa(total)}</strong> avec le bouton ci-dessus.</li>
+                <li>Indiquez le numéro qui a payé et la référence reçue par SMS.</li>
+                <li>Joignez la capture : la boutique vérifie et confirme, vous recevez votre reçu.</li>
+              </ol>
               <div className="champs-2">
                 <label>Numéro qui a payé<input value={f.payeur} onChange={(e) => maj({ payeur: e.target.value })} required inputMode="tel" placeholder="07 00 00 00 00" /></label>
-                <label>Référence de la transaction (facultatif)<input value={f.reference} onChange={(e) => maj({ reference: e.target.value })} maxLength={60} /></label>
+                <label>Référence de la transaction<input value={f.reference} onChange={(e) => maj({ reference: e.target.value })} maxLength={60} placeholder="Ex. MP231117.1234.A56789" /></label>
               </div>
               <label className="depot">
                 <input type="file" accept="image/*,application/pdf" onChange={(e) => setFichier(e.target.files?.[0] ?? null)} />
@@ -266,6 +281,10 @@ export function Commander() {
               </label>
             </div>
           )}
+          <label className="case-cgv">
+            <input type="checkbox" checked={f.accepte} onChange={(e) => maj({ accepte: e.target.checked })} />
+            <span>J’ai lu et j’accepte les <Link to={`/conditions?boutique=${v.slug}`} target="_blank">conditions de vente</Link>.</span>
+          </label>
         </div>
       </div>
 
@@ -275,7 +294,7 @@ export function Commander() {
           <ul className="recap-lignes">
             {b.articles.map((a) => (
               <li key={a.id}>
-                <ImageProduit url={a.photo ? urls[a.photo] : undefined} alt="" />
+                <ImageProduit url={a.photo ? urls[a.photo] : undefined} alt={a.designation} />
                 <span>{a.quantite} × {a.designation}</span>
                 <strong>{fcfa(a.prix * a.quantite)}</strong>
               </li>

@@ -2294,3 +2294,8 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
   .frise-commande li { font-size: 0.72rem; }
   .details-commande { grid-template-columns: 1fr; }
 }
+
+/* v3.6 — vérification du paiement en ligne à la caisse */
+.verification-paiement { display: grid; gap: 8px; background: color-mix(in srgb, var(--or, #f0b429) 10%, transparent); border-radius: 12px; padding: 10px 12px; }
+.verification-paiement .justificatif-paiement img { max-height: 260px; }
+.rapport-a4 .bloc-paiement-web { grid-template-columns: repeat(3, 1fr); margin-top: 6mm; }

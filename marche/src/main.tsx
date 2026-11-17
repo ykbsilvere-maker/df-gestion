@@ -12,6 +12,7 @@ import { Accueil, Favoris, ListeBoutiques, Rayons, Recherche } from './pages/Cat
 import { Boutique, Produit } from './pages/Boutique';
 import { Commander, Panier } from './pages/Commande';
 import { MesCommandes, Suivi } from './pages/Suivi';
+import { Conditions, Recu } from './pages/Recu';
 
 const CIBLES_ONDE =
   'button, .bouton, .carte-boutique, .tuile-rayon, .raccourcis .rond, .liste-commandes a, .encart-boutique, .pastille-lien, .entete-sous a, .rond-lien, .affiche';
@@ -82,6 +83,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="commander/:slug" element={<Commander />} />
           <Route path="suivi/:code" element={<Suivi />} />
           <Route path="mes-commandes" element={<MesCommandes />} />
+          <Route path="recu/:code" element={<Recu />} />
+          <Route path="conditions" element={<Conditions />} />
           <Route path="*" element={<Introuvable />} />
         </Route>
       </Routes>

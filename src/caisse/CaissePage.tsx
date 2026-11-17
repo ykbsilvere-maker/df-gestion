@@ -1286,7 +1286,11 @@ function PointDeVente({
         {fenetre === 'credits' && <CreditsCaisse org={org} sessionId={sessionCaisse.id} moyens={moyens} enLigne={enLigne} />}
       </Fenetre>
       <Fenetre titre="Commandes en ligne à remettre" ouverte={fenetre === 'commandes'} onFermer={() => setFenetre(null)} large>
-        {fenetre === 'commandes' && <CommandesCaisse org={org} sessionId={sessionCaisse.id} moyens={moyens} enLigne={enLigne} />}
+        {fenetre === 'commandes' && <CommandesCaisse org={org} sessionId={sessionCaisse.id} moyens={moyens} enLigne={enLigne}
+          onImprimer={async (v) => {
+            if (identite && impressionAuto) await imprimerTicket(<Recu identite={identite} vente={{ ...v, caissier, magasin: caisse.magasin_nom }} format={format} />);
+            void chargerArticles();
+          }} />}
       </Fenetre>
       <Fenetre titre="Ventes de la session" ouverte={fenetre === 'ventes'} onFermer={() => setFenetre(null)} large>
         {liste.length === 0 ? (

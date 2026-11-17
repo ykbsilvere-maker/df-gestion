@@ -623,3 +623,138 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
   .voir-resultats, .bouton-filtres, .voile { display: none !important; }
   .retour-haut { bottom: 96px; right: 33px; }
 }
+
+/* =====================================================================
+   v3.6 — Paiement Mobile Money, reçu, conditions, visuels sans photo
+   ===================================================================== */
+.image-produit.sans-photo {
+  position: relative;
+  background:
+    radial-gradient(120% 90% at 20% 10%, hsl(var(--teinte) 85% 94%) 0%, transparent 60%),
+    linear-gradient(150deg, hsl(var(--teinte) 70% 88%) 0%, hsl(calc(var(--teinte) + 25) 60% 78%) 100%);
+}
+.image-produit.sans-photo::after { content: ''; position: absolute; inset: auto -20% -35% 30%; height: 70%; border-radius: 50%; background: rgba(255, 255, 255, 0.35); filter: blur(2px); }
+.image-produit.sans-photo .emoji-produit { position: relative; z-index: 1; font-size: 3.1rem; opacity: 1; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.18)); transition: transform 0.4s var(--ressort); }
+.carte-produit:hover .image-produit.sans-photo .emoji-produit { transform: scale(1.12) rotate(-4deg); }
+.image-produit.grande.sans-photo .emoji-produit { font-size: 7.5rem; }
+.sans-photo-texte { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; z-index: 1; font-weight: 600; color: hsl(var(--teinte) 40% 28%); font-size: 0.85rem; opacity: 0.8; }
+.lignes-panier .image-produit.sans-photo .emoji-produit, .recap-lignes .image-produit.sans-photo .emoji-produit { font-size: 1.5rem; }
+
+.badge-arrivage { position: absolute; bottom: 8px; left: 8px; background: #0f7b53; color: #fff; font-weight: 700; padding: 3px 9px; border-radius: 999px; font-size: 0.7rem; }
+.badge-arrivage.en-ligne { position: static; margin-left: 6px; }
+.carte-produit-vendus { display: block; font-size: 0.74rem; color: #b8461f; font-weight: 600; margin: 2px 4px 0; }
+.fiche-meta .vendus { color: #b8461f; font-weight: 600; }
+
+/* Logos et tuiles de paiement */
+.logo-paiement { border-radius: 22%; object-fit: cover; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); flex: none; }
+.sous-titre-paiement { margin: 0 0 8px; font-weight: 600; font-size: 0.9rem; color: var(--encre-douce); }
+.logos-paiement { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.logos-paiement button {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 8px 12px; border-radius: 18px;
+  border: 2px solid var(--trait); background: #fff; font: inherit; font-weight: 600; font-size: 0.85rem; cursor: pointer;
+  transition: transform 0.2s var(--ressort), border-color 0.2s, box-shadow 0.2s;
+}
+.logos-paiement button:active { transform: scale(0.95); }
+.logos-paiement button.actif { border-color: var(--marque); box-shadow: 0 0 0 4px color-mix(in srgb, var(--marque) 18%, transparent); transform: translateY(-2px); }
+.logos-paiement button.actif .logo-paiement { animation: rebond 0.45s var(--ressort); }
+@keyframes rebond { 0% { transform: scale(0.8); } 100% { transform: scale(1); } }
+
+.instructions-paiement { background: #fff; border: 0; padding: 0; display: grid; gap: 12px; }
+.carte-paiement {
+  border-radius: 22px; padding: 16px; color: #fff; display: grid; gap: 14px;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--marque) 92%, #000) 0%, color-mix(in srgb, var(--marque) 70%, #000) 100%);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--marque) 35%, transparent);
+  animation: apparait 0.35s var(--doux);
+}
+@keyframes apparait { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.carte-paiement-tete { display: flex; align-items: center; gap: 12px; }
+.carte-paiement-tete span { display: block; font-size: 0.85rem; opacity: 0.9; }
+.carte-paiement-tete strong { font-size: 1.6rem; line-height: 1.1; }
+.carte-paiement-numero { background: rgba(255, 255, 255, 0.16); border-radius: 16px; padding: 10px 14px; display: grid; }
+.carte-paiement-numero span, .carte-paiement-numero small { font-size: 0.8rem; opacity: 0.9; }
+.carte-paiement-numero .numero { font-size: 1.45rem; letter-spacing: 0.06em; }
+.carte-paiement-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.carte-paiement-actions .bouton { background: rgba(255, 255, 255, 0.18); color: #fff; border-color: transparent; }
+.bouton-marque { flex: 1 1 100%; background: #fff !important; color: color-mix(in srgb, var(--marque) 80%, #000) !important; font-weight: 800; justify-content: center; min-height: 50px; font-size: 1.02rem; }
+.carte-paiement .avertissement, .carte-paiement p { margin: 0; font-size: 0.78rem; opacity: 0.92; }
+.etapes-paiement { margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 0.9rem; color: var(--encre-douce); }
+.champs-2 { display: grid; gap: 10px; }
+@media (min-width: 640px) { .champs-2 { grid-template-columns: 1fr 1fr; } }
+.case-cgv { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; font-size: 0.92rem; cursor: pointer; }
+.case-cgv input { width: 20px; height: 20px; min-height: 0; accent-color: var(--rouge); margin-top: 1px; flex: none; }
+.case-cgv a { color: var(--rouge); font-weight: 600; }
+
+.paiement-confirme { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border: 2px solid #a7e3c3; background: linear-gradient(160deg, #effbf4, #fff); }
+.paiement-confirme > div { flex: 1; display: grid; }
+.paiement-confirme small { color: var(--encre-douce); }
+.paiements-acceptes { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 14px 0; font-size: 0.85rem; }
+.paiements-acceptes > span { font-weight: 700; margin-right: 4px; }
+.paiements-acceptes small { flex-basis: 100%; color: var(--encre-douce); }
+.logos-pied { display: flex; gap: 8px; flex-wrap: wrap; }
+.logos-pied img { border-radius: 8px; background: #fff; }
+.pied a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Reçu / bon de commande */
+.page-recu { max-width: 760px; margin: 0 auto; padding: 16px; }
+.barre-recu { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.aide-recu { font-size: 0.82rem; margin: 8px 0 14px; }
+.recu { position: relative; background: #fff; border-radius: 20px; box-shadow: var(--ombre-forte); padding: 26px 24px; overflow: hidden; color: #1d1d1d; }
+.recu::before { content: ''; position: absolute; inset: 0 0 auto; height: 6px; background: var(--degrade); }
+.recu.confirme::before { background: linear-gradient(90deg, #0f7b53, #18a058); }
+.recu-tete { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1.5px dashed #ddd; padding-bottom: 16px; }
+.recu-tete > div { display: grid; gap: 2px; }
+.recu-boutique { font-size: 1.3rem; }
+.recu-tete small { color: #666; }
+.recu-titre { text-align: right; }
+.recu-titre h1 { margin: 0; font-size: 1.15rem; letter-spacing: 0.08em; color: var(--rouge); }
+.recu.confirme .recu-titre h1 { color: #0f7b53; }
+.recu-titre span { font-weight: 700; font-size: 1.05rem; }
+.recu-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+.recu-parties > div { display: grid; gap: 2px; background: #faf7f4; border-radius: 12px; padding: 10px 12px; }
+.recu-parties span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #888; }
+.recu-parties small { color: #666; }
+.recu-lignes { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.recu-lignes th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #888; border-bottom: 1.5px solid #eee; padding: 6px 4px; }
+.recu-lignes td { padding: 8px 4px; border-bottom: 1px solid #f2f2f2; }
+.recu-lignes th:not(:first-child), .recu-lignes td:not(:first-child) { text-align: right; white-space: nowrap; }
+.recu-lignes tfoot td { border: 0; padding: 4px; }
+.recu-lignes tfoot td:first-child { text-align: right; color: #666; }
+.recu-total td { font-size: 1.15rem; font-weight: 800; border-top: 2px solid #1d1d1d !important; padding-top: 8px !important; color: #1d1d1d !important; }
+.recu-paiement { display: flex; gap: 14px; align-items: flex-start; margin-top: 18px; background: #f7f9fb; border-radius: 14px; padding: 14px; }
+.recu-paiement dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 0.9rem; flex: 1; }
+.recu-paiement dt { color: #777; }
+.recu-paiement dd { margin: 0; font-weight: 600; }
+.recu-paiement .ref { font-family: ui-monospace, monospace; letter-spacing: 0.03em; }
+.statut-p.confirme { color: #0f7b53; }
+.statut-p.a_verifier { color: #b26b00; }
+.statut-p.refuse { color: var(--rouge); }
+.tampon { position: absolute; right: 28px; top: 120px; transform: rotate(-14deg); border: 4px solid rgba(15, 123, 83, 0.55); color: rgba(15, 123, 83, 0.6); font-weight: 900; font-size: 2.2rem; letter-spacing: 0.15em; padding: 2px 16px; border-radius: 10px; pointer-events: none; }
+.recu-pied { margin-top: 18px; border-top: 1.5px dashed #ddd; padding-top: 14px; display: grid; gap: 6px; text-align: center; }
+.recu-pied > div { display: flex; justify-content: center; gap: 8px; align-items: baseline; }
+.recu-pied span { color: #888; font-size: 0.85rem; }
+.recu-pied .code { font-size: 1.3rem; letter-spacing: 0.12em; }
+.recu-pied p { margin: 0; font-size: 0.85rem; }
+.recu-pied small { color: #999; font-size: 0.75rem; }
+@media (max-width: 520px) {
+  .recu { padding: 22px 16px; }
+  .recu-parties { grid-template-columns: 1fr; }
+  .recu-titre { text-align: left; }
+  .tampon { top: 90px; right: 12px; font-size: 1.7rem; }
+}
+@media print {
+  .non-imprime, .entete, .barre-onglets, .pied, .bandeau-annonces, .whatsapp-flottant, .retour-haut, .annonces, .entete-sous, .fenetre-annonce { display: none !important; }
+  body, :root { background: #fff !important; }
+  .page-recu { padding: 0; max-width: none; }
+  .recu { box-shadow: none; border: 1px solid #ddd; }
+  .recu::before, .recu-parties > div, .recu-paiement { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* Conditions générales (accordéon) */
+.accordeon { display: grid; gap: 10px; max-width: 820px; }
+.accordeon-item { background: #fff; border-radius: 16px; box-shadow: var(--ombre); overflow: hidden; }
+.accordeon-item button { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 18px; border: 0; background: none; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; text-align: left; }
+.accordeon-item .signe { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--rose); color: var(--rouge); font-size: 1.2rem; flex: none; transition: transform 0.3s var(--ressort); }
+.accordeon-item.ouvert .signe { transform: rotate(180deg); background: var(--rouge); color: #fff; }
+.accordeon-corps { padding: 0 18px 16px; color: #4a423c; line-height: 1.55; animation: apparait 0.3s var(--doux); }
+.accordeon-corps p { margin: 0 0 8px; }
+.carte-paiement .secondaire { color: #fff; }

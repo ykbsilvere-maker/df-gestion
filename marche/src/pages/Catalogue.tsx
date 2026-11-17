@@ -107,6 +107,13 @@ export function Accueil() {
 
       <VentesFlash soldes={flash} />
 
+      {!!d.arrivages?.length && (
+        <section className="section">
+          <TitreRayon titre="Nouveaux arrivages" sous="Réceptionnés cette semaine en boutique" />
+          <RangeeProduits produits={d.arrivages} />
+        </section>
+      )}
+
       {d.categories.length > 0 && (
         <section className="section">
           <TitreRayon titre="Nos rayons" lien={{ vers: '/rayons' }} />
@@ -159,7 +166,7 @@ export function Accueil() {
       <section className="garanties">
         <div><span aria-hidden>📦</span><strong>Stock en direct</strong><p>Ce qui s’affiche est en rayon : la boutique met à jour depuis sa caisse.</p></div>
         <div><span aria-hidden>🛵</span><strong>Livraison ou retrait</strong><p>Choisissez votre zone et l’heure qui vous arrange.</p></div>
-        <div><span aria-hidden>📲</span><strong>Paiement simple</strong><p>À la livraison, ou Wave, Orange Money, MTN, Moov directement à la boutique.</p></div>
+        <div><span aria-hidden>📲</span><strong>Paiement Mobile Money</strong><p>Payez la boutique en un geste depuis votre appli, ou à la livraison. Reçu téléchargeable avec la référence.</p></div>
         <div><span aria-hidden>⭐</span><strong>Avis vérifiés</strong><p>Seuls les clients livrés peuvent noter un produit.</p></div>
       </section>
     </>

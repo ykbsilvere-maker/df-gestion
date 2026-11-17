@@ -7,7 +7,7 @@ export function marcheUrl(chemin = ''): string {
 }
 
 export type StatutCommande = 'nouvelle' | 'confirmee' | 'prete' | 'en_livraison' | 'livree' | 'annulee';
-export type Paiement = 'livraison' | 'wave' | 'orange_money' | 'mtn' | 'moov';
+export type Paiement = 'livraison' | 'wave' | 'orange_money' | 'mtn' | 'moov' | 'djamo';
 export type StatutPaiement = 'a_la_livraison' | 'a_verifier' | 'confirme' | 'refuse';
 
 export const STATUTS: Record<StatutCommande, { libelle: string; ton: 'or' | 'bleu' | 'vert' | 'gris' | 'rouge'; icone: string }> = {
@@ -25,6 +25,7 @@ export const PAIEMENTS: Record<Paiement, { libelle: string; couleur: string }> =
   orange_money: { libelle: 'Orange Money', couleur: '#ff7900' },
   mtn: { libelle: 'MTN MoMo', couleur: '#ffcb05' },
   moov: { libelle: 'Moov Money', couleur: '#0066b3' },
+  djamo: { libelle: 'Djamo', couleur: '#2b2b38' },
 };
 
 export const STATUTS_PAIEMENT: Record<StatutPaiement, { libelle: string; ton: 'or' | 'vert' | 'gris' | 'rouge' }> = {

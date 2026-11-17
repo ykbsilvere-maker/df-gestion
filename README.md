@@ -3,6 +3,25 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.6.** **Paiement en ligne Mobile Money et reçus** (migration 033). Au moment de commander, le client
+choisit entre **payer maintenant** — tuiles avec les logos Orange Money, Moov Money, Wave, MTN ou Djamo, seuls les
+moyens dont la boutique a donné le numéro apparaissent — et **payer à la livraison / au retrait**. Une carte de
+paiement affiche le montant et le numéro de la boutique, avec un bouton qui **ouvre directement l'appli** (lien marchand
+`pay.wave.com` pour Wave) **ou compose le code de l'opérateur** (#144# Orange, *155# Moov, *133# MTN), et des boutons
+« Copier le numéro / le montant » ; le client saisit le numéro qui a payé, la **référence de la transaction** et joint
+la capture, puis coche **« J'ai lu et j'accepte les conditions de vente »** (page `/conditions` en accordéon, avec les
+conditions propres à la boutique). **Retrait** : la commande arrive directement à la caisse de la boutique ; la
+caissière voit la capture, **vérifie le paiement sur le téléphone de la boutique, le confirme** (ou le signale non
+reçu, motif visible par le client), puis **remet et encaisse** : vente normale, stock, et **ticket de caisse imprimé
+automatiquement** avec le mode et la référence. **Livraison** : le gérant principal reçoit la notification, vérifie,
+confirme le paiement, puis la commande suit son cours (prête, en livraison, livrée). Le client télécharge son
+**reçu** (`/recu/<code>`, enregistrable en PDF) : « REÇU DE PAIEMENT » une fois le paiement confirmé (mode, numéro
+payeur, référence, date de confirmation, ticket de caisse), sinon « BON DE COMMANDE ». La boutique imprime sa
+**copie A4 sur papier à en-tête** (reçu ou bon, avec qui a confirmé le paiement et quand) depuis la fiche de la commande
+ou depuis la caisse. Sur DF Marché : **« 🔥 X vendus ce mois »** (ventes en caisse des 30 derniers jours), badge et
+rangée **« Nouveaux arrivages »** (réceptions validées depuis moins de 10 jours) et, pour les produits sans photo, un
+visuel coloré selon le produit ou le rayon. Ma vitrine : numéro Djamo, lien de paiement Wave, conditions de vente.
+
 **Version 3.5.** **DF Marché : les boutiques DF Gestion en ligne** (migration 032, site `marche/`, publié à part :
 `DF-Marche-site.zip`). Un seul site regroupe toutes les boutiques : le client choisit sa boutique, parcourt le catalogue
 (prix, **soldes** avec bannière et compte à rebours sur l'accueil, **stock en direct**, nombre de commandes, avis),
