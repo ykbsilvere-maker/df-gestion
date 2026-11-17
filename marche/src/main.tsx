@@ -13,6 +13,8 @@ import { Boutique, Produit } from './pages/Boutique';
 import { Commander, Panier } from './pages/Commande';
 import { MesCommandes, Suivi } from './pages/Suivi';
 import { Conditions, Recu } from './pages/Recu';
+import { chargerBoutiques } from './unique';
+import { AlertesClient } from './AlertesClient';
 import { Bons, CommandesCompte, CompteConfirme, Confidentialite, Connexion, MonCompte, NouveauMotDePasse, Offre, Profil, VusRecemment } from './pages/Compte';
 
 const CIBLES_ONDE =
@@ -67,6 +69,9 @@ if (animer) {
   }), 2500);
 }
 
+// Une seule boutique publiée : le site devient le sien.
+chargerBoutiques();
+
 function Cadre() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -83,6 +88,7 @@ function Cadre() {
       <RetourHaut />
       <BarreOnglets />
       <Annonces />
+      <AlertesClient />
     </>
   );
 }

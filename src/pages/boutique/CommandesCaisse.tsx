@@ -48,8 +48,10 @@ function repartirRemise(d: DetailCommande) {
   });
 }
 
-export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer, commandeInitiale }: {
+export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer, commandeInitiale, enAttente = 0 }: {
   org: string;
+  /** Caissière : nouvelles commandes pas encore affectées (la gérante va choisir). */
+  enAttente?: number;
   /** Ouverte depuis la fiche d'une commande : elle est choisie d'office. */
   commandeInitiale?: string | null;
   sessionId: string;
@@ -196,6 +198,11 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer, c
     <div className="credits-caisse">
       <Alerte>{erreur}</Alerte>
       <Alerte type="succes">{info}</Alerte>
+      {enAttente > 0 && (
+        <p className="attente-affectation">
+          ⏳ <b>{enAttente} nouvelle{enAttente > 1 ? 's' : ''} commande{enAttente > 1 ? 's' : ''} en ligne</b> en attente : la gérante va choisir qui la rassemble. Vous serez prévenue tout de suite.
+        </p>
+      )}
       {!liste ? (
         <Vide>Chargement…</Vide>
       ) : liste.length === 0 ? (

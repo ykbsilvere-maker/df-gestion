@@ -280,8 +280,9 @@ export function MettreEnSolde({ org, produit, onFait, onFermer }: {
 
 
 /** Nombre de commandes en ligne qui attendent à la caisse ; sonne quand il augmente. */
-export function useAlerteCommandes(org: string, actif: boolean): { nombre: number; nouvelle: boolean; vu: () => void } {
+export function useAlerteCommandes(org: string, actif: boolean): { nombre: number; enAttente: number; nouvelle: boolean; vu: () => void } {
   const [nombre, setNombre] = useState(0);
+  const [enAttente, setEnAttente] = useState(0);
   const [nouvelle, setNouvelle] = useState(false);
   const precedent = useRef<number | null>(null);
   useEffect(() => {
@@ -290,7 +291,11 @@ export function useAlerteCommandes(org: string, actif: boolean): { nombre: numbe
     const verifier = async () => {
       const { data } = await supabase.rpc('commandes_caisse_attente', { p_org: org });
       if (arret || !data) return;
-      const n = Number((data as { nombre: number }).nombre) || 0;
+      const d = data as { nombre: number; a_affecter?: number; en_attente?: number; gerante?: boolean };
+      // Mes commandes affectées + celles qui attendent (à affecter pour la gérante, en attente pour la caissière).
+      const attente = Number(d.gerante ? d.a_affecter : d.en_attente) || 0;
+      const n = (Number(d.nombre) || 0) + attente;
+      setEnAttente(attente);
       if (precedent.current !== null && n > precedent.current) {
         // Le son et la notification viennent de la fenêtre globale (LucarneCommandes).
         setNouvelle(true);
@@ -305,5 +310,5 @@ export function useAlerteCommandes(org: string, actif: boolean): { nombre: numbe
       window.clearInterval(t);
     };
   }, [org, actif]);
-  return { nombre, nouvelle, vu: () => setNouvelle(false) };
+  return { nombre, enAttente, nouvelle, vu: () => setNouvelle(false) };
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { urlPublique, urlsPhotos, type ProduitCarte, type Vitrine } from './api';
+import { useBoutiqueUnique } from './unique';
 import { ajouter, basculerFavori, changerQuantite, nombreArticles, useAnnonces, useFavoris, usePanier } from './panier';
 import {
   IcoAccueil,
@@ -369,6 +370,7 @@ export function BoutonPanier({ p }: { p: ProduitCarte }) {
 }
 
 export function CarteProduit({ p, url, sansBoutique }: { p: ProduitCarte; url: string | undefined; sansBoutique?: boolean }) {
+  const unique = useBoutiqueUnique();
   const r = remise(p);
   const rupture = Number(p.disponible) <= 0;
   return (
@@ -382,7 +384,7 @@ export function CarteProduit({ p, url, sansBoutique }: { p: ProduitCarte; url: s
           <BoutonFavori p={p} />
         </div>
         <h3>{p.designation}</h3>
-        {!sansBoutique ? <span className="carte-produit-boutique">{p.boutique.nom}{p.boutique.commune ? ` · ${p.boutique.commune}` : ''}</span> : p.unite !== 'pièce' && <span className="carte-produit-boutique">{p.unite}</span>}
+        {!sansBoutique && !unique ? <span className="carte-produit-boutique">{p.boutique.nom}{p.boutique.commune ? ` · ${p.boutique.commune}` : ''}</span> : p.unite !== 'pièce' && <span className="carte-produit-boutique">{p.unite}</span>}
         {(p.note || p.commandes > 0) && (
           <span className="carte-produit-meta">
             {p.note ? <><b className="etoile">★</b> {Number(p.note).toLocaleString('fr-FR')}</> : null}
@@ -499,13 +501,13 @@ export function OngletsRayons({ titre, sous, produits, lien, max = 10 }: { titre
 }
 
 /** Grande bannière d'accueil : texte à gauche, produits qui flottent à droite. */
-export function HeroFrais({ produits, titre, texte, lien }: { produits: ProduitCarte[]; titre: ReactNode; texte: ReactNode; lien: { vers: string; libelle: string } }) {
+export function HeroFrais({ produits, titre, texte, lien, etiquette }: { produits: ProduitCarte[]; titre: ReactNode; texte: ReactNode; lien: { vers: string; libelle: string }; etiquette?: string }) {
   const avecPhoto = produits.filter((p) => p.photo).slice(0, 5);
   const urls = usePhotos(avecPhoto.map((p) => p.photo));
   return (
     <section className="hero-frais revele">
       <div className="hero-frais-texte">
-        <span className="hero-frais-etiquette">🛒 DF Marché · Abidjan</span>
+        <span className="hero-frais-etiquette">{etiquette ?? '🛒 DF Marché · Abidjan'}</span>
         <h1>{titre}</h1>
         <p>{texte}</p>
         <Link to={lien.vers} className="bouton-noir">
@@ -526,13 +528,14 @@ export function HeroFrais({ produits, titre, texte, lien }: { produits: ProduitC
 
 /** Trois bandeaux de couleur (livraison, soldes, paiement), comme les vitrines des marchés en ligne. */
 export function BandeauxPromo({ soldes, livraison }: { soldes: ProduitCarte[]; livraison: boolean }) {
+  const unique = useBoutiqueUnique();
   const meilleure = soldes.reduce((m, p) => Math.max(m, remise(p)), 0);
   const images = soldes.filter((p) => p.photo).slice(0, 3);
   const urls = usePhotos(images.map((p) => p.photo));
   const img = (k: number) => (images[k]?.photo && urls[images[k]!.photo!] ? <img src={urls[images[k]!.photo!]} alt="" /> : null);
   return (
     <section className="bandeaux-promo revele">
-      <Link to={livraison ? '/boutiques' : '/rayons'} className="tuile-promo vert">
+      <Link to={unique ? `/boutique/${unique.slug}` : livraison ? '/boutiques' : '/rayons'} className="tuile-promo vert">
         <span className="tuile-etiquette">{livraison ? 'Livraison' : 'Retrait'}</span>
         <strong>{livraison ? 'Livré chez vous, dans votre quartier' : 'Commandez, récupérez en boutique'}</strong>
         <span className="tuile-lien">Commander <IcoFleche /></span>
@@ -634,6 +637,7 @@ export function CarteBoutique({ v }: { v: Vitrine }) {
 /* ---------- Accueil : affiches des soldes et ventes flash ---------- */
 
 export function BanniereSoldes({ soldes }: { soldes: ProduitCarte[] }) {
+  const unique = useBoutiqueUnique();
   const [i, setI] = useState(0);
   const affiches = soldes.slice(0, 6);
   const urls = usePhotos(affiches.map((p) => p.photo));
@@ -665,7 +669,7 @@ export function BanniereSoldes({ soldes }: { soldes: ProduitCarte[] }) {
               <span className="affiche-remise">−{remise(p)}%</span>
             </div>
             <div className="affiche-texte">
-              <span className="affiche-etiquette">Solde chez {p.boutique.nom}</span>
+              <span className="affiche-etiquette">{unique ? '🔥 En solde' : `Solde chez ${p.boutique.nom}`}</span>
               <h2>{p.designation}</h2>
               <p className="affiche-prix"><strong>{fcfa(p.prix)}</strong> au lieu de <s>{fcfa(p.prix_normal)}</s></p>
               {p.solde_fin && <CompteARebours fin={p.solde_fin} />}
@@ -752,18 +756,26 @@ export function EnTete() {
     e.preventDefault();
     naviguer(`/recherche?q=${encodeURIComponent(texte.trim())}`);
   }
+  const unique = useBoutiqueUnique();
   // Fiche produit sur téléphone : la photo occupe le haut, l'en-tête se fait discret.
   const fiche = pathname.startsWith('/produit/');
   return (
     <header className={`entete ${defile ? 'defile' : ''} ${fiche ? 'sur-fiche' : ''}`}>
       <div className="entete-ligne">
-        <Link to="/" className="marque" aria-label="DF Marché, accueil">
-          <img src="/icone-marche.svg" alt="" width={34} height={34} />
-          <span>DF <b>Marché</b></span>
-        </Link>
+        {unique ? (
+          <Link to="/" className="marque marque-boutique" aria-label={`${unique.nom}, accueil`}>
+            <LogoBoutique v={unique} />
+            <span>{unique.nom}</span>
+          </Link>
+        ) : (
+          <Link to="/" className="marque" aria-label="DF Marché, accueil">
+            <img src="/icone-marche.svg" alt="" width={34} height={34} />
+            <span>DF <b>Marché</b></span>
+          </Link>
+        )}
         <form className="recherche" role="search" onSubmit={chercher}>
           <IcoRecherche />
-          <input type="search" value={texte} onChange={(e) => setTexte(e.target.value)} placeholder="Riz, téléphone, pagne, boutique…" aria-label="Rechercher" enterKeyHint="search" />
+          <input type="search" value={texte} onChange={(e) => setTexte(e.target.value)} placeholder={unique ? 'Rechercher un produit…' : 'Riz, téléphone, pagne, boutique…'} aria-label="Rechercher" enterKeyHint="search" />
         </form>
         <nav className="entete-actions" aria-label="Raccourcis">
           <NavLink to="/rayons" className="action-ordi"><IcoRayons /><span>Rayons</span></NavLink>
@@ -776,7 +788,7 @@ export function EnTete() {
       </div>
       <nav className="entete-sous" aria-label="Rubriques">
         <NavLink to="/soldes" className={({ isActive }) => `chaud ${isActive ? 'active' : ''}`}>🔥 Soldes</NavLink>
-        <NavLink to="/boutiques">Boutiques</NavLink>
+        {!unique && <NavLink to="/boutiques">Boutiques</NavLink>}
         <NavLink to="/rayons">Rayons</NavLink>
         <Link to="/recherche?tri=nouveautes" className={pathname === '/recherche' && params.get('tri') === 'nouveautes' ? 'active' : ''}>Nouveautés</Link>
         <NavLink to="/mes-commandes">Suivre ma commande</NavLink>
@@ -858,6 +870,7 @@ export function RetourHaut() {
 }
 
 export function Pied() {
+  const unique = useBoutiqueUnique();
   return (
     <footer className="pied">
       <div className="pied-grille">
@@ -877,7 +890,7 @@ export function Pied() {
           <Link to="/mes-commandes">Suivre ma commande</Link>
           <Link to="/compte">Mon compte</Link>
           <Link to="/compte/bons">Bons d’achat</Link>
-          <Link to="/boutiques">Les boutiques</Link>
+          {!unique && <Link to="/boutiques">Les boutiques</Link>}
         </div>
         <div className="pied-liens">
           <strong>Informations</strong>

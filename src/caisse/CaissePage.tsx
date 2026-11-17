@@ -1045,7 +1045,7 @@ function PointDeVente({
             <button type="button" className={`bouton bouton-discret ${alerte.nouvelle ? 'sonne' : ''}`} onClick={() => { alerte.vu(); setFenetre('commandes'); }} disabled={!enLigne}>
               <Ico>🌐</Ico>
               Commandes en ligne
-              {alerte.nombre > 0 && <span className="badge-alerte">{alerte.nombre}</span>}
+              {alerte.nombre > 0 && <span className="badge-alerte" title={`${alerte.nombre} commande(s) en ligne, dont ${alerte.enAttente} en attente`}>{alerte.nombre}</span>}
             </button>
           )}
           <button type="button" className="bouton bouton-discret" onClick={() => void rapportX()} disabled={!enLigne}>
@@ -1385,7 +1385,7 @@ function PointDeVente({
         {fenetre === 'credits' && <CreditsCaisse org={org} sessionId={sessionCaisse.id} moyens={moyens} enLigne={enLigne} />}
       </Fenetre>
       <Fenetre titre="Commandes en ligne à remettre" ouverte={fenetre === 'commandes'} onFermer={() => setFenetre(null)} large>
-        {fenetre === 'commandes' && <CommandesCaisse org={org} sessionId={sessionCaisse.id} moyens={moyens} enLigne={enLigne} commandeInitiale={commandeInitiale}
+        {fenetre === 'commandes' && <CommandesCaisse org={org} sessionId={sessionCaisse.id} moyens={moyens} enLigne={enLigne} commandeInitiale={commandeInitiale} enAttente={peut('boutique.valider') ? 0 : alerte.enAttente}
           onImprimer={async (v) => {
             if (identite && impressionAuto) await imprimerTicket(<Recu identite={identite} vente={{ ...v, caissier, magasin: caisse.magasin_nom }} format={format} />);
             void chargerArticles();

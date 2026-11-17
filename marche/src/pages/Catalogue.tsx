@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { appeler, type Accueil as DonneesAccueil, type ProduitCarte, type Vitrine } from '../api';
 import {
   AppelPanier,
@@ -21,6 +21,7 @@ import {
   sansDoublon,
 } from '../composants';
 import { useCompte } from '../compte';
+import { definirBoutiques, useBoutiqueUnique } from '../unique';
 import { IcoBoutique, IcoCoeur, IcoFlamme, IcoRecommander, IcoSuivi } from '../icones';
 import { mesCommandes, useFavoris, vusRecemment } from '../panier';
 
@@ -28,11 +29,12 @@ import { mesCommandes, useFavoris, vusRecemment } from '../panier';
 /** Page d'accueil : affiches des soldes, raccourcis, ventes flash, rayons, boutiques, populaires, nouveautés. */
 export function Accueil() {
   const { compte } = useCompte();
+  const unique = useBoutiqueUnique();
   const [d, setD] = useState<DonneesAccueil | null>(null);
   const [erreur, setErreur] = useState('');
   const charger = useCallback(() => {
     setErreur('');
-    appeler<DonneesAccueil>('marche_accueil').then(setD).catch((e: Error) => setErreur(e.message));
+    appeler<DonneesAccueil>('marche_accueil').then((x) => { definirBoutiques(x.boutiques); setD(x); }).catch((e: Error) => setErreur(e.message));
   }, []);
   useEffect(() => {
     charger();
@@ -50,14 +52,28 @@ export function Accueil() {
     <>
       <HeroFrais
         produits={sansDoublon([d.soldes, d.populaires, d.nouveautes])}
-        titre={<>Les boutiques de votre quartier, <em>livrées</em> ou prêtes au retrait.</>}
-        texte={`${salutation()} 👋 Stock réel, prix des boutiques, paiement Wave, Orange Money ou en espèces.`}
+        etiquette={unique ? `🏪 ${unique.nom}${unique.commune ? ` · ${unique.commune}` : ''}` : undefined}
+        titre={unique
+          ? <>{unique.slogan || 'Vos courses'}, <em>{unique.livraison ? 'livrées' : 'prêtes'}</em>{unique.livraison ? ' ou prêtes au retrait.' : ' au retrait en boutique.'}</>
+          : <>Les boutiques de votre quartier, <em>livrées</em> ou prêtes au retrait.</>}
+        texte={unique
+          ? `${salutation()} 👋 Stock en direct, prix de la boutique, paiement Wave, Orange Money ou en espèces.`
+          : `${salutation()} 👋 Stock réel, prix des boutiques, paiement Wave, Orange Money ou en espèces.`}
         lien={{ vers: '/rayons', libelle: 'Découvrir les produits' }}
       />
 
+      {/* Comme sur les grands sites : les ventes flash et les offres juste sous la bannière. */}
+      <VentesFlash soldes={flash} />
+
+      <BandeauxPromo soldes={d.soldes} livraison={livraison} />
+
       <nav className="raccourcis revele" aria-label="Raccourcis">
         <Link to="/soldes"><span className="rond orange"><IcoFlamme /></span>Promos</Link>
-        <Link to="/boutiques"><span className="rond"><IcoBoutique /></span>Boutiques</Link>
+        {unique ? (
+          <Link to={`/boutique/${unique.slug}`}><span className="rond"><IcoBoutique /></span>La boutique</Link>
+        ) : (
+          <Link to="/boutiques"><span className="rond"><IcoBoutique /></span>Boutiques</Link>
+        )}
         <Link to={derniere ? `/suivi/${derniere.code}` : '/mes-commandes'}><span className="rond"><IcoSuivi /></span>Suivi</Link>
         <Link to="/compte/commandes"><span className="rond"><IcoRecommander /></span>Recommander</Link>
         <Link to="/compte/bons"><span className="rond orange" aria-hidden>🎟️</span>Bons d’achat</Link>
@@ -71,15 +87,11 @@ export function Accueil() {
         </section>
       )}
 
-      <BandeauxPromo soldes={d.soldes} livraison={livraison} />
-
       {d.soldes.length > 0 && (
         <div className="revele">
           <BanniereSoldes soldes={d.soldes} />
         </div>
       )}
-
-      <VentesFlash soldes={flash} />
 
       <OngletsRayons titre="Meilleures ventes de la semaine" produits={tous} lien={{ vers: '/rayons' }} />
 
@@ -111,14 +123,14 @@ export function Accueil() {
         </section>
       )}
 
-      <section className="section revele">
+      {!unique && <section className="section revele">
         <TitreRayon titre="Nos boutiques" sous="Tous leurs produits sont déjà sur cette page" lien={{ vers: '/boutiques', libelle: 'Toutes' }} />
         {d.boutiques.length ? (
           <Rangee large>{d.boutiques.map((v) => <CarteBoutique key={v.slug} v={v} />)}</Rangee>
         ) : (
           <p className="vide">Les premières boutiques arrivent bientôt.</p>
         )}
-      </section>
+      </section>}
 
       <section className="section comment-ca-marche revele">
         <TitreRayon titre="Commander en 4 étapes" sous="Simple, rapide et sûr" />
@@ -280,6 +292,8 @@ export function ListeBoutiques() {
   }, []);
   if (erreur) return <Erreur>{erreur}</Erreur>;
   if (!d) return <Chargement />;
+  // Une seule boutique : on va directement chez elle.
+  if (d.length === 1) return <Navigate to={`/boutique/${d[0]!.slug}`} replace />;
   const activites = [...new Set(d.map((v) => v.activite).filter((x): x is string => !!x))];
   const t = texte.trim().toLowerCase();
   const vues = d.filter((v) => (!activite || v.activite === activite) && (!t || `${v.nom} ${v.commune ?? ''} ${v.ville ?? ''}`.toLowerCase().includes(t)));

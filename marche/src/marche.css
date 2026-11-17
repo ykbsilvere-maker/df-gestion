@@ -1398,3 +1398,34 @@ label .facultatif { align-self: flex-start; margin: -2px 0 0; }
 .raccourcis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .carte-paiement-benef { color: inherit; opacity: 0.92; }
 .carte-paiement-benef b { color: inherit; }
+
+/* Boutique unique : le site est celui de la boutique */
+.boutique-unique a[href="/boutiques"] { display: none !important; }
+.marque-boutique { gap: 10px; min-width: 0; }
+.marque-boutique .logo-boutique, .marque-boutique > :first-child { width: 36px; height: 36px; flex: none; border-radius: 10px; overflow: hidden; }
+.marque-boutique > span:last-child { font-weight: 800; font-size: 1.02rem; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 44vw; }
+
+/* Alertes du client : bon d'achat, commande confirmée, prête, en route… */
+.alertes-client { position: fixed; z-index: 1300; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(440px, calc(100vw - 20px)); display: grid; gap: 8px; pointer-events: none; }
+.alerte-client {
+  pointer-events: auto; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center; padding: 14px 14px 12px;
+  border-radius: 20px; background: rgba(255, 255, 255, 0.97); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 18px 44px rgba(17, 17, 17, 0.2); border: 1px solid var(--trait); border-left: 5px solid var(--vert-fonce);
+  animation: alerte-entree 0.55s cubic-bezier(0.2, 1.25, 0.3, 1) both;
+}
+.alerte-client.ton-or { border-left-color: #f59e0b; }
+.alerte-client.ton-bleu { border-left-color: #0284c7; }
+.alerte-client.ton-rouge { border-left-color: #dc2626; }
+@keyframes alerte-entree { from { transform: translateY(-120%) scale(0.95); opacity: 0; } }
+.alerte-client-icone { grid-row: span 2; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-size: 1.5rem; background: var(--vert-clair); animation: secoue 1.2s ease 0.5s 2; }
+.ton-or .alerte-client-icone { background: #fef3c7; }
+.ton-bleu .alerte-client-icone { background: #e0f2fe; }
+.ton-rouge .alerte-client-icone { background: #fee2e2; }
+@keyframes secoue { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-12deg) scale(1.08); } 40% { transform: rotate(10deg); } 60% { transform: rotate(-6deg); } }
+.alerte-client-texte { display: grid; gap: 2px; min-width: 0; }
+.alerte-client-texte strong { font-size: 0.98rem; }
+.alerte-client-texte span { font-size: 0.86rem; color: #374151; line-height: 1.35; }
+.alerte-client-actions { grid-column: 2; display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.alerte-client-voir { padding: 7px 16px; border-radius: 999px; background: #111; color: #fff; font-weight: 700; font-size: 0.84rem; }
+.alerte-client-actions button { width: 32px; height: 32px; border-radius: 50%; border: 0; background: #f3f4f3; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .alerte-client, .alerte-client-icone { animation: none; } }
