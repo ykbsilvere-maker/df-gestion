@@ -117,19 +117,30 @@ export function Accueil() {
       {d.categories.length > 0 && (
         <section className="section">
           <TitreRayon titre="Nos rayons" lien={{ vers: '/rayons' }} />
-          <Rangee>
+          <nav className="bulles-rayons" aria-label="Rayons">
+            <Link to="/rayons" className="bulle-rayon tout"><span aria-hidden>🛍️</span><strong>Tout</strong></Link>
             {d.categories.map((c) => {
               const r = rayon(c);
               return (
-                <Link key={c} to={`/rayons/${encodeURIComponent(c)}`} className="tuile-rayon" style={{ background: r.teinte }}>
+                <Link key={c} to={`/rayons/${encodeURIComponent(c)}`} className="bulle-rayon" style={{ ['--teinte-rayon' as string]: r.teinte }}>
                   <span aria-hidden>{r.emoji}</span>
                   <strong>{c}</strong>
                 </Link>
               );
             })}
-          </Rangee>
+          </nav>
         </section>
       )}
+
+      <section className="section comment-ca-marche">
+        <TitreRayon titre="Commander en 4 étapes" sous="Simple, rapide et sûr" />
+        <ol className="etapes-accueil">
+          <li><span aria-hidden>🛍️</span><strong>Choisir</strong><small>Ajoutez vos produits au panier</small></li>
+          <li><span aria-hidden>📝</span><strong>Commander</strong><small>Retrait en boutique ou livraison</small></li>
+          <li><span aria-hidden>📲</span><strong>Payer</strong><small>Wave, Orange Money ou à la remise</small></li>
+          <li><span aria-hidden>🎁</span><strong>Recevoir</strong><small>Suivi en direct et reçu téléchargeable</small></li>
+        </ol>
+      </section>
 
       <section className="section">
         <TitreRayon titre="Choisissez votre boutique" lien={{ vers: '/boutiques', libelle: 'Toutes' }} />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { A_LA_LIVRAISON, LogoPaiement, moyensEnLigne } from '../paiement';
 import { appeler, urlPublique, type FicheBoutique, type FicheProduit, type ProduitCarte, type Vitrine } from '../api';
@@ -15,29 +15,55 @@ import {
   Prix,
   RangeeProduits,
   Squelettes,
-  WhatsappFlottant,
   envol,
   fcfa,
-  lienWhatsapp,
   remise,
   usePhotos,
 } from '../composants';
 import { IcoMoins, IcoPartager, IcoPlus, IcoRetour } from '../icones';
 import { ajouter, memoriserVu } from '../panier';
 
-const MOYENS: [keyof Vitrine, string, string][] = [
-  ['numero_wave', 'Wave', '#1dc8f2'],
-  ['numero_orange', 'Orange Money', '#ff7900'],
-  ['numero_mtn', 'MTN MoMo', '#ffcb05'],
-  ['numero_moov', 'Moov Money', '#0066b3'],
-];
-
+/** Logos des moyens de paiement acceptés par la boutique. */
 export function MoyensAcceptes({ v }: { v: Vitrine }) {
+  const liste = moyensEnLigne(v);
   return (
-    <ul className="moyens">
-      {v.paiement_livraison && <li style={{ borderColor: '#555' }}>💵 À la livraison</li>}
-      {MOYENS.filter(([k]) => v[k]).map(([k, l, c]) => <li key={k} style={{ borderColor: c }}>{l}</li>)}
-    </ul>
+    <div className="paiements-acceptes">
+      <span>Paiement</span>
+      {liste.map((m) => <LogoPaiement key={m.cle} m={m} taille={28} />)}
+      {v.paiement_livraison && <LogoPaiement m={A_LA_LIVRAISON} taille={28} />}
+      <small>{[...liste.map((m) => m.libelle), ...(v.paiement_livraison ? ['à la livraison ou au retrait'] : [])].join(' · ')}</small>
+    </div>
+  );
+}
+
+/** Galerie de la page produit : grande photo qui glisse au doigt, miniatures pour choisir. */
+function GaleriePhotos({ chemins, urls, alt }: { chemins: string[]; urls: Record<string, string>; alt: string }) {
+  const [i, setI] = useState(0);
+  const piste = useRef<HTMLDivElement>(null);
+  const aller = (n: number) => {
+    const k = (n + chemins.length) % chemins.length;
+    setI(k);
+    piste.current?.scrollTo({ left: k * piste.current.clientWidth, behavior: 'smooth' });
+  };
+  return (
+    <div className="galerie-produit">
+      <div className="galerie-miniatures" role="tablist" aria-label="Photos">
+        {chemins.map((c, k) => (
+          <button key={c} role="tab" aria-selected={k === i} className={k === i ? 'actif' : ''} onClick={() => aller(k)} aria-label={`Photo ${k + 1}`}>
+            {urls[c] ? <img src={urls[c]} alt="" /> : <span />}
+          </button>
+        ))}
+      </div>
+      <div className="galerie-piste" ref={piste}
+        onScroll={(e) => { const el = e.currentTarget; const k = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (k !== i) setI(k); }}>
+        {chemins.map((c) => (
+          <div key={c} className="image-produit grande">{urls[c] && <img src={urls[c]} alt={alt} className="visible" />}</div>
+        ))}
+      </div>
+      <button className="galerie-fleche gauche" onClick={() => aller(i - 1)} aria-label="Photo précédente">‹</button>
+      <button className="galerie-fleche droite" onClick={() => aller(i + 1)} aria-label="Photo suivante">›</button>
+      <div className="galerie-points" aria-hidden>{chemins.map((c, k) => <span key={c} className={k === i ? 'actif' : ''} />)}</div>
+    </div>
   );
 }
 
@@ -84,7 +110,6 @@ export function Boutique() {
   if (erreur) return <Erreur>{erreur}</Erreur>;
   if (!v) return <Chargement />;
   const couverture = urlPublique('vitrines', v.photos[0]);
-  const wa = v.whatsapp ?? v.telephone;
   return (
     <>
       <section className="tete-boutique" style={couverture ? { backgroundImage: `linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.72)), url(${couverture})` } : undefined}>
@@ -98,12 +123,7 @@ export function Boutique() {
             {v.commandes > 0 && <> · {v.commandes} commande{v.commandes > 1 ? 's' : ''} livrée{v.commandes > 1 ? 's' : ''}</>}
           </p>
         </div>
-        <div className="tete-actions">
-          {wa && <a className="bouton bouton-whatsapp" href={lienWhatsapp(wa, `Bonjour ${v.nom}, je vous écris depuis DF Marché.`)} target="_blank" rel="noreferrer">WhatsApp</a>}
-          {v.telephone && <a className="bouton bouton-verre" href={`tel:${v.telephone.replace(/\s/g, '')}`}>📞 Appeler</a>}
-        </div>
       </section>
-      <WhatsappFlottant tel={wa} message={`Bonjour ${v.nom}, je vous écris depuis DF Marché.`} />
       <div className="bandeau-infos">
         <span>{v.livraison ? `🛵 Livraison${v.zones?.length ? ` dès ${fcfa(Math.min(...v.zones.map((z) => Number(z.frais))))}` : ''}` : '🏪 Retrait seulement'}</span>
         {v.retrait && v.livraison && <span>🏪 Retrait gratuit</span>}
@@ -144,12 +164,6 @@ export function Boutique() {
             <p>{[v.adresse, v.commune, v.ville].filter(Boolean).join(', ')}</p>
             {v.horaires && <p>🕗 {v.horaires}</p>}
             <Carte v={v} />
-            <h2>Contact</h2>
-            <p>
-              {v.telephone && <>📞 <a href={`tel:${v.telephone}`}>{v.telephone}</a><br /></>}
-              {v.whatsapp && <>💬 <a href={lienWhatsapp(v.whatsapp, `Bonjour ${v.nom}`)} target="_blank" rel="noreferrer">{v.whatsapp}</a><br /></>}
-              {v.email && <>✉️ <a href={`mailto:${v.email}`}>{v.email}</a></>}
-            </p>
           </section>
           <section className="bloc">
             <h2>Livraison</h2>
@@ -204,13 +218,13 @@ export function Produit() {
       })
       .catch((e: Error) => setErreur(e.message));
   }, [id]);
-  const urls = usePhotos(p ? [p.photo] : []);
+  const galerie = p ? [p.photo, ...(p.photos ?? [])].filter((x): x is string => !!x) : [];
+  const urls = usePhotos(galerie);
   if (erreur) return <Erreur>{erreur}</Erreur>;
   if (!p) return <Chargement />;
   const dispo = Number(p.disponible);
   const r = remise(p);
   const v = p.vitrine;
-  const wa = v.whatsapp ?? v.telephone;
   function partager() {
     const lien = window.location.href;
     if (navigator.share) void navigator.share({ title: p!.designation, text: `${p!.designation} à ${fcfa(p!.prix)} chez ${v.nom}`, url: lien }).catch(() => undefined);
@@ -220,7 +234,11 @@ export function Produit() {
     <div className="page-produit">
       <section className="fiche-produit">
         <div className="fiche-image">
-          <ImageProduit url={p.photo ? urls[p.photo] : undefined} alt={p.designation} categorie={p.categorie} grande />
+          {galerie.length > 1 ? (
+            <GaleriePhotos chemins={galerie} urls={urls} alt={p.designation} />
+          ) : (
+            <ImageProduit url={p.photo ? urls[p.photo] : undefined} alt={p.designation} categorie={p.categorie} grande />
+          )}
           <button className="rond-flottant retour" onClick={() => (window.history.length > 1 ? naviguer(-1) : naviguer('/'))} aria-label="Retour"><IcoRetour /></button>
           <div className="actions-image">
             <button className="rond-flottant" onClick={partager} aria-label="Partager"><IcoPartager /></button>
@@ -252,17 +270,18 @@ export function Produit() {
           )}
           <Disponibilite d={dispo} unite={p.unite} />
           {p.description && <div className="description">{p.description.split('\n').map((l, i) => <p key={i}>{l}</p>)}</div>}
-          <div className="barre-achat">
-            <button className="bouton bouton-principal large" disabled={dispo <= 0} onClick={(e) => { envol(e.currentTarget); ajouter(p, q); }}>
-              {dispo <= 0 ? 'Indisponible' : <>Ajouter au panier · {fcfa(Number(p.prix) * q)}</>}
+          <div className="barre-achat double">
+            <button className="bouton bouton-contour large" disabled={dispo <= 0} onClick={(e) => { envol(e.currentTarget); ajouter(p, q); }}>
+              {dispo <= 0 ? 'Indisponible' : <>🛍️ Ajouter au panier</>}
             </button>
+            {dispo > 0 && (
+              <button className="bouton bouton-principal large" onClick={() => { ajouter(p, q); naviguer(`/commander/${v.slug}`); }}>
+                ⚡ Commander · {fcfa(Number(p.prix) * q)}
+              </button>
+            )}
           </div>
-          <div className="paiements-acceptes">
-            <span>Paiement</span>
-            {moyensEnLigne(v).map((m) => <LogoPaiement key={m.code} m={m} taille={28} />)}
-            {v.paiement_livraison && <LogoPaiement m={A_LA_LIVRAISON} taille={28} />}
-            <small>{[...moyensEnLigne(v).map((m) => m.libelle), ...(v.paiement_livraison ? ['à la livraison'] : [])].join(' · ')}</small>
-          </div>
+          <BoutonFavori p={p} texte />
+          <MoyensAcceptes v={v} />
           <Link to={`/boutique/${v.slug}`} className="encart-boutique">
             <LogoBoutique v={v} />
             <span>
@@ -270,7 +289,12 @@ export function Produit() {
               <small>{[v.commune, v.ville].filter(Boolean).join(', ')} · {v.livraison ? '🛵 livraison' : ''}{v.livraison && v.retrait ? ' ou ' : ''}{v.retrait ? '🏪 retrait' : ''} · prêt en {v.delai_preparation} h</small>
             </span>
           </Link>
-          <MoyensAcceptes v={v} />
+          <ul className="garanties-produit">
+            <li><span aria-hidden>{v.livraison ? '🛵' : '🏪'}</span>{v.livraison ? 'Livraison' : 'Retrait'} · prêt en {v.delai_preparation} h</li>
+            <li><span aria-hidden>📦</span>Stock en direct</li>
+            <li><span aria-hidden>🔒</span>Paiement sans code secret</li>
+            <li><span aria-hidden>🧾</span>Reçu téléchargeable</li>
+          </ul>
         </div>
       </section>
       <section className="bloc">
@@ -280,7 +304,6 @@ export function Produit() {
       {p.similaires.length > 0 && (
         <section className="section"><div className="titre-rayon"><h2>Vous aimerez aussi</h2></div><RangeeProduits produits={p.similaires} sansBoutique /></section>
       )}
-      <WhatsappFlottant tel={wa} message={`Bonjour ${v.nom}, une question sur « ${p.designation} » (${fcfa(p.prix)}) vu sur DF Marché : `} />
     </div>
   );
 }

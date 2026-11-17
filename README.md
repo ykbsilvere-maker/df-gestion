@@ -3,6 +3,18 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.7.** **Parcours de commande en étapes et galerie photos** (migration 034). Sur DF Marché, la commande
+suit un fil **Panier → Informations → Récapitulatif et paiement → Confirmation** : panier avec carte « Récapitulatif »
+et garanties (paiement sécurisé, stock en direct, reçu), formulaire « Coordonnées et livraison » (indicatif +225, cartes
+« Retrait en boutique / Livraison »), récapitulatif modifiable avec le choix du paiement, puis écran de confirmation
+avec le numéro, le code de suivi, le suivi et le bon de commande. La page produit a une **galerie** (miniatures, glisser
+au doigt), deux boutons **« Ajouter au panier »** et **« ⚡ Commander »** (achat direct), et les rayons s'affichent en
+bulles. Plus aucun contact de la boutique n'est affiché (ni téléphone, ni WhatsApp) : les commandes arrivent dans
+DF Gestion. **Paiement : Wave et Orange Money par défaut** (le bouton Wave ouvre l'appli sur Android) ; dans **Ma
+vitrine**, « + Ajouter un moyen de paiement » propose MTN MoMo, Moov Money, Djamo ou **un moyen libre (nom + numéro)**,
+proposé aussitôt au client et repris à la caisse. Dans DF Gestion, la fiche produit accepte **jusqu'à 9 photos**
+(choix multiple ou appareil photo, photo principale, ordre, retrait).
+
 **Version 3.6.** **Paiement en ligne Mobile Money et reçus** (migration 033). Au moment de commander, le client
 choisit entre **payer maintenant** — tuiles avec les logos Orange Money, Moov Money, Wave, MTN ou Djamo, seuls les
 moyens dont la boutique a donné le numéro apparaissent — et **payer à la livraison / au retrait**. Une carte de

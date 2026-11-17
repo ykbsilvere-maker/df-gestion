@@ -75,6 +75,8 @@ export interface Produit {
   seuil_max: number | null;
   gere_peremption: boolean;
   photo_path: string | null;
+  /** Galerie (DF Marché), en plus de la photo principale. */
+  photos?: string[];
   statut: StatutProduit;
 }
 

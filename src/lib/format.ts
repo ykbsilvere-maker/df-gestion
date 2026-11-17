@@ -146,7 +146,7 @@ const LIBELLES_CHAMPS: Record<string, string> = {
   seuil_max: 'Stock maximum', categorie_id: 'Catégorie', fournisseur_id: 'Fournisseur', libelle: 'Libellé', code: 'Code', unite: 'Unité',
   fond_initial: 'Fond de caisse', especes_comptees: 'Espèces comptées', ecart: 'Écart', motif_ecart: 'Motif de l’écart', total: 'Total',
   cloturee_le: 'Clôturée le', ouverte_le: 'Ouverte le', caissier_id: 'Caissier', magasin_id: 'Magasin', caisse_id: 'Caisse', montant: 'Montant',
-  motif: 'Motif', note: 'Note', reference: 'Référence', photo_path: 'Photo', marque: 'Marque', gere_peremption: 'Suivi de péremption',
+  motif: 'Motif', note: 'Note', reference: 'Référence', photo_path: 'Photo', photos: 'Galerie photos', marque: 'Marque', gere_peremption: 'Suivi de péremption',
   date_reception: 'Date de réception', derniere_connexion: 'Dernière connexion', crees: 'Créés', mis_a_jour: 'Mis à jour', erreurs: 'Erreurs',
   responsable_id: 'Suivi confié à', echeance: 'Échéance', duree_jours: 'Durée (jours)', motif_exception: 'Motif d’exception', palier_1: '1re relance (jours)', palier_2: '2e relance (jours)', palier_3: 'Mise en demeure (jours)', palier_4: 'Contentieux (jours)',
   appareil: 'Appareil', navigateur: 'Navigateur', module: 'Module', document: 'Document', fichier: 'Fichier', entreprise: 'Entreprise', nombre_ventes: 'Nombre de ventes', total_ventes: 'Total des ventes',

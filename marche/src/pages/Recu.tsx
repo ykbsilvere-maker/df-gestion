@@ -45,7 +45,7 @@ export function Recu() {
   if (erreur) return <Erreur>{erreur}</Erreur>;
   if (!s) return <Chargement />;
   const confirme = s.paiement_statut === 'confirme';
-  const m = moyen(s.paiement);
+  const m = moyen(s.paiement, s.paiement_libelle);
   const enLigne = s.paiement !== 'livraison';
 
   return (
@@ -61,7 +61,6 @@ export function Recu() {
           <div>
             <strong className="recu-boutique">{s.boutique.nom}</strong>
             <small>{[s.boutique.adresse, s.boutique.commune, s.boutique.ville].filter(Boolean).join(', ')}</small>
-            {s.boutique.telephone && <small>Tél. {s.boutique.telephone}</small>}
           </div>
           <div className="recu-titre">
             <h1>{confirme ? 'REÇU DE PAIEMENT' : 'BON DE COMMANDE'}</h1>

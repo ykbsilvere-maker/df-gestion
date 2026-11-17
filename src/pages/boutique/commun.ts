@@ -7,7 +7,7 @@ export function marcheUrl(chemin = ''): string {
 }
 
 export type StatutCommande = 'nouvelle' | 'confirmee' | 'prete' | 'en_livraison' | 'livree' | 'annulee';
-export type Paiement = 'livraison' | 'wave' | 'orange_money' | 'mtn' | 'moov' | 'djamo';
+export type Paiement = 'livraison' | 'wave' | 'orange_money' | 'mtn' | 'moov' | 'djamo' | 'autre';
 export type StatutPaiement = 'a_la_livraison' | 'a_verifier' | 'confirme' | 'refuse';
 
 export const STATUTS: Record<StatutCommande, { libelle: string; ton: 'or' | 'bleu' | 'vert' | 'gris' | 'rouge'; icone: string }> = {
@@ -26,7 +26,11 @@ export const PAIEMENTS: Record<Paiement, { libelle: string; couleur: string }> =
   mtn: { libelle: 'MTN MoMo', couleur: '#ffcb05' },
   moov: { libelle: 'Moov Money', couleur: '#0066b3' },
   djamo: { libelle: 'Djamo', couleur: '#2b2b38' },
+  autre: { libelle: 'Autre moyen', couleur: '#6b5d52' },
 };
+
+/** Nom du moyen de paiement d'une commande (le nom donné par la boutique pour un moyen ajouté). */
+export const libellePaiement = (p: Paiement, libelle?: string | null) => (p === 'autre' && libelle ? libelle : PAIEMENTS[p].libelle);
 
 export const STATUTS_PAIEMENT: Record<StatutPaiement, { libelle: string; ton: 'or' | 'vert' | 'gris' | 'rouge' }> = {
   a_la_livraison: { libelle: 'Paiement à la livraison', ton: 'gris' },

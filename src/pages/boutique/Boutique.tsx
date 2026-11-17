@@ -18,6 +18,7 @@ import {
   marcheUrl,
   messageClient,
   type Paiement,
+  libellePaiement,
   type StatutCommande,
   type StatutPaiement,
 } from './commun';
@@ -255,6 +256,7 @@ export interface DetailCommande {
   reference_paiement: string | null;
   justificatif_path: string | null;
   paiement_statut: StatutPaiement;
+  paiement_libelle?: string | null;
   statut: StatutCommande;
   motif: string | null;
   created_at: string;
@@ -455,7 +457,7 @@ export function FicheCommandeWeb() {
           </section>
 
           <section className="carte">
-            <h2>Paiement : {PAIEMENTS[c.paiement].libelle}</h2>
+            <h2>Paiement : {libellePaiement(c.paiement, c.paiement_libelle)}</h2>
             {c.paiement === 'livraison' ? (
               <p className="secondaire">Le client paie à la {c.mode === 'livraison' ? 'livraison' : 'récupération'} ({montant(c.total)}).</p>
             ) : (
@@ -737,12 +739,20 @@ interface Vitrine {
   numero_djamo?: string | null;
   lien_wave?: string | null;
   conditions?: string | null;
+  autres_paiements?: AutrePaiement[];
   beneficiaire: string | null;
   retrait: boolean;
   livraison: boolean;
   delai_preparation: number;
   commande_minimum: number;
 }
+interface AutrePaiement { id?: string; libelle: string; numero: string; instructions?: string | null }
+type MoyenOptionnel = 'numero_mtn' | 'numero_moov' | 'numero_djamo';
+const OPTIONNELS: { champ: MoyenOptionnel; libelle: string; logo: string }[] = [
+  { champ: 'numero_mtn', libelle: 'MTN MoMo', logo: '/paiement/mtn.svg' },
+  { champ: 'numero_moov', libelle: 'Moov Money', logo: '/paiement/moov.png' },
+  { champ: 'numero_djamo', libelle: 'Djamo', logo: '/paiement/djamo.png' },
+];
 interface Zone { id?: string; nom: string; frais: number; delai: string | null; actif: boolean }
 
 const ACTIVITES = ['Supérette', 'Boutique de quartier', 'Téléphonie et électronique', 'Mode et vêtements', 'Beauté et cosmétiques', 'Pharmacie et parapharmacie',
@@ -758,6 +768,7 @@ export function MaVitrine() {
   const org = organisation!.organisation_id;
   const magasins = useMagasins(org);
   const [v, setV] = useState<Vitrine | null>(null);
+  const [ajoutes, setAjoutes] = useState<MoyenOptionnel[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
   const [stats, setStats] = useState<{ publies: number; actifs: number; sans_photo: number } | null>(null);
   const [nouvelle, setNouvelle] = useState<Zone>({ nom: '', frais: 1000, delai: '', actif: true });
@@ -789,6 +800,8 @@ export function MaVitrine() {
 
   if (!v) return <EnTetePage titre="Ma vitrine" sousTitre={erreur || 'Chargement…'} />;
   const maj = (x: Partial<Vitrine>) => setV({ ...v, ...x });
+  const majAutre = (i: number, x: Partial<AutrePaiement>) =>
+    maj({ autres_paiements: (v.autres_paiements ?? []).map((a, j) => (j === i ? { ...a, ...x } : a)) });
 
   async function enregistrer(publier?: boolean) {
     setErreur('');
@@ -946,14 +959,43 @@ export function MaVitrine() {
               et ne demande jamais de code secret.
             </p>
             <label className="case"><input type="checkbox" checked={v.paiement_livraison} onChange={(e) => maj({ paiement_livraison: e.target.checked })} /> Paiement à la livraison ou au retrait</label>
-            <div className="grille-2">
-              <Champ label="Numéro Wave"><input value={v.numero_wave ?? ''} onChange={(e) => maj({ numero_wave: e.target.value })} inputMode="tel" /></Champ>
-              <Champ label="Numéro Orange Money"><input value={v.numero_orange ?? ''} onChange={(e) => maj({ numero_orange: e.target.value })} inputMode="tel" /></Champ>
-              <Champ label="Numéro MTN MoMo"><input value={v.numero_mtn ?? ''} onChange={(e) => maj({ numero_mtn: e.target.value })} inputMode="tel" /></Champ>
-              <Champ label="Numéro Moov Money"><input value={v.numero_moov ?? ''} onChange={(e) => maj({ numero_moov: e.target.value })} inputMode="tel" /></Champ>
-              <Champ label="Numéro Djamo"><input value={v.numero_djamo ?? ''} onChange={(e) => maj({ numero_djamo: e.target.value })} inputMode="tel" /></Champ>
+            <div className="moyens-vitrine">
+              <div className="moyen-vitrine">
+                <img src="/paiement/wave.png" alt="" width={36} height={36} />
+                <Champ label="Numéro Wave"><input value={v.numero_wave ?? ''} onChange={(e) => maj({ numero_wave: e.target.value })} inputMode="tel" placeholder="Vide = Wave non proposé" /></Champ>
+              </div>
+              <div className="moyen-vitrine">
+                <img src="/paiement/orange.png" alt="" width={36} height={36} />
+                <Champ label="Numéro Orange Money"><input value={v.numero_orange ?? ''} onChange={(e) => maj({ numero_orange: e.target.value })} inputMode="tel" placeholder="Vide = Orange Money non proposé" /></Champ>
+              </div>
+              {OPTIONNELS.filter((o) => ajoutes.includes(o.champ) || v[o.champ]).map((o) => (
+                <div className="moyen-vitrine" key={o.champ}>
+                  <img src={o.logo} alt="" width={36} height={36} />
+                  <Champ label={`Numéro ${o.libelle}`}><input value={v[o.champ] ?? ''} onChange={(e) => maj({ [o.champ]: e.target.value } as Partial<Vitrine>)} inputMode="tel" /></Champ>
+                  <button type="button" className="bouton-lien lien-danger" onClick={() => { maj({ [o.champ]: null } as Partial<Vitrine>); setAjoutes(ajoutes.filter((x) => x !== o.champ)); }}>Retirer</button>
+                </div>
+              ))}
+              {(v.autres_paiements ?? []).map((a, i) => (
+                <div className="moyen-vitrine autre" key={a.id ?? `n${i}`}>
+                  <span className="logo-autre" aria-hidden>{(a.libelle || '?').slice(0, 1).toUpperCase()}</span>
+                  <Champ label="Nom du moyen"><input value={a.libelle} maxLength={30} placeholder="Ex. Ria, Western Union, compte bancaire…" onChange={(e) => majAutre(i, { libelle: e.target.value })} /></Champ>
+                  <Champ label="Numéro"><input value={a.numero} inputMode="tel" onChange={(e) => majAutre(i, { numero: e.target.value })} /></Champ>
+                  <button type="button" className="bouton-lien lien-danger" onClick={() => maj({ autres_paiements: (v.autres_paiements ?? []).filter((_, j) => j !== i) })}>Retirer</button>
+                </div>
+              ))}
             </div>
-            <p className="secondaire">Seuls les moyens dont vous donnez le numéro sont proposés au client. Laissez vide un moyen que vous n’acceptez pas.</p>
+            <div className="ajout-moyens">
+              <span>+ Ajouter un moyen de paiement :</span>
+              {OPTIONNELS.filter((o) => !ajoutes.includes(o.champ) && !v[o.champ]).map((o) => (
+                <button type="button" key={o.champ} className="puce-moyen" onClick={() => setAjoutes([...ajoutes, o.champ])}>
+                  <img src={o.logo} alt="" width={20} height={20} /> {o.libelle}
+                </button>
+              ))}
+              {(v.autres_paiements ?? []).length < 5 && (
+                <button type="button" className="puce-moyen" onClick={() => maj({ autres_paiements: [...(v.autres_paiements ?? []), { libelle: '', numero: '' }] })}>✚ Autre…</button>
+              )}
+            </div>
+            <p className="secondaire">Seuls les moyens dont vous donnez le numéro sont proposés au client. Videz un numéro (ou « Retirer ») pour arrêter un moyen.</p>
             <Champ label="Lien de paiement Wave (facultatif)" aide="Votre lien marchand pay.wave.com : le bouton du site ouvre alors directement Wave avec votre compte">
               <input value={v.lien_wave ?? ''} onChange={(e) => maj({ lien_wave: e.target.value })} inputMode="url" placeholder="https://pay.wave.com/m/…" />
             </Champ>

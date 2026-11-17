@@ -39,6 +39,14 @@ export function salutation(): string {
 
 /** Pastille d'un rayon : emoji et teinte selon le nom. */
 const RAYONS: [RegExp, string, string][] = [
+  [/b[ée]b[ée]|enfant|naissance/i, '👶', '#fdeef3'],
+  [/biscuit|confiser|bonbon|g[âa]teau/i, '🍪', '#fbf0e3'],
+  [/conserve/i, '🥫', '#fdeceb'],
+  [/frais|surgel|congel/i, '🧊', '#e8f4fb'],
+  [/huile|condiment|[ée]pice/i, '🫒', '#f3f6e4'],
+  [/sucre|petit-d[ée]j|caf[ée]|th[ée]/i, '☕', '#f6eee6'],
+  [/toilette|hygi[èe]ne|soin/i, '🧴', '#eef6f8'],
+  [/lait|laitier|yaourt/i, '🥛', '#eef2fb'],
   [/alim|épic|epic|riz|céréal/i, '🍚', '#fff1e6'],
   [/boisson|eau|jus/i, '🥤', '#e8f6fb'],
   [/fruit|légum|legum/i, '🥬', '#eaf7ea'],
@@ -234,13 +242,13 @@ export function Erreur({ children, reessayer }: { children: ReactNode; reessayer
 
 /* ---------- Cartes produits ---------- */
 
-export function BoutonFavori({ p, flottant }: { p: ProduitCarte; flottant?: boolean }) {
+export function BoutonFavori({ p, flottant, texte }: { p: ProduitCarte; flottant?: boolean; texte?: boolean }) {
   const favoris = useFavoris();
   const actif = favoris.some((x) => x.id === p.id);
   return (
     <button
       type="button"
-      className={`bouton-favori ${actif ? 'actif' : ''} ${flottant ? 'flottant' : ''}`}
+      className={`bouton-favori ${actif ? 'actif' : ''} ${flottant ? 'flottant' : ''} ${texte ? 'avec-texte' : ''}`}
       aria-pressed={actif}
       aria-label={actif ? 'Retirer des favoris' : 'Ajouter aux favoris'}
       onClick={(e) => {
@@ -250,6 +258,7 @@ export function BoutonFavori({ p, flottant }: { p: ProduitCarte; flottant?: bool
       }}
     >
       <IcoCoeur plein={actif} />
+      {texte && <span>{actif ? 'Dans vos favoris' : 'Ajouter aux favoris'}</span>}
     </button>
   );
 }
@@ -610,7 +619,7 @@ export function WhatsappFlottant({ tel, message }: { tel: string | null | undefi
   );
 }
 
-const MESSAGES = ['🛵 Livraison ou retrait en boutique', '💵 Paiement à la livraison', '📲 Wave · Orange Money · MTN · Moov', '📦 Stock en direct depuis la caisse', '⭐ Avis de clients livrés', '🔥 Soldes avec compte à rebours'];
+const MESSAGES = ['🛵 Livraison ou retrait en boutique', '💵 Paiement à la livraison', '📲 Paiement Wave · Orange Money', '📦 Stock en direct depuis la caisse', '⭐ Avis de clients livrés', '🔥 Soldes avec compte à rebours'];
 
 /** Bandeau d'annonces qui défile en haut du site. */
 export function Bandeau() {
@@ -653,7 +662,7 @@ export function Pied() {
           <strong>Payer en confiance</strong>
           <p>Vous payez directement la boutique : à la livraison, ou par Mobile Money sur son numéro officiel. Ne donnez jamais votre code secret.</p>
           <p className="logos-pied">
-            {['orange.png', 'moov.png', 'wave.png', 'mtn.svg', 'djamo.png'].map((f) => <img key={f} src={`/paiement/${f}`} alt="" width={30} height={30} loading="lazy" />)}
+            {['wave.png', 'orange.png'].map((f) => <img key={f} src={`/paiement/${f}`} alt="" width={30} height={30} loading="lazy" />)}<span>Wave · Orange Money · à la livraison</span>
           </p>
           <p><Link to="/conditions">Conditions générales de vente</Link> · <Link to="/mes-commandes">Suivre ma commande</Link></p>
         </div>

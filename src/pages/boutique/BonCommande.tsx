@@ -1,7 +1,7 @@
 import { montant } from '../../lib/argent';
 import type { Organisation } from '../../lib/types';
 import { PapierEntete } from '../credits/papier';
-import { PAIEMENTS, STATUTS_PAIEMENT, type Paiement, type StatutPaiement } from './commun';
+import { libellePaiement, STATUTS_PAIEMENT, type Paiement, type StatutPaiement } from './commun';
 
 /** Ce qu'il faut d'une commande DF Marché pour imprimer son reçu ou son bon. */
 export interface CommandeImprimable {
@@ -19,6 +19,7 @@ export interface CommandeImprimable {
   total: number;
   paiement: Paiement;
   paiement_statut: StatutPaiement;
+  paiement_libelle?: string | null;
   numero_payeur: string | null;
   reference_paiement: string | null;
   paiement_confirme_le?: string | null;
@@ -76,7 +77,7 @@ export function BonCommandeWeb({ c, o, logoUrl }: { c: CommandeImprimable; o: Or
         </tfoot>
       </table>
       <div className="bloc-infos bloc-paiement-web">
-        <div><span>Mode de paiement</span><strong>{enLigne ? PAIEMENTS[c.paiement].libelle : `À la ${c.mode === 'livraison' ? 'livraison' : 'récupération'}`}</strong></div>
+        <div><span>Mode de paiement</span><strong>{enLigne ? libellePaiement(c.paiement, c.paiement_libelle) : `À la ${c.mode === 'livraison' ? 'livraison' : 'récupération'}`}</strong></div>
         {enLigne && <div><span>Payé au</span><strong>{c.numero_boutique ?? '—'}</strong><small>numéro de la boutique</small></div>}
         {c.numero_payeur && <div><span>Depuis le numéro</span><strong>{c.numero_payeur}</strong></div>}
         {c.reference_paiement && <div><span>Référence transaction</span><strong>{c.reference_paiement}</strong></div>}

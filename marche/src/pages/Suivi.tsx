@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { appeler, type Suivi as DonneesSuivi } from '../api';
-import { Chargement, Erreur, fcfa, lienWhatsapp } from '../composants';
+import { Chargement, Erreur, fcfa } from '../composants';
 import { mesCommandes } from '../panier';
 import { CartePaiement, LogoPaiement, moyen } from '../paiement';
 import { envoyerJustificatif } from './Commande';
@@ -79,10 +79,6 @@ export function Suivi() {
   if (erreur) return <Erreur>{erreur}</Erreur>;
   if (!s) return <Chargement />;
   const lien = `${window.location.origin}/suivi/${s.code_suivi}`;
-  const wa = s.boutique.whatsapp;
-  const messageBoutique =
-    `Bonjour ${s.boutique.nom}, je viens de passer la commande ${s.numero} sur DF Marché (${fcfa(s.total)}, ` +
-    `${s.mode === 'livraison' ? `livraison ${s.zone ?? ''}` : 'retrait en boutique'}, paiement ${moyen(s.paiement).libelle}).\nSuivi : ${lien}`;
   const etapes = ETAPES.filter(([k]) => s.mode === 'livraison' || k !== 'expediee');
   const attentePaiement = s.paiement !== 'livraison' && s.paiement_statut !== 'confirme' && s.statut !== 'annulee' && s.statut !== 'livree';
 
@@ -105,12 +101,7 @@ export function Suivi() {
           <p className="grand-emoji" aria-hidden>🎉</p>
           <h1>Commande envoyée à {s.boutique.nom} !</h1>
           <p>Gardez votre code de suivi : <strong className="code">{s.code_suivi}</strong></p>
-          {wa && (
-            <a className="bouton bouton-whatsapp large" href={lienWhatsapp(wa, messageBoutique)} target="_blank" rel="noreferrer">
-              Prévenir la boutique sur WhatsApp
-            </a>
-          )}
-          <p className="secondaire petit">La boutique est déjà avertie dans son logiciel ; le message WhatsApp accélère la confirmation.</p>
+          <p className="secondaire petit">La boutique est avertie directement dans son logiciel de caisse.</p>
         </div>
       )}
       <div className="bloc">
@@ -137,10 +128,10 @@ export function Suivi() {
 
       {attentePaiement && (
         <div className={`bloc paiement-attente ${s.paiement_statut === 'refuse' ? 'refuse' : ''}`}>
-          <h2>Paiement {moyen(s.paiement).libelle}</h2>
+          <h2>Paiement {moyen(s.paiement, s.paiement_libelle).libelle}</h2>
           {s.paiement_statut === 'refuse' && <p className="alerte">La boutique n’a pas reçu le paiement{s.motif ? ` : ${s.motif}` : ''}. Vérifiez et renvoyez la capture.</p>}
           {s.boutique.numero_paiement && (
-            <CartePaiement m={moyen(s.paiement)} numero={s.boutique.numero_paiement} montant={s.total} beneficiaire={s.boutique.beneficiaire} lienWave={s.boutique.lien_wave} />
+            <CartePaiement m={moyen(s.paiement, s.paiement_libelle)} numero={s.boutique.numero_paiement} montant={s.total} beneficiaire={s.boutique.beneficiaire} lienWave={s.boutique.lien_wave} />
           )}
           {(s.numero_payeur || s.reference_paiement) && (
             <p className="secondaire">Payé depuis {s.numero_payeur ?? '—'}{s.reference_paiement ? ` · réf. ${s.reference_paiement}` : ''}</p>
@@ -156,9 +147,9 @@ export function Suivi() {
 
       {s.paiement !== 'livraison' && s.paiement_statut === 'confirme' && (
         <div className="bloc paiement-confirme">
-          <LogoPaiement m={moyen(s.paiement)} taille={44} />
+          <LogoPaiement m={moyen(s.paiement, s.paiement_libelle)} taille={44} />
           <div>
-            <strong>Paiement {moyen(s.paiement).libelle} confirmé ✓</strong>
+            <strong>Paiement {moyen(s.paiement, s.paiement_libelle).libelle} confirmé ✓</strong>
             <small>
               {s.paiement_confirme_le ? `le ${new Date(s.paiement_confirme_le).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
               {s.reference_paiement ? ` · réf. ${s.reference_paiement}` : ''}
@@ -184,8 +175,6 @@ export function Suivi() {
           {s.souhaite_le && ` · souhaitée le ${new Date(s.souhaite_le).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`}
         </p>
         <p className="actions-suivi">
-          {wa && <a className="bouton bouton-whatsapp" href={lienWhatsapp(wa, `Bonjour ${s.boutique.nom}, au sujet de ma commande ${s.numero} : `)} target="_blank" rel="noreferrer">WhatsApp</a>}
-          {s.boutique.telephone && <a className="bouton" href={`tel:${s.boutique.telephone.replace(/\s/g, '')}`}>📞 Appeler la boutique</a>}
           <Link className="bouton" to={`/recu/${s.code_suivi}`}>🧾 {s.paiement_statut === 'confirme' ? 'Télécharger le reçu' : 'Bon de commande'}</Link>
           <button className="bouton" onClick={() => void navigator.clipboard?.writeText(lien)}>🔗 Copier le lien de suivi</button>
         </p>

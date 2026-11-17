@@ -9,7 +9,7 @@ import { useImpression } from '../../impression/impression';
 import type { MoyenPaiement } from '../../caisse/local';
 import type { VenteRecu } from '../../impression/Recu';
 import { Alerte, Champ, Pastille, Vide } from '../../components/ui';
-import { PAIEMENTS, STATUTS_PAIEMENT, type Paiement, type StatutCommande, type StatutPaiement } from './commun';
+import { libellePaiement, STATUTS_PAIEMENT, type Paiement, type StatutCommande, type StatutPaiement } from './commun';
 import { StatutCommandePastille, type DetailCommande } from './Boutique';
 import { BonCommandeWeb } from './BonCommande';
 
@@ -27,7 +27,7 @@ interface Ligne {
   articles: number;
 }
 
-const CODES: Record<Paiement, string> = { livraison: 'especes', wave: 'wave', orange_money: 'orange_money', mtn: 'mtn_momo', moov: 'moov_money', djamo: 'djamo' };
+const CODES: Record<Paiement, string> = { livraison: 'especes', wave: 'wave', orange_money: 'orange_money', mtn: 'mtn_momo', moov: 'moov_money', djamo: 'djamo', autre: '' };
 
 /**
  * À la caisse : les commandes DF Marché à remettre au client (les retraits arrivent ici dès qu'ils sont
@@ -100,7 +100,7 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
     if (error) return setErreur(messageErreur(error));
     setRefus(null);
     if (recu) {
-      setInfo(`Paiement ${PAIEMENTS[choisie.paiement].libelle} confirmé : vous pouvez remettre et encaisser.`);
+      setInfo(`Paiement ${libellePaiement(choisie.paiement, detail?.paiement_libelle)} confirmé : vous pouvez remettre et encaisser.`);
       setChoisie({ ...choisie, paiement_statut: 'confirme' });
       await chargerDetail(choisie.id);
     } else {
@@ -134,7 +134,7 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
         client: `${detail.client_nom} (${detail.numero})`,
         lignes: detail.lignes.map((l) => ({ designation: l.designation, quantite: Number(l.quantite), prix_unitaire: Number(l.prix_unitaire) })),
         reglements: [{
-          moyen: m?.libelle ?? PAIEMENTS[detail.paiement].libelle,
+          moyen: m?.libelle ?? libellePaiement(detail.paiement, detail.paiement_libelle),
           montant: Number(detail.sous_total),
           reference: reference.trim() || detail.reference_paiement || detail.numero_payeur || undefined,
         }],
@@ -180,7 +180,7 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
                     {bloquee ? (
                       <div className="verification-paiement">
                         <p>
-                          <strong>Paiement {PAIEMENTS[c.paiement].libelle}</strong>{' '}
+                          <strong>Paiement {libellePaiement(c.paiement, detail?.paiement_libelle)}</strong>{' '}
                           <Pastille ton={STATUTS_PAIEMENT[c.paiement_statut].ton}>{STATUTS_PAIEMENT[c.paiement_statut].libelle}</Pastille>
                         </p>
                         {detail && (
@@ -225,7 +225,7 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
                         <p className="secondaire">
                           {c.paiement === 'livraison'
                             ? 'Le client paie maintenant les articles.'
-                            : <>Déjà payé par {PAIEMENTS[c.paiement].libelle} <Pastille ton="vert">reçu</Pastille>{detail?.reference_paiement ? ` · réf. ${detail.reference_paiement}` : ''}</>}
+                            : <>Déjà payé par {libellePaiement(c.paiement, detail?.paiement_libelle)} <Pastille ton="vert">reçu</Pastille>{detail?.reference_paiement ? ` · réf. ${detail.reference_paiement}` : ''}</>}
                           {c.mode === 'livraison' && ' Les frais de livraison ne passent pas en caisse.'}
                         </p>
                         <div className="grille-2">

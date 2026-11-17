@@ -38,6 +38,8 @@ export interface ProduitCarte {
   marque: string | null;
   unite: string;
   photo: string | null;
+  /** Galerie (en plus de la photo principale). */
+  photos?: string[];
   categorie: string | null;
   prix: number;
   prix_normal: number;
@@ -86,6 +88,7 @@ export interface Vitrine {
   numero_djamo?: string | null;
   lien_wave?: string | null;
   conditions?: string | null;
+  autres_paiements?: AutrePaiement[];
   beneficiaire: string;
   retrait: boolean;
   livraison: boolean;
@@ -130,7 +133,9 @@ export interface FicheBoutique extends Vitrine {
 }
 
 export type StatutCommande = 'nouvelle' | 'confirmee' | 'prete' | 'en_livraison' | 'livree' | 'annulee';
-export type Paiement = 'livraison' | 'wave' | 'orange_money' | 'mtn' | 'moov' | 'djamo';
+export type Paiement = 'livraison' | 'wave' | 'orange_money' | 'mtn' | 'moov' | 'djamo' | 'autre';
+/** Moyen de paiement ajouté par la boutique (nom et numéro). */
+export interface AutrePaiement { id: string; libelle: string; numero: string; instructions?: string | null }
 
 export interface Suivi {
   id: string;
@@ -139,6 +144,7 @@ export interface Suivi {
   statut: StatutCommande;
   paiement: Paiement;
   paiement_statut: 'a_la_livraison' | 'a_verifier' | 'confirme' | 'refuse';
+  paiement_libelle?: string | null;
   mode: 'livraison' | 'retrait';
   zone: string | null;
   adresse: string | null;

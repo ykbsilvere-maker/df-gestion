@@ -275,7 +275,9 @@ export function FicheProduit({ produit, codeInitial, categories, onCategorieCree
           produitId={courant.id}
           chemin={courant.photo_path}
           modifiable={peut('catalogue.modifier')}
-          onChange={(chemin) => setCourant({ ...courant, photo_path: chemin })}
+          photos={courant.photos ?? []}
+          onChange={(chemin) => setCourant((c) => (c ? { ...c, photo_path: chemin } : c))}
+          onPhotos={(photos) => setCourant((c) => (c ? { ...c, photos } : c))}
         />
       )}
 
