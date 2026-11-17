@@ -1029,3 +1029,5 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
 .pied-liens a:hover { opacity: 1; text-decoration: underline; }
 @media (min-width: 900px) { .pied-grille { grid-template-columns: 1.3fr 1.3fr 0.8fr 1fr 1.2fr !important; } }
 .raccourcis .rond[aria-hidden] { font-size: 1.3rem; }
+.bons li { grid-template-columns: 100px 1fr auto; }
+.bon-valeur { font-size: 1rem; text-align: center; padding: 0 6px; line-height: 1.15; }

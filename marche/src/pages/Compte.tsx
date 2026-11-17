@@ -254,7 +254,7 @@ export function Bons() {
   return (
     <section className="page-compte">
       <nav className="fil-ariane"><Link to="/compte">Mon compte</Link> › <span>Bons d’achat</span></nav>
-      <h1 className="titre-etape">Bons d’<em>achat</em></h1>
+      <h1 className="titre-etape">Mes <em>bons d’achat</em></h1>
       {!session && <p className="info-retrait">🎁 <Link to="/compte/connexion?retour=/compte/bons">Connectez-vous</Link> : vos boutiques peuvent vous réserver des réductions personnelles.</p>}
       {!liste.length ? <p className="vide">Aucun bon d’achat pour le moment.</p> : (
         <ul className="bons">
