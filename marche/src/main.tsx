@@ -37,6 +37,36 @@ document.addEventListener(
   { passive: true },
 );
 
+/**
+ * Apparition au défilement : chaque bloc « .revele » glisse et s'éclaircit quand il entre à l'écran.
+ * (Sans IntersectionObserver ou avec « réduire les animations », tout s'affiche directement.)
+ */
+const animer = 'IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (animer) {
+  document.documentElement.classList.add('avec-revele');
+  const io = new IntersectionObserver(
+    (entrees) => {
+      for (const e of entrees)
+        if (e.isIntersecting) {
+          e.target.classList.add('vu');
+          io.unobserve(e.target);
+        }
+    },
+    { rootMargin: '0px 0px -6% 0px', threshold: 0.06 },
+  );
+  const surveiller = (n: Node) => {
+    if (!(n instanceof HTMLElement)) return;
+    if (n.classList.contains('revele')) io.observe(n);
+    n.querySelectorAll('.revele:not(.vu)').forEach((x) => io.observe(x));
+  };
+  new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach(surveiller))).observe(document.body, { childList: true, subtree: true });
+  // Filet de sécurité : rien ne reste caché plus de 2,5 s.
+  window.setInterval(() => document.querySelectorAll('.revele:not(.vu)').forEach((x) => {
+    const r = x.getBoundingClientRect();
+    if (r.top < window.innerHeight && r.bottom > 0) x.classList.add('vu');
+  }), 2500);
+}
+
 function Cadre() {
   const { pathname } = useLocation();
   useEffect(() => {

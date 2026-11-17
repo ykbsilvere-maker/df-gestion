@@ -191,7 +191,9 @@ export function Catalogue() {
 
       {/* Recherche figée en haut : la liste défile dessous, comme à la caisse. */}
       <section className="carte barre-recherche barre-figee">
-        <div className="champ-avec-bouton">
+        <div className="barre-catalogue">
+        <div className="recherche-catalogue">
+          <span className="recherche-loupe" aria-hidden>🔍</span>
           <input
             ref={champ}
             data-douchette="champ"
@@ -213,6 +215,13 @@ export function Catalogue() {
             autoFocus
             enterKeyHint="search"
           />
+          {terme && (
+            <button type="button" className="recherche-effacer" onClick={() => { setTerme(''); setPage(0); champ.current?.focus(); }} aria-label="Effacer la recherche">
+              ✕
+            </button>
+          )}
+        </div>
+        <div className="outils-defilants">
           <BoutonsExport onExport={exporter} />
           <button className="bouton bouton-discret" onClick={() => setScan(true)} aria-label="Scanner un code-barres">
             📷
@@ -228,15 +237,22 @@ export function Catalogue() {
             </button>
           )}
         </div>
+        </div>
+        <div className="puces-categories" role="tablist" aria-label="Catégories">
+          {[{ id: '', nom: 'Tout' }, ...categories].map((c) => (
+            <button
+              key={c.id || 'tout'}
+              type="button"
+              role="tab"
+              aria-selected={filtreCategorie === c.id}
+              className={`puce-categorie ${filtreCategorie === c.id ? 'active' : ''}`}
+              onClick={() => { setFiltreCategorie(c.id); setPage(0); }}
+            >
+              {c.nom}
+            </button>
+          ))}
+        </div>
         <div className="filtres-ligne">
-          <select value={filtreCategorie} onChange={(e) => { setFiltreCategorie(e.target.value); setPage(0); }} aria-label="Catégorie">
-            <option value="">Toutes les catégories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nom}
-              </option>
-            ))}
-          </select>
           <label className="case">
             <input type="checkbox" checked={avecArretes} onChange={(e) => setAvecArretes(e.target.checked)} />
             Suspendus et arrêtés

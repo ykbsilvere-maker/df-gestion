@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { CreditsCaisse } from '../pages/credits/CreditsCaisse';
@@ -108,6 +108,26 @@ export function versRecu(v: VenteLocale): VenteRecu {
     lignes: v.lignes.map((l) => ({ designation: l.designation, quantite: l.quantite, prix_unitaire: l.prix_unitaire, remise: l.remise || undefined })),
     reglements: v.reglements.map((r) => ({ moyen: r.libelle, montant: r.montant, montant_recu: r.montant_recu, reference: r.reference, sens: r.sens })),
   };
+}
+
+/** Code promo lu à la caisse (QR du client ou saisi). */
+type CodeCaisse = { code: string; libelle: string | null; type: 'pourcent' | 'montant'; valeur: number; minimum: number; client: string | null };
+const remiseDuCode = (k: CodeCaisse, brut: number) =>
+  brut < Number(k.minimum) ? 0 : k.type === 'pourcent' ? Math.round((brut * Number(k.valeur)) / 100) : Math.min(Number(k.valeur), brut);
+/** Répartit la remise du code sur les articles, au prorata (le reste sur le dernier). */
+function appliquerCode(ls: LigneVente[], k: CodeCaisse | null): { lignes: LigneVente[]; remise: number } {
+  if (!k || !ls.length) return { lignes: ls, remise: 0 };
+  const bruts = ls.map((l) => Math.round(l.quantite * l.prix_unitaire));
+  const brut = bruts.reduce((a, b) => a + b, 0);
+  const remise = remiseDuCode(k, brut);
+  if (!remise) return { lignes: ls.map((l) => ({ ...l, remise: 0 })), remise: 0 };
+  let reste = remise;
+  const lignes = ls.map((l, i) => {
+    const part = i === ls.length - 1 ? reste : Math.floor((remise * bruts[i]!) / brut);
+    reste -= part;
+    return { ...l, remise: Math.min(part, bruts[i]!) };
+  });
+  return { lignes, remise };
 }
 
 const totalLignes = (ls: LigneVente[]) => ls.reduce((s, l) => s + Math.round(l.quantite * l.prix_unitaire) - l.remise, 0);
@@ -633,7 +653,7 @@ function PointDeVente({
   const [rejetees, setRejetees] = useState<VenteLocale[]>([]);
   const [liste, setListe] = useState<LigneListe[]>([]);
   const [derniere, setDerniere] = useState<VenteLocale | null>(null);
-  const [fenetre, setFenetre] = useState<null | 'paiement' | 'cloture' | 'ventes' | 'scanner' | 'rejets' | 'case' | 'options' | 'credits' | 'commandes'>(null);
+  const [fenetre, setFenetre] = useState<null | 'paiement' | 'cloture' | 'ventes' | 'scanner' | 'rejets' | 'case' | 'options' | 'credits' | 'commandes' | 'code'>(null);
   // Options du poste (impression, changement de caisse) : réservées aux responsables, jamais aux caissiers.
   const optionsVisibles = peut('caisse.valider');
   const [edition, setEdition] = useState<number | null>(null);
@@ -642,7 +662,33 @@ function PointDeVente({
   const [impressionAuto, setImpressionAuto] = useState(() => lireCache<boolean>('dfg_impression_auto') ?? true);
   const champ = useRef<HTMLInputElement>(null);
 
-  const total = totalLignes(panier);
+  const [codePromo, setCodePromo] = useState<CodeCaisse | null>(null);
+  const [saisieCode, setSaisieCode] = useState('');
+  const [lectureCode, setLectureCode] = useState(false);
+  const [cameraCode, setCameraCode] = useState(false);
+  const avecCode = useMemo(() => appliquerCode(panier, codePromo), [panier, codePromo]);
+  const total = totalLignes(avecCode.lignes);
+  const [parametres, setParametres] = useSearchParams();
+  useEffect(() => {
+    if (parametres.get('commandes') === '1') {
+      setFenetre('commandes');
+      parametres.delete('commandes');
+      setParametres(parametres, { replace: true });
+    }
+  }, [parametres, setParametres]);
+  async function verifierCode(brut: string) {
+    const texte = brut.trim();
+    if (!texte) return;
+    setLectureCode(true);
+    const { data, error } = await supabase.rpc('code_promo_caisse_verifier', { p_org: org, p_code: texte });
+    setLectureCode(false);
+    if (error) return setMessage({ type: 'erreur', texte: messageErreur(error) });
+    const k = data as CodeCaisse;
+    setCodePromo(k);
+    setSaisieCode('');
+    setFenetre(null);
+    setMessage({ type: 'succes', texte: `Code ${k.code} appliqué${k.client ? ` · client : ${k.client}` : ''}.` });
+  }
   const nbArticles = panier.reduce((s, l) => s + l.quantite, 0);
   const remiseAutorisee = peut('ventes.valider');
   const prixModifiable = peut('ventes.modifier');
@@ -841,9 +887,10 @@ function PointDeVente({
       caissier_nom: caissier,
       date_vente: new Date().toISOString(),
       numero_local: await prochainNumeroLocal(caisse.code, caisse.id),
-      lignes: panier,
+      lignes: avecCode.lignes,
       reglements,
       total,
+      code_promo: codePromo && avecCode.remise > 0 ? codePromo.code : undefined,
       origine: navigator.onLine && serveurJoignable() ? 'en_ligne' : 'hors_ligne',
       statut: 'en_attente',
       tentatives: 0,
@@ -868,6 +915,7 @@ function PointDeVente({
     }
     setFenetre(null);
     setPanier([]);
+    setCodePromo(null);
     setDerniere(finale);
     setMessage(null);
     if (devisImporte.current) {
@@ -981,6 +1029,10 @@ function PointDeVente({
           <button type="button" className="bouton bouton-discret" onClick={() => setFenetre('ventes')}>
             <Ico>🧾</Ico>
             Ventes ({liste.filter((l) => l.statut !== 'annulee').length})
+          </button>
+          <button type="button" className={`bouton bouton-discret ${codePromo ? 'bouton-code-actif' : ''}`} onClick={() => setFenetre('code')} disabled={!enLigne}>
+            <Ico>🎟️</Ico>
+            {codePromo ? codePromo.code : 'Code / QR promo'}
           </button>
           <button type="button" className="bouton bouton-discret" onClick={() => setFenetre('credits')} disabled={!enLigne}>
             <Ico>🤝</Ico>
@@ -1200,6 +1252,17 @@ function PointDeVente({
             <div className="total-montant" aria-live="polite">
               {montant(total)}
             </div>
+            {codePromo && (
+              <div className="total-code">
+                <span>
+                  🎟️ {codePromo.code}
+                  {avecCode.remise > 0 ? ` · −${montant(avecCode.remise)}` : ` · minimum ${montant(Number(codePromo.minimum))} d’achat`}
+                </span>
+                <button type="button" className="bouton-lien" onClick={() => setCodePromo(null)} aria-label="Retirer le code promo">
+                  retirer
+                </button>
+              </div>
+            )}
           </div>
           <button type="button" className="bouton bouton-principal bouton-encaisser" disabled={!panier.length} onClick={() => setFenetre('paiement')}>
             Encaisser <kbd>F9</kbd>
@@ -1247,6 +1310,36 @@ function PointDeVente({
 
       <Fenetre titre="Encaissement" ouverte={fenetre === 'paiement'} onFermer={() => setFenetre(null)}>
         <Paiement total={total} moyens={moyens} enCours={enregistrement} onValider={(r) => void encaisser(r)} />
+      </Fenetre>
+
+      <Fenetre titre="Code promo du client" ouverte={fenetre === 'code'} onFermer={() => setFenetre(null)}>
+        <div className="code-caisse">
+          <p className="secondaire">Scannez le QR code que le client montre sur son téléphone, ou tapez le code. La remise est répartie sur les articles et vérifiée par le serveur.</p>
+          <form
+            className="code-caisse-saisie"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void verifierCode(saisieCode);
+            }}
+          >
+            <input value={saisieCode} onChange={(e) => setSaisieCode(e.target.value.toUpperCase())} placeholder="Ex. AWA-FIDELE" autoCapitalize="characters" aria-label="Code promo" />
+            <button type="submit" className="bouton bouton-principal" disabled={lectureCode || !saisieCode.trim()}>
+              {lectureCode ? 'Vérification…' : 'Appliquer'}
+            </button>
+          </form>
+          {fenetre === 'code' && cameraCode ? (
+            <Scanner qr onFermer={() => setCameraCode(false)} onCode={(c) => { setCameraCode(false); void verifierCode(c); }} />
+          ) : (
+            <button type="button" className="bouton code-caisse-camera" onClick={() => setCameraCode(true)}>
+              📷 Scanner le QR code du client
+            </button>
+          )}
+          {codePromo && (
+            <button type="button" className="bouton-lien" onClick={() => { setCodePromo(null); setFenetre(null); }}>
+              Retirer le code {codePromo.code}
+            </button>
+          )}
+        </div>
       </Fenetre>
 
       <Fenetre titre="Scanner un article" ouverte={fenetre === 'scanner'} onFermer={() => setFenetre(null)}>

@@ -198,7 +198,7 @@ export async function urlsPhotos(chemins: (string | null | undefined)[]): Promis
   return r;
 }
 
-export const urlPublique = (espace: 'vitrines' | 'logos', chemin: string | null | undefined) =>
+export const urlPublique = (espace: 'vitrines' | 'logos' | 'clients', chemin: string | null | undefined) =>
   chemin ? supabase.storage.from(espace).getPublicUrl(chemin).data.publicUrl : null;
 
 /* ---------- Compte client ---------- */
@@ -213,6 +213,7 @@ export interface Compte {
   email: string;
   depuis: string;
   commandes: number;
+  photo_path?: string | null;
 }
 
 export interface BonAchat {

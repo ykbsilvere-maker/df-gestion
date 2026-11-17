@@ -80,8 +80,10 @@ describe('Comptes clients et codes promo', () => {
     expect(Number(suivi.r.especes_remis)).toBe(10000);
     expect(suivi.r.code_promo).toBe('VIP-AWA');
     await enTantQue(pool, alice, async (q) => {
-      expect(Number((await un(q<{ r: { nombre: number } }>(`select public.commandes_caisse_attente($1) r`, [org]))).r.nombre)).toBe(1);
+      expect(Number((await un(q<{ r: { a_affecter: number } }>(`select public.commandes_caisse_attente($1) r`, [org]))).r.a_affecter)).toBe(1);
       const s = (await un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0, $3) id`, [org, caisse, carine]))).id;
+      // 3.9 : la gérante affecte d'abord la commande à la caissière.
+      await q(`select public.affecter_commande_web($1, $2)`, [c.id, carine]);
       await devenir(q, carine);
       const v = (await un(q<{ r: { id: string; total: number } }>(`select public.encaisser_commande_web($1, $2) r`, [c.id, s]))).r;
       expect(Number(v.total)).toBe(8000);

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { urlPublique, urlsPhotos, type ProduitCarte, type Vitrine } from './api';
-import { ajouter, basculerFavori, nombreArticles, useAnnonces, useFavoris, usePanier } from './panier';
+import { ajouter, basculerFavori, changerQuantite, nombreArticles, useAnnonces, useFavoris, usePanier } from './panier';
 import {
   IcoAccueil,
   IcoCoeur,
   IcoFleche,
+  IcoMoins,
   IcoPanier,
   IcoPlus,
   IcoRayons,
@@ -310,6 +311,36 @@ export function BoutonAjout({ p }: { p: ProduitCarte }) {
   );
 }
 
+/** « + Ajouter » qui devient « − 1 + » dès que le produit est dans le panier. */
+export function BoutonPanier({ p }: { p: ProduitCarte }) {
+  const panier = usePanier();
+  const q = panier[p.boutique.slug]?.articles.find((a) => a.id === p.id)?.quantite ?? 0;
+  const dispo = Number(p.disponible);
+  if (dispo <= 0) return <span className="bouton-ajouter epuise">Épuisé</span>;
+  if (q > 0)
+    return (
+      <div className="stepper" onClick={(e) => e.preventDefault()}>
+        <button type="button" aria-label="Retirer un" onClick={(e) => { e.preventDefault(); changerQuantite(p.boutique.slug, p.id, q - 1); }}><IcoMoins /></button>
+        <span key={q} className="stepper-q" aria-live="polite">{q}</span>
+        <button type="button" aria-label="Ajouter un" disabled={q >= dispo} onClick={(e) => { e.preventDefault(); changerQuantite(p.boutique.slug, p.id, q + 1); }}><IcoPlus /></button>
+      </div>
+    );
+  return (
+    <button
+      type="button"
+      className="bouton-ajouter"
+      aria-label={`Ajouter ${p.designation} au panier`}
+      onClick={(e) => {
+        e.preventDefault();
+        envol(e.currentTarget);
+        ajouter(p);
+      }}
+    >
+      <IcoPlus /> Ajouter
+    </button>
+  );
+}
+
 export function CarteProduit({ p, url, sansBoutique }: { p: ProduitCarte; url: string | undefined; sansBoutique?: boolean }) {
   const r = remise(p);
   const rupture = Number(p.disponible) <= 0;
@@ -336,8 +367,9 @@ export function CarteProduit({ p, url, sansBoutique }: { p: ProduitCarte; url: s
       </Link>
       <div className="carte-produit-pied">
         <Prix p={p} />
-        <BoutonAjout p={p} />
+        {p.unite && p.unite !== 'pièce' && <span className="prix-unite">/ {p.unite}</span>}
       </div>
+      <BoutonPanier p={p} />
     </article>
   );
 }
@@ -387,8 +419,153 @@ export function TitreRayon({ titre, lien, sous }: { titre: ReactNode; lien?: { v
         <h2>{titre}</h2>
         {sous && <p>{sous}</p>}
       </div>
-      {lien && <Link to={lien.vers} className="pastille-lien">{lien.libelle ?? 'Voir tout'}</Link>}
+      {lien && (
+        <Link to={lien.vers} className="voir-tout">
+          {lien.libelle ?? 'Voir tout'}
+          <span className="voir-tout-fleche" aria-hidden><IcoFleche /></span>
+        </Link>
+      )}
     </div>
+  );
+}
+
+/* ---------- Accueil façon « marché frais » : onglets de rayons, bandeaux, appels ---------- */
+
+/** Produits sans doublon (même produit présent dans plusieurs listes). */
+export function sansDoublon(listes: (ProduitCarte[] | undefined)[]): ProduitCarte[] {
+  const vus = new Set<string>();
+  const r: ProduitCarte[] = [];
+  for (const l of listes) for (const p of l ?? []) if (!vus.has(p.id)) { vus.add(p.id); r.push(p); }
+  return r;
+}
+
+/** Section avec onglets de rayons : la grille change en douceur quand on choisit un rayon. */
+export function OngletsRayons({ titre, sous, produits, lien, max = 10 }: { titre: ReactNode; sous?: ReactNode; produits: ProduitCarte[]; lien?: { vers: string; libelle?: string }; max?: number }) {
+  const rayons = Object.entries(produits.reduce<Record<string, number>>((a, p) => { if (p.categorie) a[p.categorie] = (a[p.categorie] ?? 0) + 1; return a; }, {}))
+    .sort((a, b) => b[1] - a[1]).slice(0, 7).map(([c]) => c);
+  const [actif, setActif] = useState<string | null>(null);
+  const liste = (actif ? produits.filter((p) => p.categorie === actif) : produits).slice(0, max);
+  const urls = usePhotos(liste.map((p) => p.photo));
+  if (!produits.length) return null;
+  return (
+    <section className="section bloc-blanc revele">
+      <TitreRayon titre={titre} sous={sous} lien={lien} />
+      {rayons.length > 1 && (
+        <nav className="onglets-rayons" role="tablist" aria-label="Rayons">
+          <button type="button" role="tab" aria-selected={!actif} className={!actif ? 'actif' : ''} onClick={() => setActif(null)}>Tout</button>
+          {rayons.map((c) => (
+            <button key={c} type="button" role="tab" aria-selected={actif === c} className={actif === c ? 'actif' : ''} onClick={() => setActif(c)}>
+              {c}
+            </button>
+          ))}
+        </nav>
+      )}
+      <div className="grille-produits grille-fraiche" key={actif ?? 'tout'}>
+        {liste.map((p, i) => (
+          <div key={p.id} className="apparition" style={{ animationDelay: `${Math.min(i, 10) * 45}ms` }}>
+            <CarteProduit p={p} url={p.photo ? urls[p.photo] : undefined} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Grande bannière d'accueil : texte à gauche, produits qui flottent à droite. */
+export function HeroFrais({ produits, titre, texte, lien }: { produits: ProduitCarte[]; titre: ReactNode; texte: ReactNode; lien: { vers: string; libelle: string } }) {
+  const avecPhoto = produits.filter((p) => p.photo).slice(0, 5);
+  const urls = usePhotos(avecPhoto.map((p) => p.photo));
+  return (
+    <section className="hero-frais revele">
+      <div className="hero-frais-texte">
+        <span className="hero-frais-etiquette">🛒 DF Marché · Abidjan</span>
+        <h1>{titre}</h1>
+        <p>{texte}</p>
+        <Link to={lien.vers} className="bouton-noir">
+          {lien.libelle}
+          <span className="voir-tout-fleche" aria-hidden><IcoFleche /></span>
+        </Link>
+      </div>
+      <div className="hero-frais-images" aria-hidden>
+        {avecPhoto.length ? (
+          avecPhoto.map((p, k) => urls[p.photo!] && <img key={p.id} src={urls[p.photo!]} alt="" className={`hero-flotte hf-${k}`} />)
+        ) : (
+          <span className="hero-frais-emoji">🧺</span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** Trois bandeaux de couleur (livraison, soldes, paiement), comme les vitrines des marchés en ligne. */
+export function BandeauxPromo({ soldes, livraison }: { soldes: ProduitCarte[]; livraison: boolean }) {
+  const meilleure = soldes.reduce((m, p) => Math.max(m, remise(p)), 0);
+  const images = soldes.filter((p) => p.photo).slice(0, 3);
+  const urls = usePhotos(images.map((p) => p.photo));
+  const img = (k: number) => (images[k]?.photo && urls[images[k]!.photo!] ? <img src={urls[images[k]!.photo!]} alt="" /> : null);
+  return (
+    <section className="bandeaux-promo revele">
+      <Link to={livraison ? '/boutiques' : '/rayons'} className="bandeau-promo vert">
+        <span className="bandeau-etiquette">{livraison ? 'Livraison' : 'Retrait'}</span>
+        <strong>{livraison ? 'Livré chez vous, dans votre quartier' : 'Commandez, récupérez en boutique'}</strong>
+        <span className="bandeau-lien">Commander <IcoFleche /></span>
+        <span className="bandeau-image" aria-hidden>{img(0) ?? '🛵'}</span>
+      </Link>
+      <Link to="/soldes" className="bandeau-promo rose">
+        <span className="bandeau-etiquette">Soldes</span>
+        <strong>{meilleure > 0 ? `Jusqu’à −${meilleure} % en ce moment` : 'Les bonnes affaires du moment'}</strong>
+        <span className="bandeau-lien">J’en profite <IcoFleche /></span>
+        <span className="bandeau-image" aria-hidden>{img(1) ?? '🔥'}</span>
+      </Link>
+      <Link to="/compte/bons" className="bandeau-promo jaune">
+        <span className="bandeau-etiquette">Bons d’achat</span>
+        <strong>Codes promo et paiement Wave ou Orange Money</strong>
+        <span className="bandeau-lien">Mes bons <IcoFleche /></span>
+        <span className="bandeau-image" aria-hidden>{img(2) ?? '🎟️'}</span>
+      </Link>
+    </section>
+  );
+}
+
+/** Bande qui défile toute seule avec les photos des produits (« Nos incontournables »). */
+export function Defilant({ produits }: { produits: ProduitCarte[] }) {
+  const avecPhoto = produits.filter((p) => p.photo).slice(0, 12);
+  const urls = usePhotos(avecPhoto.map((p) => p.photo));
+  if (avecPhoto.length < 4) return null;
+  const tour = [...avecPhoto, ...avecPhoto];
+  return (
+    <section className="defilant revele" aria-label="Nos incontournables">
+      <div className="defilant-piste" style={{ animationDuration: `${avecPhoto.length * 4}s` }}>
+        {tour.map((p, k) => (
+          <Link key={`${p.id}-${k}`} to={`/produit/${p.id}`} className="defilant-item" tabIndex={k < avecPhoto.length ? 0 : -1} aria-hidden={k >= avecPhoto.length}>
+            {urls[p.photo!] && <img src={urls[p.photo!]} alt="" loading="lazy" />}
+            <span>{p.designation}</span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Grand appel en bas de page : « Prêt à remplir votre panier ? ». */
+export function AppelPanier({ produits, connecte }: { produits: ProduitCarte[]; connecte: boolean }) {
+  const avecPhoto = produits.filter((p) => p.photo).slice(0, 4);
+  const urls = usePhotos(avecPhoto.map((p) => p.photo));
+  return (
+    <section className="appel-panier revele">
+      <div className="appel-panier-texte">
+        <h2>Prêt à remplir votre panier ?</h2>
+        <p>Les produits des boutiques de votre quartier, en stock réel, à retirer ou à recevoir chez vous. Paiement Wave, Orange Money ou en espèces.</p>
+        <div className="appel-panier-boutons">
+          <Link to="/rayons" className="bouton-noir">Commencer mes achats</Link>
+          {!connecte && <Link to="/compte" className="bouton-clair">Créer mon compte</Link>}
+        </div>
+      </div>
+      <div className="appel-panier-images" aria-hidden>
+        {avecPhoto.map((p, k) => urls[p.photo!] && <img key={p.id} src={urls[p.photo!]} alt="" className={`ap-${k}`} />)}
+        {!avecPhoto.length && <span className="hero-frais-emoji">🛍️</span>}
+      </div>
+    </section>
   );
 }
 

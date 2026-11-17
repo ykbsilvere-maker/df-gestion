@@ -81,6 +81,8 @@ describe('Paiement en ligne et reçu', () => {
 
     const vente = await enTantQue(pool, alice, async (q) => {
       const s = (await un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0, $3) id`, [org, caisse, carine]))).id;
+      // 3.9 : la gérante affecte d'abord la commande à la caissière.
+      await q(`select public.affecter_commande_web($1, $2)`, [c.id, carine]);
       await devenir(q, carine);
       // Pas d'encaissement avant la vérification du paiement.
       await q('savepoint a');

@@ -2,6 +2,10 @@ package com.decodeurfinancier.gestion;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
 import android.content.Context;
@@ -52,6 +56,8 @@ public class MainActivity extends Activity {
     private static final int CODE_FICHIERS = 1;
     private static final int CODE_CAMERA = 2;
     private static final int CODE_STOCKAGE = 3;
+    private static final int CODE_NOTIFICATIONS = 4;
+    private static final String CANAL = "commandes_en_ligne";
 
     private WebView web;
     private ValueCallback<Uri[]> rappelFichiers;
@@ -317,6 +323,50 @@ public class MainActivity extends Activity {
                     }
                 });
                 return "";
+        }
+
+        /**
+         * Notification du téléphone (comme WhatsApp) : commandes en ligne en attente.
+         * Une seule notification, mise à jour avec le nombre ; un toucher rouvre l'application.
+         */
+        @JavascriptInterface
+        public void notifier(final String titre, final String texte, final int nombre) {
+            try {
+                if (Build.VERSION.SDK_INT >= 33
+                        && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[] { "android.permission.POST_NOTIFICATIONS" }, CODE_NOTIFICATIONS);
+                    return;
+                }
+                NotificationManager gestionnaire = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nombre <= 0) {
+                    gestionnaire.cancel(7);
+                    return;
+                }
+                Notification.Builder n;
+                if (Build.VERSION.SDK_INT >= 26) {
+                    NotificationChannel canal = new NotificationChannel(CANAL, "Commandes en ligne", NotificationManager.IMPORTANCE_HIGH);
+                    canal.setDescription("Nouvelle commande DF Marché à traiter");
+                    canal.enableVibration(true);
+                    gestionnaire.createNotificationChannel(canal);
+                    n = new Notification.Builder(MainActivity.this, CANAL);
+                } else {
+                    n = new Notification.Builder(MainActivity.this).setPriority(Notification.PRIORITY_HIGH)
+                            .setDefaults(Notification.DEFAULT_ALL);
+                }
+                Intent ouvrir = new Intent(MainActivity.this, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                int drapeaux = Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT;
+                n.setSmallIcon(getApplicationInfo().icon)
+                        .setContentTitle(titre)
+                        .setContentText(texte)
+                        .setStyle(new Notification.BigTextStyle().bigText(texte))
+                        .setNumber(nombre)
+                        .setAutoCancel(true)
+                        .setCategory(Notification.CATEGORY_MESSAGE)
+                        .setContentIntent(PendingIntent.getActivity(MainActivity.this, 0, ouvrir, drapeaux));
+                gestionnaire.notify(7, n.build());
+            } catch (Exception e) {
+                // Notification impossible : la fenêtre de l'application reste affichée.
+            }
         }
 
         @JavascriptInterface

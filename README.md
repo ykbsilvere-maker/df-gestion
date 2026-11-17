@@ -3,6 +3,20 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.9.** **Commandes affectées, clients du site, QR promo, comptabilité reliée** (migration 036).
+La **gérante principale affecte chaque commande en ligne à une caissière** ; la caissière reçoit une **fenêtre
+« Vous avez N commandes en ligne »** (à l'ouverture de l'application et à chaque nouvelle commande, avec son, vibration
+et notification du téléphone dans l'APK), **coche chaque article rassemblé**, marque la commande prête puis l'encaisse :
+sans affectation, elle ne peut ni vérifier ni encaisser. Onglet **« Clients du site »** : tous les comptes DF Marché
+(photo, e-mail, téléphone, commandes chez vous) et **bons de réduction avec QR code** à envoyer sur WhatsApp ; en caisse,
+le bouton **« Code / QR promo »** scanne le QR du client et applique la remise (contrôlée par le serveur). **Moyens de
+paiement à cocher / décocher** (le numéro reste gardé). **Comptabilité** : pertes, casse, vols, périmés (6581),
+consommation (6582), écarts d'inventaire (6583 / 7583), frais de livraison (706) et remises accordées (7019) passent
+automatiquement au journal. Catalogue : recherche large, outils à côté, **catégories en onglets animés**. DF Marché
+prend un **style « marché frais »** (fond blanc, sélection du jour, meilleures ventes par rayon, « + Ajouter » qui
+devient « − 1 + », bandeaux de couleur, apparitions au défilement), l'inscription se fait **uniquement par e-mail**
+(téléphone facultatif) avec **photo de profil**.
+
 **Version 3.8.** **Comptes clients, codes promo, espèces** (migration 035). Sur DF Marché, un **espace « Mon compte »**
 façon Jumia : connexion ou création par **téléphone (ou e-mail) + mot de passe**, mes commandes sur tous les appareils,
 **bons d'achat**, favoris, consultés récemment, carnet d'adresses, gestion du compte, politique de confidentialité,

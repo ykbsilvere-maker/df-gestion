@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { appeler, type BonAchat, type CommandeCompte, type FicheBoutique, type ProduitCarte } from '../api';
+import { appeler, supabase, urlPublique, type BonAchat, type CommandeCompte, type FicheBoutique, type ProduitCarte } from '../api';
 import { Chargement, Erreur, GrilleProduits, LogoBoutique, TitreRayon, fcfa } from '../composants';
 import { connexion, deconnexion, estTelephone, inscription, rechargerCompte, useCompte } from '../compte';
 import { mesCommandes, memoriserClient, useFavoris, vusRecemment } from '../panier';
@@ -55,7 +55,7 @@ export function MonCompte() {
     <section className="page-compte">
       {compte ? (
         <div className="compte-tete">
-          <span className="avatar" aria-hidden>{compte.nom.slice(0, 1).toUpperCase()}</span>
+          <span className="avatar" aria-hidden>{compte.photo_path ? <img src={urlPublique('clients', compte.photo_path)!} alt="" /> : compte.nom.slice(0, 1).toUpperCase()}</span>
           <div>
             <h1>Bienvenue {compte.nom.split(' ')[0]} !</h1>
             <small>{estTelephone(compte.email) ? compte.telephone ?? '' : compte.email}</small>
@@ -127,7 +127,9 @@ export function Connexion() {
   async function valider(e: FormEvent) {
     e.preventDefault();
     setErreur('');
-    if (f.identifiant.replace(/\s/g, '').length < 8) return setErreur('Indiquez votre numéro de téléphone ou votre e-mail.');
+    if (creer && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(f.identifiant.trim())) return setErreur('Indiquez une adresse e-mail valide (ex. vous@gmail.com).');
+    if (!creer && f.identifiant.replace(/\s/g, '').length < 5) return setErreur('Indiquez votre adresse e-mail.');
+    if (creer && f.telephone && f.telephone.replace(/\D/g, '').length < 8) return setErreur('Le téléphone semble incomplet (facultatif : laissez vide).');
     if (f.motDePasse.length < 6) return setErreur('Mot de passe : 6 caractères au moins.');
     if (creer && f.nom.trim().length < 2) return setErreur('Indiquez votre nom.');
     if (creer && !f.accepte) return setErreur('Acceptez la politique de confidentialité pour créer votre compte.');
@@ -135,7 +137,7 @@ export function Connexion() {
     try {
       if (creer) {
         await inscription({ identifiant: f.identifiant, motDePasse: f.motDePasse, nom: f.nom.trim(), telephone: f.telephone });
-        memoriserClient({ nom: f.nom.trim(), telephone: f.telephone || (f.identifiant.includes('@') ? '' : f.identifiant) });
+        memoriserClient({ nom: f.nom.trim(), telephone: f.telephone });
       } else await connexion(f.identifiant, f.motDePasse);
       naviguer(retour);
     } catch (x) {
@@ -153,14 +155,14 @@ export function Connexion() {
       </div>
       <form className="bloc formulaire-compte" onSubmit={valider} noValidate>
         <h1>{creer ? 'Créez votre compte' : 'Bon retour parmi nous'}</h1>
-        <p className="secondaire">{creer ? 'Vos commandes, adresses et bons d’achat au même endroit.' : 'Avec votre numéro de téléphone (ou votre e-mail) et votre mot de passe.'}</p>
+        <p className="secondaire">{creer ? 'Uniquement avec votre adresse e-mail : vos commandes, adresses et bons d’achat au même endroit.' : 'Avec votre adresse e-mail et votre mot de passe.'}</p>
         {erreur && <p className="alerte" role="alert">⚠️ {erreur}</p>}
         {creer && <label>Nom complet *<input value={f.nom} onChange={(e) => setF({ ...f, nom: e.target.value })} autoComplete="name" placeholder="Awa Koné" /></label>}
-        <label>Téléphone ou e-mail *
-          <input value={f.identifiant} onChange={(e) => setF({ ...f, identifiant: e.target.value })} autoComplete="username" inputMode="email" placeholder="07 00 00 00 00 ou vous@mail.com" />
+        <label>Adresse e-mail *
+          <input type="email" value={f.identifiant} onChange={(e) => setF({ ...f, identifiant: e.target.value })} autoComplete={creer ? 'email' : 'username'} inputMode="email" placeholder="vous@gmail.com" autoCapitalize="none" />
         </label>
-        {creer && f.identifiant.includes('@') && (
-          <label>Téléphone (pour la livraison)<input value={f.telephone} onChange={(e) => setF({ ...f, telephone: e.target.value })} inputMode="tel" autoComplete="tel" placeholder="07 00 00 00 00" /></label>
+        {creer && (
+          <label>Téléphone <span className="facultatif">facultatif</span><input value={f.telephone} onChange={(e) => setF({ ...f, telephone: e.target.value })} inputMode="tel" autoComplete="tel" placeholder="07 00 00 00 00" /></label>
         )}
         <label>Mot de passe *
           <span className="champ-indicatif">
@@ -281,6 +283,27 @@ export function Bons() {
  * Profil : carnet d'adresses et gestion du compte
  * ---------------------------------------------------------------------------------------- */
 
+/** Photo de profil réduite (côté le plus long : max px) en JPEG. */
+async function reduirePhoto(f: File, max: number): Promise<Blob> {
+  const url = URL.createObjectURL(f);
+  try {
+    const img = await new Promise<HTMLImageElement>((ok, ko) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => ko(new Error('Image illisible : choisissez une photo JPEG ou PNG.'));
+      i.src = url;
+    });
+    const k = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * k);
+    c.height = Math.round(img.height * k);
+    c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise<Blob>((ok, ko) => c.toBlob((b) => (b ? ok(b) : ko(new Error('Photo impossible à préparer.'))), 'image/jpeg', 0.85));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export function Profil() {
   const { compte, session, pret } = useCompte();
   const naviguer = useNavigate();
@@ -291,6 +314,27 @@ export function Profil() {
     if (pret && !session) naviguer('/compte/connexion?retour=/compte/profil', { replace: true });
     if (compte) setF({ nom: compte.nom, telephone: compte.telephone ?? '', adresse: compte.adresse ?? '', repere: compte.repere ?? '', commune: compte.commune ?? '' });
   }, [compte, session, pret, naviguer]);
+  const [envoi, setEnvoi] = useState(false);
+  async function changerPhoto(fichier: File | undefined) {
+    if (!fichier || !session) return;
+    setErreur('');
+    setEnvoi(true);
+    try {
+      const blob = await reduirePhoto(fichier, 480);
+      const chemin = `${session.user.id}/profil-${Date.now()}.jpg`;
+      const { error } = await supabase.storage.from('clients').upload(chemin, blob, { contentType: 'image/jpeg' });
+      if (error) throw new Error(error.message);
+      const ancien = compte?.photo_path;
+      await appeler('compte_marche_enregistrer', { p: { ...f, photo_path: chemin } });
+      if (ancien) await supabase.storage.from('clients').remove([ancien]);
+      await rechargerCompte();
+      setInfo('Photo de profil mise à jour.');
+    } catch (x) {
+      setErreur((x as Error).message);
+    } finally {
+      setEnvoi(false);
+    }
+  }
   async function enregistrer(e: FormEvent) {
     e.preventDefault();
     setErreur('');
@@ -310,8 +354,18 @@ export function Profil() {
         <h1>Profil et adresse</h1>
         {info && <p className="succes">✓ {info}</p>}
         {erreur && <p className="alerte">⚠️ {erreur}</p>}
+        <div className="photo-profil">
+          <span className="avatar grand" aria-hidden>
+            {compte?.photo_path ? <img src={urlPublique('clients', compte.photo_path)!} alt="" /> : (f.nom || '?').slice(0, 1).toUpperCase()}
+          </span>
+          <label className="bouton">
+            <input type="file" accept="image/*" hidden onChange={(e) => { void changerPhoto(e.target.files?.[0]); e.target.value = ''; }} />
+            {envoi ? 'Envoi…' : compte?.photo_path ? '📷 Changer la photo' : '📷 Ajouter une photo'}
+          </label>
+          <small className="secondaire">Facultatif · visible par les boutiques où vous commandez</small>
+        </div>
         <label>Nom complet *<input value={f.nom} onChange={(e) => setF({ ...f, nom: e.target.value })} required /></label>
-        <label>Téléphone<input value={f.telephone} onChange={(e) => setF({ ...f, telephone: e.target.value })} inputMode="tel" /></label>
+        <label>Téléphone <span className="facultatif">facultatif</span><input value={f.telephone} onChange={(e) => setF({ ...f, telephone: e.target.value })} inputMode="tel" placeholder="07 00 00 00 00" /></label>
         <h2 className="titre-bloc"><span aria-hidden>📒</span>Adresse de livraison</h2>
         <label>Commune / quartier<input value={f.commune} onChange={(e) => setF({ ...f, commune: e.target.value })} placeholder="Cocody Angré" /></label>
         <label>Adresse<input value={f.adresse} onChange={(e) => setF({ ...f, adresse: e.target.value })} placeholder="Rue, résidence, immeuble…" /></label>
@@ -397,11 +451,11 @@ export function Offre() {
 
 const CONFIDENTIALITE: [string, string][] = [
   ['Qui sommes-nous ?', 'DF Marché réunit des boutiques de Côte d’Ivoire qui utilisent le logiciel DF Gestion (Le Décodeur Financier). Chaque boutique vend ses propres produits et traite ses commandes.'],
-  ['Les données que nous recueillons', 'Pour une commande : votre nom, votre téléphone, votre adresse et votre repère de livraison, le contenu de la commande, le moyen de paiement choisi, le numéro qui a payé, la référence de la transaction et la capture que vous joignez. Pour un compte : votre identifiant (téléphone ou e-mail) et votre mot de passe, protégé et jamais visible. Nous ne demandons et ne conservons jamais de code secret Mobile Money ni de données de carte bancaire.'],
+  ['Les données que nous recueillons', 'Pour une commande : votre nom, votre téléphone, votre adresse et votre repère de livraison, le contenu de la commande, le moyen de paiement choisi, le numéro qui a payé, la référence de la transaction et la capture que vous joignez. Pour un compte : votre adresse e-mail et votre mot de passe (protégé et jamais visible), et si vous les ajoutez, votre téléphone, votre adresse et votre photo de profil. Nous ne demandons et ne conservons jamais de code secret Mobile Money ni de données de carte bancaire.'],
   ['Pourquoi nous les utilisons', 'Uniquement pour préparer, livrer et encaisser votre commande, vous en envoyer le suivi et le reçu, et vous proposer les réductions de vos boutiques. Pas de revente de données, pas de publicité de tiers.'],
-  ['Qui peut les voir', 'La boutique à qui vous commandez (gérant, caissière, livreur) voit les informations de cette commande. Les autres boutiques ne les voient pas.'],
+  ['Qui peut les voir', 'La boutique à qui vous commandez (gérant, caissière, livreur) voit les informations de cette commande. Si vous créez un compte, les boutiques de DF Marché voient votre profil client (nom, e-mail, téléphone, commune, photo) pour vous offrir des bons de réduction ; elles ne voient que les commandes passées chez elles. Les captures de paiement restent visibles uniquement par la boutique concernée.'],
   ['Sur votre téléphone', 'Sans compte, votre panier, vos favoris, vos derniers produits vus et vos coordonnées restent dans ce navigateur. Vous pouvez les effacer depuis les réglages du navigateur.'],
-  ['Sécurité', 'Les échanges sont chiffrés (HTTPS). Les données sont protégées par des règles d’accès strictes : chaque boutique n’accède qu’à ses propres commandes. Les captures de paiement ne sont visibles que par la boutique concernée.'],
+  ['Sécurité', 'Les échanges sont chiffrés (HTTPS). Les données sont protégées par des règles d’accès strictes : chaque boutique n’accède qu’à ses propres commandes et aux profils des comptes clients. Les captures de paiement ne sont visibles que par la boutique concernée.'],
   ['Durée de conservation', 'Les commandes sont gardées le temps nécessaire à la comptabilité de la boutique. Un compte inutilisé peut être fermé à votre demande.'],
   ['Vos droits', 'Vous pouvez consulter et corriger vos informations dans « Mon compte », et demander la fermeture de votre compte à la boutique ou à DF Marché depuis le formulaire de la plateforme.'],
 ];

@@ -5,6 +5,7 @@ import { messageErreur } from '../../lib/format';
 import { clavierMontant, lireMontant, montant } from '../../lib/argent';
 import { Alerte, Champ, EnTetePage, Fenetre, Pastille, Vide } from '../../components/ui';
 import { marcheUrl } from './commun';
+import { QrOffre } from './QrOffre';
 
 /* ------------------------------------------------------------------------------------------
  * Codes promo de DF Marché : pour tout le monde ou réservés à un compte client, partageables.
@@ -46,6 +47,8 @@ export function CodesPromo() {
   const modifier = peut('boutique.modifier');
   const [liste, setListe] = useState<CodePromo[] | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
+  const [nomBoutique, setNomBoutique] = useState(organisation?.nom ?? '');
+  const [qr, setQr] = useState<CodePromo | null>(null);
   const [f, setF] = useState<typeof vide | null>(null);
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
@@ -54,7 +57,9 @@ export function CodesPromo() {
     const [a, b] = await Promise.all([supabase.rpc('codes_promo_liste', { p_org: org }), supabase.rpc('vitrine_lire', { p_org: org })]);
     if (a.error) return setErreur(messageErreur(a.error));
     setListe(a.data as CodePromo[]);
-    setSlug((b.data as { vitrine: { slug: string } | null } | null)?.vitrine?.slug ?? null);
+    const v = (b.data as { vitrine: { slug: string; nom: string } | null } | null)?.vitrine;
+    setSlug(v?.slug ?? null);
+    if (v?.nom) setNomBoutique(v.nom);
   }, [org]);
   useEffect(() => {
     void charger();
@@ -119,44 +124,44 @@ export function CodesPromo() {
         {!liste ? <p className="secondaire">Chargement…</p> : !liste.length ? (
           <Vide>Aucun code pour l’instant. Créez « BIENVENUE » (−10 % pour tous) ou un bon pour un client fidèle.</Vide>
         ) : (
-          <div className="tableau-defilant">
-            <table className="tableau">
-              <thead>
-                <tr><th>Code</th><th>Remise</th><th>Pour</th><th className="nombre">Utilisé</th><th>Fin</th><th className="nombre col-secondaire">Remises accordées</th><th /></tr>
-              </thead>
-              <tbody>
-                {liste.map((k) => (
-                  <tr key={k.id} className={k.actif ? '' : 'ligne-eteinte'}>
-                    <td>
-                      <strong className="code-promo">{k.code}</strong>
-                      {k.libelle && <div className="secondaire">{k.libelle}</div>}
-                    </td>
-                    <td>
-                      <strong>{texteRemise(k)}</strong>
-                      {k.minimum > 0 && <div className="secondaire">dès {montant(k.minimum)}</div>}
-                    </td>
-                    <td>
-                      {k.client ? <>👤 {k.client.nom}<div className="secondaire">{k.client.telephone ?? k.client.email}</div></> : <>👥 Tout le monde{k.visible && <div className="secondaire">affiché sur le site</div>}</>}
-                    </td>
-                    <td className="nombre">{k.utilisations}{k.max_utilisations ? ` / ${k.max_utilisations}` : ''}</td>
-                    <td>{k.fin ? new Date(k.fin).toLocaleDateString('fr-FR') : '—'} {!k.actif ? <Pastille ton="gris">arrêté</Pastille> : !k.valable && <Pastille ton="or">expiré</Pastille>}</td>
-                    <td className="nombre col-secondaire">{montant(k.remises)}</td>
-                    <td className="actions-ligne">
-                      {slug && k.actif && <button className="bouton bouton-discret" onClick={() => void partager(k)}>📤 Partager</button>}
-                      {modifier && (
-                        <>
-                          <button className="bouton-lien" onClick={() => setF({ id: k.id, code: k.code, libelle: k.libelle ?? '', type: k.type, valeur: String(k.valeur), minimum: k.minimum ? String(k.minimum) : '', fin: k.fin ?? '', max: k.max_utilisations ? String(k.max_utilisations) : '', pour: k.client ? 'client' : 'tous', client: k.client?.email ?? '', visible: k.visible })}>Modifier</button>
-                          <button className="bouton-lien" onClick={() => void basculer(k)}>{k.actif ? 'Arrêter' : 'Réactiver'}</button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="codes-grille">
+            {liste.map((k) => (
+              <article key={k.id} className={`code-carte ${k.actif ? '' : 'code-eteint'}`}>
+                <div className="code-carte-haut">
+                  <strong className="code-carte-remise">{texteRemise(k)}</strong>
+                  {!k.actif ? <Pastille ton="gris">arrêté</Pastille> : !k.valable ? <Pastille ton="or">expiré</Pastille> : <Pastille ton="vert">actif</Pastille>}
+                </div>
+                <div className="code-carte-code">{k.code}</div>
+                {k.libelle && <div className="code-carte-libelle">{k.libelle}</div>}
+                <div className="code-carte-infos">
+                  <span>{k.client ? `👤 ${k.client.nom}` : `👥 Tout le monde${k.visible ? ' · affiché' : ''}`}</span>
+                  {k.minimum > 0 && <span>dès {montant(k.minimum)}</span>}
+                  <span>🔁 {k.utilisations}{k.max_utilisations ? ` / ${k.max_utilisations}` : ''}</span>
+                  {k.fin && <span>⏳ {new Date(k.fin).toLocaleDateString('fr-FR')}</span>}
+                  {Number(k.remises) > 0 && <span>💸 {montant(k.remises)} accordés</span>}
+                </div>
+                <div className="code-carte-actions">
+                  {slug && k.actif && (
+                    <>
+                      <button className="bouton bouton-principal" onClick={() => setQr(k)}>▦ QR code</button>
+                      <button className="bouton bouton-discret" onClick={() => void partager(k)}>📤 Partager</button>
+                    </>
+                  )}
+                  {modifier && (
+                    <>
+                      <button className="bouton-lien" onClick={() => setF({ id: k.id, code: k.code, libelle: k.libelle ?? '', type: k.type, valeur: String(k.valeur), minimum: k.minimum ? String(k.minimum) : '', fin: k.fin ?? '', max: k.max_utilisations ? String(k.max_utilisations) : '', pour: k.client ? 'client' : 'tous', client: k.client?.email ?? '', visible: k.visible })}>Modifier</button>
+                      <button className="bouton-lien" onClick={() => void basculer(k)}>{k.actif ? 'Arrêter' : 'Réactiver'}</button>
+                    </>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>
+      <Fenetre titre={qr ? `QR code · ${qr.code}` : 'QR code'} ouverte={!!qr} onFermer={() => setQr(null)}>
+        {qr && slug && <QrOffre offre={qr} slug={slug} boutique={nomBoutique} client={qr.client?.nom} />}
+      </Fenetre>
       <Fenetre titre={f?.id ? `Modifier ${f.code}` : 'Nouveau code promo'} ouverte={!!f} onFermer={() => setF(null)}>
         {f && (
           <form className="formulaire" onSubmit={enregistrer}>
@@ -187,8 +192,8 @@ export function CodesPromo() {
               <button type="button" className={f.pour === 'client' ? 'actif' : ''} onClick={() => setF({ ...f, pour: 'client' })}>👤 Un client (compte)</button>
             </div>
             {f.pour === 'client' ? (
-              <Champ label="E-mail ou téléphone du compte DF Marché du client" aide="Le client doit avoir créé son compte sur le site. Le code n’est valable qu’une fois connecté à ce compte.">
-                <input value={f.client} onChange={(e) => setF({ ...f, client: e.target.value })} required placeholder="07 00 00 00 00 ou client@mail.com" />
+              <Champ label="E-mail du compte DF Marché du client" aide="Le client doit avoir créé son compte sur le site (ou choisissez-le dans « Clients du site »). En ligne, le code n’est valable que connecté à ce compte ; en caisse, son QR code suffit.">
+                <input value={f.client} onChange={(e) => setF({ ...f, client: e.target.value })} required placeholder="client@mail.com" />
               </Champ>
             ) : (
               <label className="case"><input type="checkbox" checked={f.visible} onChange={(e) => setF({ ...f, visible: e.target.checked })} /> Afficher l’offre sur le site (« Bons d’achat » des clients). Sinon, seuls ceux qui ont le code ou le lien en profitent.</label>
@@ -273,26 +278,6 @@ export function MettreEnSolde({ org, produit, onFait, onFermer }: {
  * Alerte de la caisse : nouvelle commande en ligne à valider / remettre (son + vibration).
  * ---------------------------------------------------------------------------------------- */
 
-function bip() {
-  try {
-    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new Ctx();
-    [0, 0.22].forEach((t, i) => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.frequency.value = i ? 1046 : 784;
-      g.gain.setValueAtTime(0.0001, ctx.currentTime + t);
-      g.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.2);
-      o.connect(g).connect(ctx.destination);
-      o.start(ctx.currentTime + t);
-      o.stop(ctx.currentTime + t + 0.22);
-    });
-    navigator.vibrate?.([120, 80, 120]);
-  } catch {
-    /* pas de son disponible */
-  }
-}
 
 /** Nombre de commandes en ligne qui attendent à la caisse ; sonne quand il augmente. */
 export function useAlerteCommandes(org: string, actif: boolean): { nombre: number; nouvelle: boolean; vu: () => void } {
@@ -307,17 +292,14 @@ export function useAlerteCommandes(org: string, actif: boolean): { nombre: numbe
       if (arret || !data) return;
       const n = Number((data as { nombre: number }).nombre) || 0;
       if (precedent.current !== null && n > precedent.current) {
+        // Le son et la notification viennent de la fenêtre globale (LucarneCommandes).
         setNouvelle(true);
-        bip();
-        if ('Notification' in window && Notification.permission === 'granted' && document.hidden)
-          new Notification('DF Gestion — commande en ligne', { body: 'Une nouvelle commande attend à la caisse.', icon: '/icone-192.png' });
       }
       precedent.current = n;
       setNombre(n);
     };
     void verifier();
     const t = window.setInterval(() => void verifier(), 20000);
-    if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => undefined);
     return () => {
       arret = true;
       window.clearInterval(t);

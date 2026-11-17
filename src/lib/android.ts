@@ -10,6 +10,8 @@ interface PontAndroid {
   /** Depuis la v0.8 : fichier binaire (xlsx) transmis en base64. */
   enregistrerBase64?: (nom: string, type: string, base64: string) => string;
   version?: () => string;
+  /** Depuis la v3.9 : notification du téléphone (nombre ≤ 0 l'efface). */
+  notifier?: (titre: string, texte: string, nombre: number) => void;
 }
 
 declare global {

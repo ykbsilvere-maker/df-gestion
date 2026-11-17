@@ -128,6 +128,8 @@ describe('DF Marché', () => {
     });
     const vente = await enTantQue(pool, alice, async (q) => {
       const s = (await un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0, $3) id`, [org, caisse, carine]))).id;
+      // 3.9 : la gérante affecte d'abord la commande à la caissière.
+      await q(`select public.affecter_commande_web($1, $2)`, [commande.id, carine]);
       await devenir(q, carine);
       return (await un(q<{ r: { id: string; total: number } }>(`select public.encaisser_commande_web($1, $2) r`, [commande.id, s]))).r;
     });

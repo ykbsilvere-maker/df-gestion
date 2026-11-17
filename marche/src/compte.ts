@@ -3,8 +3,9 @@ import type { Session } from '@supabase/supabase-js';
 import { appeler, supabase, type Compte } from './api';
 
 /**
- * Compte client DF Marché : e-mail ou numéro de téléphone + mot de passe.
- * Un numéro devient un identifiant technique « 2250700000000@tel.dfmarche.ci » (aucun e-mail n'y est envoyé).
+ * Compte client DF Marché : adresse e-mail + mot de passe (téléphone facultatif, dans le profil).
+ * Les anciens comptes créés avec un numéro se connectent toujours : le numéro devient l'identifiant
+ * technique « 2250700000000@tel.dfmarche.ci » (aucun e-mail n'y est envoyé).
  */
 export function identifiantVersEmail(saisie: string): string {
   const s = saisie.trim().toLowerCase();
@@ -58,11 +59,12 @@ export async function connexion(identifiant: string, motDePasse: string) {
 }
 
 export async function inscription(p: { identifiant: string; motDePasse: string; nom: string; telephone: string }) {
-  const email = identifiantVersEmail(p.identifiant);
+  const email = p.identifiant.trim().toLowerCase();
+  if (!email.includes('@')) throw new Error('Créez votre compte avec votre adresse e-mail.');
   const { data, error } = await supabase.auth.signUp({ email, password: p.motDePasse, options: { data: { nom_complet: p.nom } } });
   if (error) throw new Error(/registered|exists/i.test(error.message) ? 'Un compte existe déjà avec cet identifiant : connectez-vous.' : error.message);
   if (!data.session) throw new Error('Compte créé : confirmez votre adresse e-mail puis connectez-vous.');
-  await appeler('compte_marche_enregistrer', { p: { nom: p.nom, telephone: p.telephone || (email.endsWith('@tel.dfmarche.ci') ? p.identifiant : null) } });
+  await appeler('compte_marche_enregistrer', { p: { nom: p.nom, telephone: p.telephone || null } });
   await rechargerCompte();
 }
 

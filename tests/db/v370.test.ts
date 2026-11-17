@@ -64,6 +64,8 @@ describe('Moyens de paiement ajoutés et galerie', () => {
     expect(suivi.r.boutique.numero_paiement).toBe('05 44 33 22 11');
     await enTantQue(pool, alice, async (q) => {
       const s = (await un(q<{ id: string }>(`select public.ouvrir_session($1, $2, 0, $3) id`, [org, caisse, carine]))).id;
+      // 3.9 : la gérante affecte d'abord la commande à la caissière.
+      await q(`select public.affecter_commande_web($1, $2)`, [c.id, carine]);
       await devenir(q, carine);
       await q(`select public.verifier_paiement_commande($1, true)`, [c.id]);
       const moyen = (await un(q<{ id: string }>(`select id from moyens_paiement where organisation_id = $1 and code = 'mtn_momo'`, [org]))).id;

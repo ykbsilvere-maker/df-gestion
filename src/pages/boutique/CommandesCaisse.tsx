@@ -25,6 +25,8 @@ interface Ligne {
   paiement_statut: StatutPaiement;
   statut: StatutCommande;
   articles: number;
+  a_moi: boolean;
+  caissier_nom: string | null;
 }
 
 const CODES: Record<Paiement, string> = { livraison: 'especes', wave: 'wave', orange_money: 'orange_money', mtn: 'mtn_momo', moov: 'moov_money', djamo: 'djamo', autre: '' };
@@ -67,13 +69,14 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
   const [enCours, setEnCours] = useState(false);
+  const [coches, setCoches] = useState<Record<number, boolean>>({});
   const actifs = moyens.filter((m) => m.actif);
 
   const charger = useCallback(async () => {
-    const { data, error } = await supabase.rpc('commandes_web_liste', { p_org: org, p_statut: 'en_cours' });
+    // Seulement les commandes affectées : la gérante choisit la caissière qui rassemble chaque commande.
+    const { data, error } = await supabase.rpc('commandes_caisse', { p_org: org });
     if (error) return setErreur(messageErreur(error));
-    // Les livraisons passent d'abord par la confirmation du responsable ; les retraits arrivent directement.
-    setListe(((data as { commandes: Ligne[] }).commandes ?? []).filter((c) => c.statut !== 'nouvelle' || c.mode === 'retrait'));
+    setListe((data as { commandes: Ligne[] }).commandes ?? []);
   }, [org]);
   useEffect(() => {
     if (enLigne) void charger();
@@ -93,6 +96,7 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
 
   function choisir(c: Ligne) {
     setChoisie(c);
+    setCoches({});
     setDetail(null);
     setRefus(null);
     setErreur('');
@@ -156,7 +160,20 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
     await charger();
   }
 
-  const peutVerifier = (c: Ligne) => peut('boutique.valider') || (c.mode === 'retrait' && peut('caisse.creer'));
+  const peutVerifier = (c: Ligne) => peut('boutique.valider') || c.a_moi;
+  const toutCoche = !!detail && detail.lignes.every((_, i) => coches[i]);
+
+  async function marquerPrete() {
+    if (!choisie) return;
+    setEnCours(true);
+    setErreur('');
+    const { error } = await supabase.rpc('avancer_commande_web', { p_id: choisie.id, p_statut: 'prete', p_motif: null });
+    setEnCours(false);
+    if (error) return setErreur(messageErreur(error));
+    setInfo(`Commande ${choisie.numero} rassemblée et vérifiée : elle attend le client.`);
+    setChoisie({ ...choisie, statut: 'prete' });
+    await charger();
+  }
 
   if (!enLigne) return <Alerte type="info">Les commandes en ligne s’encaissent avec le réseau : reconnectez l’appareil.</Alerte>;
 
@@ -167,7 +184,7 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
       {!liste ? (
         <Vide>Chargement…</Vide>
       ) : liste.length === 0 ? (
-        <Vide>Aucune commande à remettre. Les retraits arrivent ici dès leur passage ; les livraisons, une fois confirmées dans « Boutique en ligne ».</Vide>
+        <Vide>Aucune commande ne vous est affectée. La gérante choisit, dans « Boutique en ligne », la caissière qui rassemble chaque commande : vous recevez alors une notification.</Vide>
       ) : (
         <ul className="liste-credits-caisse">
           {liste.map((c) => {
@@ -179,6 +196,7 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
                     <strong>{c.client_nom}</strong>
                     <small>
                       {c.numero} · {c.mode === 'livraison' ? `🛵 ${c.zone ?? ''}` : '🏪 retrait'} · {c.articles} article(s)
+                      {!c.a_moi && c.caissier_nom ? ` · affectée à ${c.caissier_nom}` : ''}
                     </small>
                   </span>
                   <span className="credit-reste">
@@ -188,6 +206,31 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
                 </button>
                 {choisie?.id === c.id && (
                   <form className="formulaire credit-encaissement" onSubmit={encaisser}>
+                    {detail && (
+                      <div className="rassemblement">
+                        <p className="rassemblement-titre">
+                          <strong>🧺 Rassembler et vérifier</strong>
+                          <span>{detail.lignes.filter((_, i) => coches[i]).length} / {detail.lignes.length}</span>
+                        </p>
+                        <ul>
+                          {detail.lignes.map((l, i) => (
+                            <li key={i} className={coches[i] ? 'coche' : ''}>
+                              <label>
+                                <input type="checkbox" checked={!!coches[i]} onChange={(e) => setCoches({ ...coches, [i]: e.target.checked })} />
+                                <span className="rassemblement-qte">{Number(l.quantite)} ×</span>
+                                <span>{l.designation}</span>
+                                {Number(l.stock) < Number(l.quantite) && <Pastille ton="rouge">stock {Number(l.stock)}</Pastille>}
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                        {c.statut === 'confirmee' && (
+                          <button type="button" className="bouton bouton-principal" disabled={enCours || !toutCoche} onClick={() => void marquerPrete()}>
+                            ✅ Tout est rassemblé : commande prête
+                          </button>
+                        )}
+                      </div>
+                    )}
                     {bloquee ? (
                       <div className="verification-paiement">
                         <p>
@@ -258,7 +301,11 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer }:
                       <Link to={`/boutique/commandes/${c.id}`} className="bouton-lien">Voir la commande</Link>
                       <button type="button" className="bouton bouton-discret" disabled={!detail} onClick={imprimerBon}>🧾 {c.paiement_statut === 'confirme' ? 'Reçu' : 'Bon'} (copie)</button>
                       <button type="button" className="bouton bouton-discret" onClick={() => setChoisie(null)}>Fermer</button>
-                      {!bloquee && <button className="bouton bouton-principal" disabled={enCours}>Remettre et encaisser</button>}
+                      {!bloquee && (
+                        <button className="bouton bouton-principal" disabled={enCours || (c.statut === 'confirmee' && !toutCoche)} title={c.statut === 'confirmee' && !toutCoche ? 'Cochez d’abord chaque article rassemblé' : undefined}>
+                          Remettre et encaisser
+                        </button>
+                      )}
                     </div>
                   </form>
                 )}

@@ -142,12 +142,14 @@ export function Boutique() {
             <input type="search" placeholder={`Chercher chez ${v.nom}…`} value={texte} onChange={(e) => setTexte(e.target.value)} />
           </div>
           {v.categories.length > 1 && (
-            <nav className="puces-categories">
-              <button className={!categorie ? 'actif' : ''} onClick={() => setCategorie(null)}>Tout</button>
-              {v.categories.map((c) => <button key={c} className={categorie === c ? 'actif' : ''} onClick={() => setCategorie(c)}>{c}</button>)}
+            <nav className="onglets-rayons" role="tablist" aria-label="Rayons de la boutique">
+              <button role="tab" aria-selected={!categorie} className={!categorie ? 'actif' : ''} onClick={() => setCategorie(null)}>Tout</button>
+              {v.categories.map((c) => <button key={c} role="tab" aria-selected={categorie === c} className={categorie === c ? 'actif' : ''} onClick={() => setCategorie(c)}>{c}</button>)}
             </nav>
           )}
-          {produits ? <GrilleProduits produits={vus} sansBoutique /> : <Squelettes n={6} />}
+          <div key={`${categorie ?? 'tout'}-${texte ? 'r' : ''}`} className="fondu">
+            {produits ? <GrilleProduits produits={vus} sansBoutique /> : <Squelettes n={6} />}
+          </div>
         </section>
       )}
       {onglet === 'infos' && (

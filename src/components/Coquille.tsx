@@ -10,6 +10,7 @@ import { VerrouInactivite, verrouillerMaintenant } from './VerrouInactivite';
 import { FiletSecurite } from './FiletSecurite';
 import { useSession } from '../lib/session';
 import { useCommandesWeb } from '../pages/boutique/alerte';
+import { LucarneCommandes } from './LucarneCommandes';
 import { useIdentite } from '../lib/identite';
 import { identifiantAffiche } from '../lib/acces';
 import { reprendreLogoDemande } from '../lib/demandeOuverture';
@@ -363,6 +364,7 @@ export function Coquille() {
         </div>
       </div>
       <AlertesEquipe org={organisation?.organisation_id} />
+      <LucarneCommandes org={idOrg} actif={peut('boutique.consulter')} />
 
       <nav className="app-onglets">
         {principaux.map((l) => lien(l))}

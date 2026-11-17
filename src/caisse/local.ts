@@ -67,6 +67,8 @@ export interface VenteLocale {
   statut: StatutSync;
   erreur?: string;
   tentatives: number;
+  /** Code promo (QR du client) appliqué à la vente, contrôlé par le serveur. */
+  code_promo?: string;
 }
 
 interface SchemaCaisse extends DBSchema {
@@ -206,6 +208,7 @@ function charge(v: VenteLocale) {
     date_vente: v.date_vente,
     origine: v.origine,
     numero_local: v.numero_local,
+    code_promo: v.code_promo,
     lignes: v.lignes.map((l) => ({ produit_id: l.produit_id, quantite: l.quantite, prix_unitaire: l.prix_unitaire, remise: l.remise })),
     reglements: v.reglements.map((r) => ({ moyen_id: r.moyen_id, montant: r.montant, montant_recu: r.montant_recu, reference: r.reference, sens: r.sens })),
   };

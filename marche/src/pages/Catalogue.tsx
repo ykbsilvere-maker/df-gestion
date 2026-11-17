@@ -2,8 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { appeler, type Accueil as DonneesAccueil, type ProduitCarte, type Vitrine } from '../api';
 import {
+  AppelPanier,
+  BandeauxPromo,
   BanniereSoldes,
   CarteBoutique,
+  Defilant,
+  HeroFrais,
+  OngletsRayons,
   Chargement,
   Erreur,
   GrilleProduits,
@@ -15,7 +20,9 @@ import {
   VentesFlash,
   rayon,
   salutation,
+  sansDoublon,
 } from '../composants';
+import { useCompte } from '../compte';
 import { IcoBoutique, IcoCoeur, IcoFlamme, IcoRecommander, IcoSuivi } from '../icones';
 import { mesCommandes, useFavoris, vusRecemment } from '../panier';
 
@@ -28,7 +35,7 @@ function BlocBoutique({ v }: { v: Vitrine }) {
   if (produits && !produits.length) return null;
   const couleur = v.couleur && /^#[0-9a-f]{6}$/i.test(v.couleur) ? v.couleur : '#8c1620';
   return (
-    <section className="bloc-boutique" style={{ background: `linear-gradient(135deg, ${couleur} 0%, #181311 130%)` }}>
+    <section className="bloc-boutique revele" style={{ background: `linear-gradient(135deg, ${couleur} 0%, #181311 130%)` }}>
       <div className="bloc-boutique-tete">
         <LogoBoutique v={v} />
         <div>
@@ -44,6 +51,7 @@ function BlocBoutique({ v }: { v: Vitrine }) {
 
 /** Page d'accueil : affiches des soldes, raccourcis, ventes flash, rayons, boutiques, populaires, nouveautés. */
 export function Accueil() {
+  const { compte } = useCompte();
   const [d, setD] = useState<DonneesAccueil | null>(null);
   const [erreur, setErreur] = useState('');
   const charger = useCallback(() => {
@@ -59,35 +67,20 @@ export function Accueil() {
   const flash = [...d.soldes].sort((a, b) => (a.solde_fin ?? '9').localeCompare(b.solde_fin ?? '9'));
   const derniere = mesCommandes()[0];
   const vus = vusRecemment();
+  const tous = sansDoublon([d.populaires, d.soldes, d.nouveautes, d.arrivages]);
+  const selection = sansDoublon([d.arrivages, d.soldes, d.populaires, d.nouveautes]).slice(0, 10);
+  const livraison = d.boutiques.some((v) => v.livraison);
   return (
     <>
-      <section className="accueil-tete">
-        <p className="salut">{salutation()} 👋</p>
-        <h1>Qu’est-ce qu’on achète aujourd’hui ?</h1>
-      </section>
-
-      <div className="hero">
-        {d.categories.length > 0 && (
-          <aside className="hero-rayons" aria-label="Rayons">
-            <strong>Tous les rayons</strong>
-            {d.categories.map((c) => (
-              <Link key={c} to={`/rayons/${encodeURIComponent(c)}`}><span aria-hidden>{rayon(c).emoji}</span>{c}</Link>
-            ))}
-            <Link to="/soldes" className="chaud"><span aria-hidden>🔥</span>Soldes en cours</Link>
-          </aside>
-        )}
-        {d.soldes.length > 0 ? (
-          <BanniereSoldes soldes={d.soldes} />
-        ) : (
-          <section className="accroche">
-            <h2>Les boutiques de votre quartier, en ligne</h2>
-            <p>Stock en direct, livraison ou retrait, paiement à la livraison ou par Mobile Money.</p>
-          </section>
-        )}
-      </div>
+      <HeroFrais
+        produits={sansDoublon([d.soldes, d.populaires, d.nouveautes])}
+        titre={<>Les boutiques de votre quartier, <em>livrées</em> ou prêtes au retrait.</>}
+        texte={`${salutation()} 👋 Stock réel, prix des boutiques, paiement Wave, Orange Money ou en espèces.`}
+        lien={{ vers: '/rayons', libelle: 'Découvrir les produits' }}
+      />
 
       {d.boutiques.length > 0 && (
-        <nav className="ronds-boutiques" aria-label="Boutiques">
+        <nav className="ronds-boutiques revele" aria-label="Boutiques">
           {d.boutiques.map((v) => (
             <Link key={v.slug} to={`/boutique/${v.slug}`}>
               <span className="anneau"><LogoBoutique v={v} /></span>
@@ -97,7 +90,7 @@ export function Accueil() {
         </nav>
       )}
 
-      <nav className="raccourcis" aria-label="Raccourcis">
+      <nav className="raccourcis revele" aria-label="Raccourcis">
         <Link to="/soldes"><span className="rond orange"><IcoFlamme /></span>Promos</Link>
         <Link to="/boutiques"><span className="rond"><IcoBoutique /></span>Boutiques</Link>
         <Link to={derniere ? `/suivi/${derniere.code}` : '/mes-commandes'}><span className="rond"><IcoSuivi /></span>Suivi</Link>
@@ -106,17 +99,29 @@ export function Accueil() {
         <Link to="/favoris"><span className="rond rose"><IcoCoeur /></span>Favoris</Link>
       </nav>
 
-      <VentesFlash soldes={flash} />
-
-      {!!d.arrivages?.length && (
-        <section className="section">
-          <TitreRayon titre="Nouveaux arrivages" sous="Réceptionnés cette semaine en boutique" />
-          <RangeeProduits produits={d.arrivages} />
+      {selection.length > 0 && (
+        <section className="section bloc-blanc revele">
+          <TitreRayon titre="La sélection du jour" sous="Arrivages, soldes et produits les plus demandés" lien={{ vers: '/recherche?tri=nouveautes' }} />
+          <GrilleProduits produits={selection} />
         </section>
       )}
 
+      <BandeauxPromo soldes={d.soldes} livraison={livraison} />
+
+      {d.soldes.length > 0 && (
+        <div className="revele">
+          <BanniereSoldes soldes={d.soldes} />
+        </div>
+      )}
+
+      <VentesFlash soldes={flash} />
+
+      <OngletsRayons titre="Meilleures ventes de la semaine" produits={tous} lien={{ vers: '/rayons' }} />
+
+      <Defilant produits={tous} />
+
       {d.categories.length > 0 && (
-        <section className="section">
+        <section className="section revele">
           <TitreRayon titre="Nos rayons" lien={{ vers: '/rayons' }} />
           <nav className="bulles-rayons" aria-label="Rayons">
             <Link to="/rayons" className="bulle-rayon tout"><span aria-hidden>🛍️</span><strong>Tout</strong></Link>
@@ -133,7 +138,25 @@ export function Accueil() {
         </section>
       )}
 
-      <section className="section comment-ca-marche">
+      <section className="section revele">
+        <TitreRayon titre="Choisissez votre boutique" lien={{ vers: '/boutiques', libelle: 'Toutes' }} />
+        {d.boutiques.length ? (
+          <Rangee large>{d.boutiques.map((v) => <CarteBoutique key={v.slug} v={v} />)}</Rangee>
+        ) : (
+          <p className="vide">Les premières boutiques arrivent bientôt.</p>
+        )}
+      </section>
+
+      {d.boutiques.slice(0, 3).map((v) => <BlocBoutique key={v.slug} v={v} />)}
+
+      {(vus.length > 0 || d.nouveautes.length > 0) && (
+        <section className="section bloc-blanc revele">
+          <TitreRayon titre={vus.length ? 'Juste pour vous' : 'Nouveautés'} sous={vus.length ? 'Reprenez là où vous vous étiez arrêté' : undefined} lien={{ vers: '/recherche?tri=nouveautes' }} />
+          <GrilleProduits produits={(vus.length ? vus : d.nouveautes).slice(0, 10)} />
+        </section>
+      )}
+
+      <section className="section comment-ca-marche revele">
         <TitreRayon titre="Commander en 4 étapes" sous="Simple, rapide et sûr" />
         <ol className="etapes-accueil">
           <li><span aria-hidden>🛍️</span><strong>Choisir</strong><small>Ajoutez vos produits au panier</small></li>
@@ -143,42 +166,12 @@ export function Accueil() {
         </ol>
       </section>
 
-      <section className="section">
-        <TitreRayon titre="Choisissez votre boutique" lien={{ vers: '/boutiques', libelle: 'Toutes' }} />
-        {d.boutiques.length ? (
-          <Rangee large>{d.boutiques.map((v) => <CarteBoutique key={v.slug} v={v} />)}</Rangee>
-        ) : (
-          <p className="vide">Les premières boutiques arrivent bientôt.</p>
-        )}
-      </section>
+      <AppelPanier produits={tous} connecte={!!compte} />
 
-      {d.populaires.length > 0 && (
-        <section className="section">
-          <TitreRayon titre="Produits populaires" sous="Les plus commandés sur DF Marché" />
-          <RangeeProduits produits={d.populaires} />
-        </section>
-      )}
-
-      {d.boutiques.slice(0, 3).map((v) => <BlocBoutique key={v.slug} v={v} />)}
-
-      {vus.length > 0 && (
-        <section className="section">
-          <TitreRayon titre="Vus récemment" sous="Reprenez là où vous vous étiez arrêté" />
-          <RangeeProduits produits={vus} />
-        </section>
-      )}
-
-      {d.nouveautes.length > 0 && (
-        <section className="section">
-          <TitreRayon titre="Nouveautés" lien={{ vers: '/recherche?tri=nouveautes' }} />
-          <GrilleProduits produits={d.nouveautes} />
-        </section>
-      )}
-
-      <section className="garanties">
+      <section className="garanties revele">
         <div><span aria-hidden>📦</span><strong>Stock en direct</strong><p>Ce qui s’affiche est en rayon : la boutique met à jour depuis sa caisse.</p></div>
         <div><span aria-hidden>🛵</span><strong>Livraison ou retrait</strong><p>Choisissez votre zone et l’heure qui vous arrange.</p></div>
-        <div><span aria-hidden>📲</span><strong>Paiement Mobile Money</strong><p>Payez la boutique en un geste depuis votre appli, ou à la livraison. Reçu téléchargeable avec la référence.</p></div>
+        <div><span aria-hidden>📲</span><strong>Paiement Mobile Money</strong><p>Payez la boutique en un geste depuis votre appli, ou en espèces. Reçu téléchargeable avec la référence.</p></div>
         <div><span aria-hidden>⭐</span><strong>Avis vérifiés</strong><p>Seuls les clients livrés peuvent noter un produit.</p></div>
       </section>
     </>

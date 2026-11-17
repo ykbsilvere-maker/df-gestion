@@ -14,6 +14,7 @@ import { CreditsModule, FicheCredit, FormulaireCredit, ListeCredits, ProcedureCr
 import { BalanceAgee, FicheClient, FichierClients } from './pages/credits/Clients';
 import { BoutiqueModule, CommandesWeb, FicheCommandeWeb, MaVitrine, ProduitsEnLigne } from './pages/boutique/Boutique';
 import { CodesPromo } from './pages/boutique/Promotions';
+import { ClientsSite } from './pages/boutique/ClientsSite';
 import { Personnalisation } from './pages/Personnalisation';
 import { Catalogue } from './pages/Catalogue';
 import { EtiquettesPage } from './pages/EtiquettesPage';
@@ -179,6 +180,7 @@ function Routes_() {
           <Route path="produits" element={<ProduitsEnLigne />} />
           <Route path="vitrine" element={<AvecDroit permission="boutique.modifier"><MaVitrine /></AvecDroit>} />
           <Route path="promos" element={<CodesPromo />} />
+          <Route path="clients" element={<ClientsSite />} />
         </Route>
         <Route path="credits" element={<AvecDroit permission={['ventes.valider', 'tresorerie.consulter', 'caisse.creer']}><CreditsModule /></AvecDroit>}>
           <Route index element={<ListeCredits />} />
