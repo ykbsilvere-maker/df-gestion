@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { appeler, type Accueil as DonneesAccueil, type ProduitCarte, type Vitrine } from '../api';
 import {
@@ -7,6 +7,7 @@ import {
   Chargement,
   Erreur,
   GrilleProduits,
+  LogoBoutique,
   Rangee,
   RangeeProduits,
   Squelettes,
@@ -16,7 +17,30 @@ import {
   salutation,
 } from '../composants';
 import { IcoBoutique, IcoCoeur, IcoFlamme, IcoRecommander, IcoSuivi } from '../icones';
-import { mesCommandes, useFavoris } from '../panier';
+import { mesCommandes, useFavoris, vusRecemment } from '../panier';
+
+/** Bloc « Chez telle boutique » à la couleur de la boutique, avec ses produits. */
+function BlocBoutique({ v }: { v: Vitrine }) {
+  const [produits, setProduits] = useState<ProduitCarte[] | null>(null);
+  useEffect(() => {
+    appeler<{ produits: ProduitCarte[] }>('marche_produits', { p_boutique: v.slug, p_limite: 10 }).then((r) => setProduits(r.produits)).catch(() => setProduits([]));
+  }, [v.slug]);
+  if (produits && !produits.length) return null;
+  const couleur = v.couleur && /^#[0-9a-f]{6}$/i.test(v.couleur) ? v.couleur : '#8c1620';
+  return (
+    <section className="bloc-boutique" style={{ background: `linear-gradient(135deg, ${couleur} 0%, #181311 130%)` }}>
+      <div className="bloc-boutique-tete">
+        <LogoBoutique v={v} />
+        <div>
+          <h2>{v.nom}</h2>
+          <p>{[v.activite, v.commune ?? v.ville, v.livraison ? 'livraison' : 'retrait'].filter(Boolean).join(' · ')}</p>
+        </div>
+        <Link to={`/boutique/${v.slug}`} className="pastille-lien">Voir la boutique</Link>
+      </div>
+      {produits ? <RangeeProduits produits={produits} sansBoutique /> : <Squelettes n={4} rangee />}
+    </section>
+  );
+}
 
 /** Page d'accueil : affiches des soldes, raccourcis, ventes flash, rayons, boutiques, populaires, nouveautés. */
 export function Accueil() {
@@ -34,6 +58,7 @@ export function Accueil() {
   if (!d) return <Chargement />;
   const flash = [...d.soldes].sort((a, b) => (a.solde_fin ?? '9').localeCompare(b.solde_fin ?? '9'));
   const derniere = mesCommandes()[0];
+  const vus = vusRecemment();
   return (
     <>
       <section className="accueil-tete">
@@ -41,13 +66,35 @@ export function Accueil() {
         <h1>Qu’est-ce qu’on achète aujourd’hui ?</h1>
       </section>
 
-      {d.soldes.length > 0 ? (
-        <BanniereSoldes soldes={d.soldes} />
-      ) : (
-        <section className="accroche">
-          <h2>Les boutiques de votre quartier, en ligne</h2>
-          <p>Stock en direct, livraison ou retrait, paiement à la livraison ou par Mobile Money.</p>
-        </section>
+      <div className="hero">
+        {d.categories.length > 0 && (
+          <aside className="hero-rayons" aria-label="Rayons">
+            <strong>Tous les rayons</strong>
+            {d.categories.map((c) => (
+              <Link key={c} to={`/rayons/${encodeURIComponent(c)}`}><span aria-hidden>{rayon(c).emoji}</span>{c}</Link>
+            ))}
+            <Link to="/soldes" className="chaud"><span aria-hidden>🔥</span>Soldes en cours</Link>
+          </aside>
+        )}
+        {d.soldes.length > 0 ? (
+          <BanniereSoldes soldes={d.soldes} />
+        ) : (
+          <section className="accroche">
+            <h2>Les boutiques de votre quartier, en ligne</h2>
+            <p>Stock en direct, livraison ou retrait, paiement à la livraison ou par Mobile Money.</p>
+          </section>
+        )}
+      </div>
+
+      {d.boutiques.length > 0 && (
+        <nav className="ronds-boutiques" aria-label="Boutiques">
+          {d.boutiques.map((v) => (
+            <Link key={v.slug} to={`/boutique/${v.slug}`}>
+              <span className="anneau"><LogoBoutique v={v} /></span>
+              {v.nom}
+            </Link>
+          ))}
+        </nav>
       )}
 
       <nav className="raccourcis" aria-label="Raccourcis">
@@ -93,6 +140,15 @@ export function Accueil() {
         </section>
       )}
 
+      {d.boutiques.slice(0, 3).map((v) => <BlocBoutique key={v.slug} v={v} />)}
+
+      {vus.length > 0 && (
+        <section className="section">
+          <TitreRayon titre="Vus récemment" sous="Reprenez là où vous vous étiez arrêté" />
+          <RangeeProduits produits={vus} />
+        </section>
+      )}
+
       {d.nouveautes.length > 0 && (
         <section className="section">
           <TitreRayon titre="Nouveautés" lien={{ vers: '/recherche?tri=nouveautes' }} />
@@ -117,7 +173,7 @@ const TRIS = [
   ['nouveautes', 'Nouveautés'],
 ] as const;
 
-/** Recherche dans tout le marché ; « /soldes » = la même page filtrée sur les soldes. */
+/** Recherche dans tout le marché, avec filtres ; « /soldes » = la même page filtrée sur les soldes. */
 export function Recherche({ soldes }: { soldes?: boolean }) {
   const [params, setParams] = useSearchParams();
   const q = params.get('q') ?? '';
@@ -125,6 +181,8 @@ export function Recherche({ soldes }: { soldes?: boolean }) {
   const tri = params.get('tri') ?? 'pertinence';
   const [r, setR] = useState<{ total: number; produits: ProduitCarte[] } | null>(null);
   const [erreur, setErreur] = useState('');
+  const [f, setF] = useState({ stock: false, note: false, promo: false, min: '', max: '', boutique: '' });
+  const [ouvert, setOuvert] = useState(false);
   useEffect(() => {
     setR(null);
     appeler<{ total: number; produits: ProduitCarte[] }>('marche_produits', {
@@ -138,19 +196,59 @@ export function Recherche({ soldes }: { soldes?: boolean }) {
     else n.delete(k);
     setParams(n, { replace: true });
   };
+  const boutiques = useMemo(() => [...new Map((r?.produits ?? []).map((p) => [p.boutique.slug, p.boutique.nom])).entries()], [r]);
+  const vus = useMemo(() => {
+    const min = Number(f.min.replace(/\D/g, '')) || 0;
+    const max = Number(f.max.replace(/\D/g, '')) || Infinity;
+    return (r?.produits ?? []).filter(
+      (p) =>
+        (!f.stock || Number(p.disponible) > 0) && (!f.note || Number(p.note ?? 0) >= 4) && (!f.promo || Number(p.prix) < Number(p.prix_normal)) &&
+        Number(p.prix) >= min && Number(p.prix) <= max && (!f.boutique || p.boutique.slug === f.boutique),
+    );
+  }, [r, f]);
+  const actifs = [f.stock, f.note, f.promo, f.min, f.max, f.boutique].filter(Boolean).length;
   return (
-    <section className="section">
-      <div className="entete-page">
-        <h1>{soldes ? '🔥 Tous les soldes' : q ? `« ${q} »` : categorie ?? 'Tous les produits'}</h1>
-        {r && <p>{r.total} produit{r.total > 1 ? 's' : ''}</p>}
+    <section className="page-recherche">
+      <aside className={`filtres-panneau ${ouvert ? 'ouvert' : ''}`} aria-label="Filtres">
+        <div className="filtres-tete">
+          <strong>Filtres</strong>
+          {actifs > 0 && <button className="bouton-lien" onClick={() => setF({ stock: false, note: false, promo: false, min: '', max: '', boutique: '' })}>Tout effacer</button>}
+        </div>
+        <label className="case-filtre"><input type="checkbox" checked={f.stock} onChange={(e) => setF({ ...f, stock: e.target.checked })} /> En stock seulement</label>
+        {!soldes && <label className="case-filtre"><input type="checkbox" checked={f.promo} onChange={(e) => setF({ ...f, promo: e.target.checked })} /> 🔥 En solde</label>}
+        <label className="case-filtre"><input type="checkbox" checked={f.note} onChange={(e) => setF({ ...f, note: e.target.checked })} /> <b className="etoile">★★★★</b> et plus</label>
+        <strong>Prix (F)</strong>
+        <div className="filtre-prix">
+          <input inputMode="numeric" placeholder="Min" value={f.min} onChange={(e) => setF({ ...f, min: e.target.value })} aria-label="Prix minimum" />
+          <span>–</span>
+          <input inputMode="numeric" placeholder="Max" value={f.max} onChange={(e) => setF({ ...f, max: e.target.value })} aria-label="Prix maximum" />
+        </div>
+        {boutiques.length > 1 && (
+          <>
+            <strong>Boutique</strong>
+            <label className="case-filtre"><input type="radio" name="boutique" checked={!f.boutique} onChange={() => setF({ ...f, boutique: '' })} /> Toutes</label>
+            {boutiques.map(([slug, nom]) => (
+              <label key={slug} className="case-filtre"><input type="radio" name="boutique" checked={f.boutique === slug} onChange={() => setF({ ...f, boutique: slug })} /> {nom}</label>
+            ))}
+          </>
+        )}
+        <button className="bouton bouton-principal large voir-resultats" onClick={() => setOuvert(false)}>Voir {vus.length} produit{vus.length > 1 ? 's' : ''}</button>
+      </aside>
+      {ouvert && <div className="voile" onClick={() => setOuvert(false)} />}
+      <div>
+        <div className="entete-page">
+          <h1>{soldes ? '🔥 Tous les soldes' : q ? `« ${q} »` : categorie ?? 'Tous les produits'}</h1>
+          {r && <p>{vus.length} produit{vus.length > 1 ? 's' : ''}</p>}
+        </div>
+        <div className="puces-filtres" role="tablist" aria-label="Trier">
+          <button className={`bouton-filtres ${actifs ? 'actif' : ''}`} onClick={() => setOuvert(true)}>⚙ Filtres{actifs ? ` (${actifs})` : ''}</button>
+          {TRIS.map(([k, l]) => (
+            <button key={k} role="tab" aria-selected={tri === k} className={tri === k ? 'actif' : ''} onClick={() => maj('tri', k)}>{l}</button>
+          ))}
+          {categorie && <button className="actif" onClick={() => maj('categorie', null)}>{categorie} ✕</button>}
+        </div>
+        {erreur ? <Erreur>{erreur}</Erreur> : !r ? <Squelettes n={8} /> : vus.length ? <GrilleProduits produits={vus} /> : <p className="vide">Aucun produit avec ces filtres.</p>}
       </div>
-      <div className="puces-filtres" role="tablist" aria-label="Trier">
-        {TRIS.map(([k, l]) => (
-          <button key={k} role="tab" aria-selected={tri === k} className={tri === k ? 'actif' : ''} onClick={() => maj('tri', k)}>{l}</button>
-        ))}
-        {categorie && <button className="actif" onClick={() => maj('categorie', null)}>{categorie} ✕</button>}
-      </div>
-      {erreur ? <Erreur>{erreur}</Erreur> : !r ? <Squelettes n={8} /> : <GrilleProduits produits={r.produits} />}
     </section>
   );
 }

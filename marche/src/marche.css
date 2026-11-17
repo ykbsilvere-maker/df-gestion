@@ -547,3 +547,79 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-
   .commande { grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); }
   .recap { position: sticky; top: 132px; }
 }
+
+/* =====================================================================
+   Compléments : bandeau défilant, accueil façon grand marché, filtres
+   ===================================================================== */
+.bandeau-annonces { background: var(--rouge-fonce); color: #fff; overflow: hidden; font-size: 0.8rem; }
+.bandeau-piste { display: flex; width: max-content; animation: defile 38s linear infinite; }
+.bandeau-piste span { display: flex; }
+.bandeau-piste b { font-weight: 600; padding: 7px 22px; white-space: nowrap; }
+.bandeau-annonces:hover .bandeau-piste { animation-play-state: paused; }
+@keyframes defile { to { transform: translateX(-50%); } }
+
+.hero { display: block; }
+.hero-rayons { display: none; }
+.ronds-boutiques { display: flex; gap: 14px; overflow-x: auto; scrollbar-width: none; margin: 18px -16px 0; padding: 4px 16px 6px; }
+.ronds-boutiques::-webkit-scrollbar { display: none; }
+.ronds-boutiques a { flex: none; width: 78px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 600; text-align: center; line-height: 1.15; }
+.anneau { padding: 3px; border-radius: 50%; background: conic-gradient(from 210deg, var(--rouge), var(--or), var(--rouge-fonce), var(--rouge)); transition: transform 0.25s var(--ressort); }
+.anneau .logo-boutique, .anneau .monogramme { width: 62px; height: 62px; border-radius: 50%; border: 3px solid var(--fond); font-size: 1.1rem; }
+.ronds-boutiques a:active .anneau { transform: scale(0.88) rotate(-8deg); }
+
+.bloc-boutique { margin: 26px -16px; padding: 16px 16px 4px; color: #fff; }
+.bloc-boutique-tete { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.bloc-boutique-tete .logo-boutique, .bloc-boutique-tete .monogramme { width: 46px; height: 46px; border-radius: 14px; border: 2px solid rgba(255, 255, 255, 0.6); font-size: 1rem; }
+.bloc-boutique-tete > div { flex: 1; min-width: 0; }
+.bloc-boutique-tete h2 { margin: 0; font-size: 1.15rem; }
+.bloc-boutique-tete p { margin: 0; font-size: 0.8rem; opacity: 0.85; }
+.bloc-boutique .pastille-lien { color: var(--encre); border: 0; }
+.bloc-boutique .carte-produit { color: var(--encre); }
+.bloc-boutique .rangee.grille-produits, .bloc-boutique [aria-busy] { display: grid; }
+
+.page-recherche { display: block; margin: 12px 0 26px; }
+.filtres-panneau { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; background: #fff; border-radius: 26px 26px 0 0; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; transform: translateY(105%); transition: transform 0.4s var(--doux); box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.25); max-height: 82vh; overflow-y: auto; }
+.filtres-panneau.ouvert { transform: none; }
+.filtres-tete { display: flex; justify-content: space-between; align-items: center; font-size: 1.15rem; }
+.case-filtre { flex-direction: row; align-items: center; gap: 10px; margin: 0; font-weight: 500; font-size: 0.95rem; cursor: pointer; padding: 4px 0; }
+.case-filtre input { width: 22px; height: 22px; min-height: 0; padding: 0; accent-color: var(--rouge); flex: none; box-shadow: none !important; transition: transform 0.2s var(--ressort); }
+.case-filtre input:active { transform: scale(0.8); }
+.filtre-prix { display: flex; align-items: center; gap: 8px; }
+.filtre-prix input { min-height: 44px; }
+.voile { position: fixed; inset: 0; z-index: 65; background: rgba(24, 19, 17, 0.5); animation: fondu 0.3s both; }
+@keyframes fondu { from { opacity: 0; } }
+.bouton-filtres.actif { background: var(--rouge) !important; border-color: var(--rouge) !important; }
+
+.retour-haut { position: fixed; right: 18px; bottom: calc(240px + env(safe-area-inset-bottom)); z-index: 34; width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--noir); color: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: var(--ombre-forte); opacity: 0; transform: translateY(20px) scale(0.6); pointer-events: none; transition: opacity 0.3s, transform 0.35s var(--ressort); }
+.retour-haut.visible { opacity: 1; transform: none; pointer-events: auto; }
+
+.pied { background: var(--noir); border-top: 0; color: #fff; }
+.pied p { color: #b9aea5; }
+.pied .marque b, .pied .marque { color: #fff; }
+.pied .marque b { color: #ef6a70; }
+.pied strong { color: #fff; }
+
+@media (min-width: 720px) {
+  .bloc-boutique { margin: 26px 0; border-radius: var(--rayon-l); padding: 20px 22px 8px; }
+  .ronds-boutiques { margin: 22px 0 0; padding: 4px 2px 6px; justify-content: center; gap: 26px; }
+  .ronds-boutiques a { width: 96px; font-size: 0.82rem; }
+  .anneau .logo-boutique, .anneau .monogramme { width: 76px; height: 76px; }
+}
+@media (min-width: 960px) {
+  .bandeau-annonces { font-size: 0.85rem; }
+  .hero { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px; align-items: stretch; }
+  .hero-rayons { display: flex; flex-direction: column; gap: 2px; background: #fff; border-radius: var(--rayon-l); padding: 14px 10px; box-shadow: var(--ombre); }
+  .hero-rayons strong { padding: 4px 10px 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--encre-douce); }
+  .hero-rayons a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; font-weight: 600; font-size: 0.92rem; transition: background 0.2s, transform 0.2s var(--doux), color 0.2s; }
+  .hero-rayons a span { font-size: 1.2rem; }
+  .hero-rayons a:hover { background: var(--peche); color: var(--rouge); transform: translateX(4px); }
+  .hero-rayons a.chaud { margin-top: auto; color: var(--rouge); }
+  .hero .affiche { padding: 34px 44px 56px; }
+  .hero .affiche-image { width: 260px; height: 260px; }
+  .hero .affiche-points { left: 44px; }
+  .ronds-boutiques a:hover .anneau { transform: scale(1.08) rotate(6deg); }
+  .page-recherche { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 26px; align-items: start; }
+  .filtres-panneau { position: sticky; top: 130px; transform: none; border-radius: var(--rayon-l); box-shadow: var(--ombre); padding: 18px; z-index: 1; max-height: none; }
+  .voir-resultats, .bouton-filtres, .voile { display: none !important; }
+  .retour-haut { bottom: 96px; right: 33px; }
+}

@@ -7,7 +7,7 @@ import '@fontsource/barlow/600.css';
 import '@fontsource/barlow/700.css';
 import '@fontsource/barlow/800.css';
 import './marche.css';
-import { Annonces, BarreOnglets, EnTete, Pied } from './composants';
+import { Annonces, Bandeau, BarreOnglets, EnTete, Pied, RetourHaut } from './composants';
 import { Accueil, Favoris, ListeBoutiques, Rayons, Recherche } from './pages/Catalogue';
 import { Boutique, Produit } from './pages/Boutique';
 import { Commander, Panier } from './pages/Commande';
@@ -42,11 +42,13 @@ function Cadre() {
   }, [pathname]);
   return (
     <>
+      <Bandeau />
       <EnTete />
       <main className="page" key={pathname.startsWith('/rayons') ? '/rayons' : pathname}>
         <Outlet />
       </main>
       <Pied />
+      <RetourHaut />
       <BarreOnglets />
       <Annonces />
     </>

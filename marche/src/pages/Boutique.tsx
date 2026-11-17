@@ -22,7 +22,7 @@ import {
   usePhotos,
 } from '../composants';
 import { IcoMoins, IcoPartager, IcoPlus, IcoRetour } from '../icones';
-import { ajouter } from '../panier';
+import { ajouter, memoriserVu } from '../panier';
 
 const MOYENS: [keyof Vitrine, string, string][] = [
   ['numero_wave', 'Wave', '#1dc8f2'],
@@ -198,6 +198,7 @@ export function Produit() {
     appeler<FicheProduit>('marche_produit', { p_id: id })
       .then((x) => {
         setP(x);
+        memoriserVu(x);
         document.title = `${x.designation} — ${x.vitrine.nom} — DF Marché`;
       })
       .catch((e: Error) => setErreur(e.message));

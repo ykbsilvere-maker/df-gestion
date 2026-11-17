@@ -550,6 +550,37 @@ export function WhatsappFlottant({ tel, message }: { tel: string | null | undefi
   );
 }
 
+const MESSAGES = ['🛵 Livraison ou retrait en boutique', '💵 Paiement à la livraison', '📲 Wave · Orange Money · MTN · Moov', '📦 Stock en direct depuis la caisse', '⭐ Avis de clients livrés', '🔥 Soldes avec compte à rebours'];
+
+/** Bandeau d'annonces qui défile en haut du site. */
+export function Bandeau() {
+  return (
+    <div className="bandeau-annonces" aria-label="Avantages DF Marché">
+      <div className="bandeau-piste">
+        {[0, 1].map((k) => (
+          <span key={k} aria-hidden={k === 1}>
+            {MESSAGES.map((m) => <b key={m}>{m}</b>)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function RetourHaut() {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const f = () => setVisible(window.scrollY > 700);
+    window.addEventListener('scroll', f, { passive: true });
+    return () => window.removeEventListener('scroll', f);
+  }, []);
+  return (
+    <button className={`retour-haut ${visible ? 'visible' : ''}`} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Revenir en haut" tabIndex={visible ? 0 : -1}>
+      <span style={{ transform: 'rotate(-90deg)', display: 'flex' }}><IcoFleche /></span>
+    </button>
+  );
+}
+
 export function Pied() {
   return (
     <footer className="pied">

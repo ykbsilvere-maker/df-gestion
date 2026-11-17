@@ -193,3 +193,24 @@ export function useAnnonces(): Annonce[] {
     () => annonces,
   );
 }
+
+/* Produits consultés récemment sur cet appareil. */
+const CLE_VUS = 'dfm_vus';
+export function vusRecemment(): ProduitCarte[] {
+  try {
+    return JSON.parse(localStorage.getItem(CLE_VUS) ?? '[]') as ProduitCarte[];
+  } catch {
+    return [];
+  }
+}
+export function memoriserVu(p: ProduitCarte) {
+  const resume: ProduitCarte = {
+    id: p.id, designation: p.designation, marque: p.marque, unite: p.unite, photo: p.photo, categorie: p.categorie, prix: p.prix,
+    prix_normal: p.prix_normal, solde_fin: p.solde_fin, disponible: p.disponible, boutique: p.boutique, note: p.note, avis: p.avis, commandes: p.commandes,
+  };
+  try {
+    localStorage.setItem(CLE_VUS, JSON.stringify([resume, ...vusRecemment().filter((x) => x.id !== p.id)].slice(0, 12)));
+  } catch {
+    /* rien */
+  }
+}
