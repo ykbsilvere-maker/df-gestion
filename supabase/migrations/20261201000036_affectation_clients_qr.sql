@@ -405,7 +405,8 @@ do $$ begin perform prive.creer_plan_comptable(id) from public.organisations; en
 do $$
 declare
   v_def text := pg_get_functiondef('prive.generer_ecritures(uuid,date)'::regprocedure);
-  v_a text := $a$  -- 9. Fin de mois : variation de stock (6031 / 31) au coût moyen pondéré.$a$;
+  -- Point d'insertion sans commentaire (les commentaires ne sont pas toujours conservés sur le serveur).
+  v_a text := $a$  v_stock_debut := prive.valeur_stock($a$;
 begin
   if position(v_a in v_def) = 0 then raise exception 'generer_ecritures : point d''insertion introuvable'; end if;
   execute replace(v_def, v_a, $n$  -- 10. Sorties et entrées de stock hors ventes et achats : reclassées hors de la variation de stock,
