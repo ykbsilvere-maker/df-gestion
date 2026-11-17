@@ -337,35 +337,29 @@ public class MainActivity extends Activity {
                     requestPermissions(new String[] { "android.permission.POST_NOTIFICATIONS" }, CODE_NOTIFICATIONS);
                     return;
                 }
-                NotificationManager gestionnaire = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                if (nombre <= 0) {
-                    gestionnaire.cancel(7);
-                    return;
-                }
-                Notification.Builder n;
-                if (Build.VERSION.SDK_INT >= 26) {
-                    NotificationChannel canal = new NotificationChannel(CANAL, "Commandes en ligne", NotificationManager.IMPORTANCE_HIGH);
-                    canal.setDescription("Nouvelle commande DF Marché à traiter");
-                    canal.enableVibration(true);
-                    gestionnaire.createNotificationChannel(canal);
-                    n = new Notification.Builder(MainActivity.this, CANAL);
-                } else {
-                    n = new Notification.Builder(MainActivity.this).setPriority(Notification.PRIORITY_HIGH)
-                            .setDefaults(Notification.DEFAULT_ALL);
-                }
-                Intent ouvrir = new Intent(MainActivity.this, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                int drapeaux = Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT;
-                n.setSmallIcon(getApplicationInfo().icon)
-                        .setContentTitle(titre)
-                        .setContentText(texte)
-                        .setStyle(new Notification.BigTextStyle().bigText(texte))
-                        .setNumber(nombre)
-                        .setAutoCancel(true)
-                        .setCategory(Notification.CATEGORY_MESSAGE)
-                        .setContentIntent(PendingIntent.getActivity(MainActivity.this, 0, ouvrir, drapeaux));
-                gestionnaire.notify(7, n.build());
+                VeilleCommandes.afficher(MainActivity.this, titre, texte, nombre);
             } catch (Exception e) {
                 // Notification impossible : la fenêtre de l'application reste affichée.
+            }
+        }
+
+        /** Depuis la v3.10 : vérifie les commandes toutes les 15 minutes, même application fermée. */
+        @JavascriptInterface
+        public void veilleCommandes(final String url, final String cle, final String jeton) {
+            try {
+                if (url == null || !url.startsWith("https://") || jeton == null || jeton.length() < 32) return;
+                VeilleCommandes.programmer(getApplicationContext(), url, cle, jeton);
+            } catch (Exception e) {
+                // Planification impossible : les alertes restent actives application ouverte.
+            }
+        }
+
+        @JavascriptInterface
+        public void arreterVeille() {
+            try {
+                VeilleCommandes.arreter(getApplicationContext());
+            } catch (Exception e) {
+                // rien
             }
         }
 

@@ -201,6 +201,14 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
       /* rien */
     }
     await supabase.rpc('enregistrer_deconnexion');
+    // Le téléphone arrête de vérifier les commandes de cette personne.
+    try {
+      const jeton = localStorage.getItem('dfg_jeton_appareil');
+      if (jeton) await supabase.rpc('oublier_appareil', { p_jeton: jeton });
+      (window as unknown as { DFGAndroid?: { arreterVeille?: () => void } }).DFGAndroid?.arreterVeille?.();
+    } catch {
+      /* rien */
+    }
     await supabase.auth.signOut();
     // Filet de sécurité : si une récupération de session concurrente (retour sur l'onglet)
     // a réécrit la session pendant la déconnexion, on la supprime localement.

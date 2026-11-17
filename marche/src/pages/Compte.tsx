@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { appeler, supabase, urlPublique, type BonAchat, type CommandeCompte, type FicheBoutique, type ProduitCarte } from '../api';
 import { Chargement, Erreur, GrilleProduits, LogoBoutique, TitreRayon, fcfa } from '../composants';
-import { connexion, deconnexion, estTelephone, inscription, rechargerCompte, useCompte } from '../compte';
+import { EmailNonConfirme, connexion, deconnexion, estTelephone, inscription, motDePasseOublie, rechargerCompte, renvoyerConfirmation, useCompte } from '../compte';
 import { mesCommandes, memoriserClient, useFavoris, vusRecemment } from '../panier';
 
 /* ------------------------------------------------------------------------------------------
@@ -119,10 +119,34 @@ export function Connexion() {
   const [voir, setVoir] = useState(false);
   const [erreur, setErreur] = useState('');
   const [enCours, setEnCours] = useState(false);
+  const [aConfirmer, setAConfirmer] = useState<string | null>(null);
+  const [info, setInfo] = useState('');
   const retour = params.get('retour') || '/compte';
   useEffect(() => {
     document.title = `${creer ? 'Créer un compte' : 'Se connecter'} — DF Marché`;
   }, [creer]);
+
+  async function renvoyer() {
+    if (!aConfirmer) return;
+    setErreur('');
+    try {
+      await renvoyerConfirmation(aConfirmer);
+      setInfo('E-mail renvoyé. Pensez à regarder dans « Spam » ou « Promotions ».');
+    } catch (x) {
+      setErreur((x as Error).message);
+    }
+  }
+  async function oublie() {
+    setErreur('');
+    setInfo('');
+    if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(f.identifiant.trim())) return setErreur('Tapez d’abord votre adresse e-mail, puis « Mot de passe oublié ».');
+    try {
+      await motDePasseOublie(f.identifiant);
+      setInfo('Si un compte existe pour cette adresse, un lien pour choisir un nouveau mot de passe vient d’être envoyé.');
+    } catch (x) {
+      setErreur((x as Error).message);
+    }
+  }
 
   async function valider(e: FormEvent) {
     e.preventDefault();
@@ -136,16 +160,44 @@ export function Connexion() {
     setEnCours(true);
     try {
       if (creer) {
-        await inscription({ identifiant: f.identifiant, motDePasse: f.motDePasse, nom: f.nom.trim(), telephone: f.telephone });
+        const r = await inscription({ identifiant: f.identifiant, motDePasse: f.motDePasse, nom: f.nom.trim(), telephone: f.telephone });
         memoriserClient({ nom: f.nom.trim(), telephone: f.telephone });
+        if (r === 'a_confirmer') {
+          memoriserRetour(retour);
+          return setAConfirmer(f.identifiant.trim().toLowerCase());
+        }
       } else await connexion(f.identifiant, f.motDePasse);
       naviguer(retour);
     } catch (x) {
+      if (x instanceof EmailNonConfirme) {
+        memoriserRetour(retour);
+        setAConfirmer(x.email);
+      }
       setErreur((x as Error).message);
     } finally {
       setEnCours(false);
     }
   }
+
+  if (aConfirmer)
+    return (
+      <section className="page-compte etroite">
+        <div className="bloc boite-mail">
+          <div className="boite-mail-icone" aria-hidden>📩</div>
+          <h1>Vérifiez votre boîte mail</h1>
+          <p>Nous avons envoyé un lien de confirmation à <b>{aConfirmer}</b>.</p>
+          <p className="secondaire">Ouvrez l’e-mail « Confirmez votre compte DF Marché » et touchez le bouton : votre compte est activé et vous êtes connecté(e).</p>
+          {info && <p className="succes">✓ {info}</p>}
+          {erreur && !/Confirmez d’abord/.test(erreur) && <p className="alerte">⚠️ {erreur}</p>}
+          <div className="boite-mail-actions">
+            <a className="bouton bouton-principal" href="https://mail.google.com" target="_blank" rel="noreferrer">Ouvrir Gmail</a>
+            <button type="button" className="bouton" onClick={() => void renvoyer()}>Renvoyer l’e-mail</button>
+          </div>
+          <p className="secondaire petit">Rien reçu après 2 minutes ? Regardez dans « Spam » ou « Promotions », ou vérifiez l’adresse.</p>
+          <button type="button" className="bouton-lien" onClick={() => { setAConfirmer(null); setErreur(''); setInfo(''); setCreer(false); }}>← Retour à la connexion</button>
+        </div>
+      </section>
+    );
 
   return (
     <section className="page-compte etroite">
@@ -157,6 +209,7 @@ export function Connexion() {
         <h1>{creer ? 'Créez votre compte' : 'Bon retour parmi nous'}</h1>
         <p className="secondaire">{creer ? 'Uniquement avec votre adresse e-mail : vos commandes, adresses et bons d’achat au même endroit.' : 'Avec votre adresse e-mail et votre mot de passe.'}</p>
         {erreur && <p className="alerte" role="alert">⚠️ {erreur}</p>}
+        {info && <p className="succes">✓ {info}</p>}
         {creer && <label>Nom complet *<input value={f.nom} onChange={(e) => setF({ ...f, nom: e.target.value })} autoComplete="name" placeholder="Awa Koné" /></label>}
         <label>Adresse e-mail *
           <input type="email" value={f.identifiant} onChange={(e) => setF({ ...f, identifiant: e.target.value })} autoComplete={creer ? 'email' : 'username'} inputMode="email" placeholder="vous@gmail.com" autoCapitalize="none" />
@@ -178,7 +231,100 @@ export function Connexion() {
           </label>
         )}
         <button className="bouton bouton-principal large" disabled={enCours}>{enCours ? 'Patientez…' : creer ? 'Créer mon compte' : 'Se connecter'}</button>
-        {!creer && <p className="secondaire petit">Mot de passe oublié ? Demandez à votre boutique de vous aider, ou créez un nouveau compte.</p>}
+        {!creer && <button type="button" className="bouton-lien" onClick={() => void oublie()}>Mot de passe oublié ?</button>}
+        {creer && <p className="secondaire petit">📩 Un e-mail de confirmation vous sera envoyé pour activer votre compte.</p>}
+      </form>
+    </section>
+  );
+}
+
+const CLE_RETOUR = 'dfm_retour_confirmation';
+function memoriserRetour(r: string) {
+  try {
+    localStorage.setItem(CLE_RETOUR, r);
+  } catch {
+    /* stockage indisponible */
+  }
+}
+
+/** Retour du lien de confirmation : la session s'ouvre toute seule, on accueille le client. */
+export function CompteConfirme() {
+  const { session, compte, pret } = useCompte();
+  const naviguer = useNavigate();
+  const [attente, setAttente] = useState(true);
+  const erreurLien = new URLSearchParams(window.location.hash.slice(1)).get('error_description') ?? new URLSearchParams(window.location.search).get('error_description');
+  useEffect(() => {
+    document.title = 'Compte confirmé — DF Marché';
+    const t = window.setTimeout(() => setAttente(false), 6000);
+    return () => window.clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    if (!session || !compte) return;
+    let retour = '/compte';
+    try {
+      retour = localStorage.getItem(CLE_RETOUR) || '/compte';
+      localStorage.removeItem(CLE_RETOUR);
+    } catch {
+      /* rien */
+    }
+    const t = window.setTimeout(() => naviguer(retour, { replace: true }), 2200);
+    return () => window.clearTimeout(t);
+  }, [session, compte, naviguer]);
+  return (
+    <section className="page-compte etroite">
+      <div className="bloc boite-mail">
+        {session ? (
+          <>
+            <div className="boite-mail-icone ok" aria-hidden>✓</div>
+            <h1>Adresse confirmée</h1>
+            <p>Bienvenue{compte ? `, ${compte.nom.split(' ')[0]}` : ''} ! Votre compte DF Marché est actif.</p>
+            <Link className="bouton bouton-principal" to="/compte">Mon compte</Link>
+          </>
+        ) : erreurLien || (!attente && pret) ? (
+          <>
+            <div className="boite-mail-icone" aria-hidden>⏳</div>
+            <h1>Lien expiré ou déjà utilisé</h1>
+            <p className="secondaire">{erreurLien ? decodeURIComponent(erreurLien.replace(/\+/g, ' ')) : 'Connectez-vous : si votre adresse est déjà confirmée, ça marche directement.'}</p>
+            <Link className="bouton bouton-principal" to="/compte/connexion">Se connecter</Link>
+          </>
+        ) : (
+          <Chargement />
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** Lien « mot de passe oublié » : choisir un nouveau mot de passe. */
+export function NouveauMotDePasse() {
+  const { session, pret } = useCompte();
+  const naviguer = useNavigate();
+  const [mdp, setMdp] = useState('');
+  const [erreur, setErreur] = useState('');
+  const [enCours, setEnCours] = useState(false);
+  async function valider(e: FormEvent) {
+    e.preventDefault();
+    if (mdp.length < 6) return setErreur('Mot de passe : 6 caractères au moins.');
+    setEnCours(true);
+    const { error } = await supabase.auth.updateUser({ password: mdp });
+    setEnCours(false);
+    if (error) return setErreur(error.message);
+    naviguer('/compte', { replace: true });
+  }
+  if (!pret) return <Chargement />;
+  return (
+    <section className="page-compte etroite">
+      <form className="bloc formulaire-compte" onSubmit={valider}>
+        <h1>Nouveau mot de passe</h1>
+        {!session ? (
+          <p className="alerte">Ce lien a expiré. Redemandez-le depuis « Se connecter » → « Mot de passe oublié ».</p>
+        ) : (
+          <>
+            {erreur && <p className="alerte">⚠️ {erreur}</p>}
+            <label>Nouveau mot de passe *<input type="password" value={mdp} onChange={(e) => setMdp(e.target.value)} autoComplete="new-password" minLength={6} /></label>
+            <button className="bouton bouton-principal large" disabled={enCours}>{enCours ? 'Patientez…' : 'Enregistrer'}</button>
+          </>
+        )}
       </form>
     </section>
   );

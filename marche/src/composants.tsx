@@ -311,6 +311,33 @@ export function BoutonAjout({ p }: { p: ProduitCarte }) {
   );
 }
 
+/** Le nombre entre − et + : on peut aussi le taper directement (validé à la sortie du champ ou avec Entrée). */
+export function QuantiteSaisie({ q, max, onChange, className = 'stepper-q' }: { q: number; max: number; onChange: (n: number) => void; className?: string }) {
+  const [texte, setTexte] = useState(String(q));
+  useEffect(() => setTexte(String(q)), [q]);
+  const valider = () => {
+    const n = Math.floor(Number(texte.replace(/[^0-9]/g, '')));
+    if (!Number.isFinite(n) || texte.trim() === '') return setTexte(String(q));
+    const borne = Math.max(0, Math.min(n, Math.max(0, Math.floor(max))));
+    if (borne !== q) onChange(borne);
+    setTexte(String(borne || q));
+  };
+  return (
+    <input
+      key={q}
+      className={className}
+      value={texte}
+      inputMode="numeric"
+      pattern="[0-9]*"
+      aria-label="Quantité"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).select(); }}
+      onChange={(e) => setTexte(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+      onBlur={valider}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+    />
+  );
+}
+
 /** « + Ajouter » qui devient « − 1 + » dès que le produit est dans le panier. */
 export function BoutonPanier({ p }: { p: ProduitCarte }) {
   const panier = usePanier();
@@ -321,7 +348,7 @@ export function BoutonPanier({ p }: { p: ProduitCarte }) {
     return (
       <div className="stepper" onClick={(e) => e.preventDefault()}>
         <button type="button" aria-label="Retirer un" onClick={(e) => { e.preventDefault(); changerQuantite(p.boutique.slug, p.id, q - 1); }}><IcoMoins /></button>
-        <span key={q} className="stepper-q" aria-live="polite">{q}</span>
+        <QuantiteSaisie q={q} max={dispo} onChange={(n) => changerQuantite(p.boutique.slug, p.id, n)} />
         <button type="button" aria-label="Ajouter un" disabled={q >= dispo} onClick={(e) => { e.preventDefault(); changerQuantite(p.boutique.slug, p.id, q + 1); }}><IcoPlus /></button>
       </div>
     );
@@ -505,23 +532,23 @@ export function BandeauxPromo({ soldes, livraison }: { soldes: ProduitCarte[]; l
   const img = (k: number) => (images[k]?.photo && urls[images[k]!.photo!] ? <img src={urls[images[k]!.photo!]} alt="" /> : null);
   return (
     <section className="bandeaux-promo revele">
-      <Link to={livraison ? '/boutiques' : '/rayons'} className="bandeau-promo vert">
-        <span className="bandeau-etiquette">{livraison ? 'Livraison' : 'Retrait'}</span>
+      <Link to={livraison ? '/boutiques' : '/rayons'} className="tuile-promo vert">
+        <span className="tuile-etiquette">{livraison ? 'Livraison' : 'Retrait'}</span>
         <strong>{livraison ? 'Livré chez vous, dans votre quartier' : 'Commandez, récupérez en boutique'}</strong>
-        <span className="bandeau-lien">Commander <IcoFleche /></span>
-        <span className="bandeau-image" aria-hidden>{img(0) ?? '🛵'}</span>
+        <span className="tuile-lien">Commander <IcoFleche /></span>
+        <span className="tuile-image" aria-hidden>{img(0) ?? '🛵'}</span>
       </Link>
-      <Link to="/soldes" className="bandeau-promo rose">
-        <span className="bandeau-etiquette">Soldes</span>
+      <Link to="/soldes" className="tuile-promo rose">
+        <span className="tuile-etiquette">Soldes</span>
         <strong>{meilleure > 0 ? `Jusqu’à −${meilleure} % en ce moment` : 'Les bonnes affaires du moment'}</strong>
-        <span className="bandeau-lien">J’en profite <IcoFleche /></span>
-        <span className="bandeau-image" aria-hidden>{img(1) ?? '🔥'}</span>
+        <span className="tuile-lien">J’en profite <IcoFleche /></span>
+        <span className="tuile-image" aria-hidden>{img(1) ?? '🔥'}</span>
       </Link>
-      <Link to="/compte/bons" className="bandeau-promo jaune">
-        <span className="bandeau-etiquette">Bons d’achat</span>
+      <Link to="/compte/bons" className="tuile-promo jaune">
+        <span className="tuile-etiquette">Bons d’achat</span>
         <strong>Codes promo et paiement Wave ou Orange Money</strong>
-        <span className="bandeau-lien">Mes bons <IcoFleche /></span>
-        <span className="bandeau-image" aria-hidden>{img(2) ?? '🎟️'}</span>
+        <span className="tuile-lien">Mes bons <IcoFleche /></span>
+        <span className="tuile-image" aria-hidden>{img(2) ?? '🎟️'}</span>
       </Link>
     </section>
   );
@@ -630,11 +657,6 @@ export function BanniereSoldes({ soldes }: { soldes: ProduitCarte[] }) {
         depart.current = null;
       }}
     >
-      {/* Fond animé : les produits de l'affiche flottent, flous, derrière le texte. */}
-      <div className="banniere-fond" aria-hidden>
-        {affiches.map((p, k) => (p.photo && urls[p.photo] ? <img key={p.id} src={urls[p.photo]} alt="" className={`flou flou-${k % 6} ${k === i ? 'courant' : ''}`} /> : null))}
-        {affiches[i]?.photo && urls[affiches[i]!.photo!] && <img key={`grand-${i}`} src={urls[affiches[i]!.photo!]} alt="" className="flou-grand" />}
-      </div>
       <div className="affiches" style={{ transform: `translateX(-${i * 100}%)` }}>
         {affiches.map((p, k) => (
           <Link key={p.id} to={`/produit/${p.id}`} className={`affiche ${k === i ? 'courante' : ''}`} aria-hidden={k !== i} tabIndex={k === i ? 0 : -1}>

@@ -3,6 +3,16 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.10.** **Alertes partout, paiement épuré, comptes confirmés par e-mail** (migration 037).
+La **caissière est prévenue de chaque nouvelle commande** (en attente d'affectation) puis quand elle lui est confiée ;
+la fenêtre s'ouvre aussi **dès l'ouverture de la caisse**. L'APK **vérifie les commandes même fermée** (toutes les 15 minutes,
+jeton d'appareil qui ne donne que des nombres) et affiche la notification **sur l'écran verrouillé**. Onglet **« Mes alertes »** :
+**WhatsApp automatique** (CallMeBot, clé gardée sur le serveur) à la gérante à chaque commande et à la caissière à chaque
+affectation. DF Marché : produits qui **flottent vraiment** (fonds blancs fondus), tuiles promo et bannière des soldes
+**claires, sans affiche floue**, une seule page pour toutes les boutiques, **quantité tapée au clavier**, choix en **cases
+cochées**, Mobile Money = **payer + joindre la capture** (numéros masqués), **e-mail de confirmation** à l'inscription
+(renvoi, mot de passe oublié). Modèles d'e-mails en français dans `supabase/emails/`.
+
 **Version 3.9.** **Commandes affectées, clients du site, QR promo, comptabilité reliée** (migration 036).
 La **gérante principale affecte chaque commande en ligne à une caissière** ; la caissière reçoit une **fenêtre
 « Vous avez N commandes en ligne »** (à l'ouverture de l'application et à chaque nouvelle commande, avec son, vibration

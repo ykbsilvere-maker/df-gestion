@@ -11,7 +11,7 @@ declare global {
  * Un client peut ouvrir un compte : sa session reste sur ce navigateur (clé « dfm-compte »).
  */
 export const supabase = createClient(window.DFG_CONFIG?.supabaseUrl ?? 'http://localhost', window.DFG_CONFIG?.supabaseAnonKey ?? 'cle-absente', {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'dfm-compte' },
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit', storageKey: 'dfm-compte' },
 });
 
 export function erreurLisible(e: unknown): string {

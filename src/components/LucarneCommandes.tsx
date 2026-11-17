@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { lireConfiguration } from '../lib/config';
 import { pontAndroid } from '../lib/android';
 
 /** Deux notes douces, comme une messagerie. */
@@ -28,7 +29,32 @@ function son() {
   }
 }
 
-type Etat = { nombre: number; a_affecter: number; gerante: boolean };
+type Etat = { nombre: number; a_affecter: number; en_attente?: number; gerante: boolean };
+type Compteurs = { nombre: number; a_affecter: number; en_attente: number };
+
+/** Jeton de ce téléphone : l'APK interroge le serveur toutes les 15 minutes, même fermée. */
+function jetonAppareil(): string {
+  const cle = 'dfg_jeton_appareil';
+  try {
+    let j = localStorage.getItem(cle);
+    if (!j) {
+      const o = new Uint8Array(24);
+      crypto.getRandomValues(o);
+      j = Array.from(o, (x) => x.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem(cle, j);
+    }
+    return j;
+  } catch {
+    return '';
+  }
+}
+
+/** Ce qui doit être signalé, selon le rôle. */
+function lecture(e: Etat) {
+  const c: Compteurs = { nombre: Number(e.nombre) || 0, a_affecter: e.gerante ? Number(e.a_affecter) || 0 : 0, en_attente: e.gerante ? 0 : Number(e.en_attente) || 0 };
+  const total = c.nombre + c.a_affecter + c.en_attente;
+  return { c, total };
+}
 
 /**
  * Petite fenêtre « Vous avez N commandes en ligne », à l'ouverture de l'application et à chaque
@@ -39,11 +65,10 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
   const [etat, setEtat] = useState<Etat | null>(null);
   const [visible, setVisible] = useState(false);
   const [sortie, setSortie] = useState(false);
-  const precedent = useRef<number | null>(null);
+  const precedent = useRef<Compteurs | null>(null);
   const minuteur = useRef<number | undefined>(undefined);
   const naviguer = useNavigate();
 
-  const total = (e: Etat | null) => (e ? (e.gerante ? Number(e.a_affecter) : 0) + Number(e.nombre) : 0);
 
   const montrer = () => {
     setSortie(false);
@@ -64,32 +89,47 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
       const { data, error } = await supabase.rpc('commandes_caisse_attente', { p_org: org });
       if (arret || error || !data) return;
       const e = data as Etat;
-      const n = total(e);
+      const { c, total } = lecture(e);
       const avant = precedent.current;
-      precedent.current = n;
+      precedent.current = c;
       setEtat(e);
-      const texte = e.gerante && Number(e.a_affecter) > 0
-        ? `${e.a_affecter} commande${Number(e.a_affecter) > 1 ? 's' : ''} à affecter à une caissière`
-        : `${e.nombre} commande${Number(e.nombre) > 1 ? 's' : ''} à rassembler et vérifier`;
-      // À l'ouverture de l'application : la fenêtre s'affiche s'il y a des commandes.
-      if (avant === null && n > 0) {
+      const pluriel = (n: number) => (n > 1 ? 's' : '');
+      // Ce qui a changé, du plus important au moins important.
+      const texte = c.nombre > (avant?.nombre ?? 0) || (avant === null && c.nombre > 0)
+        ? `${c.nombre} commande${pluriel(c.nombre)} affectée${pluriel(c.nombre)} à vous : rassemblez et vérifiez les articles`
+        : c.a_affecter > 0
+          ? `${c.a_affecter} commande${pluriel(c.a_affecter)} à affecter à une caissière`
+          : c.en_attente > 0
+            ? `${c.en_attente} nouvelle${pluriel(c.en_attente)} commande${pluriel(c.en_attente)} en ligne, en attente d’affectation`
+            : `${c.nombre} commande${pluriel(c.nombre)} à rassembler et vérifier`;
+      const hausse = avant !== null && (c.nombre > avant.nombre || c.a_affecter > avant.a_affecter || c.en_attente > avant.en_attente);
+      // À l'ouverture de l'application (et de la caisse) : la fenêtre s'affiche s'il y a des commandes.
+      if (avant === null && total > 0) {
         montrer();
-        pontAndroid()?.notifier?.('Commandes en ligne', `Vous avez ${texte}.`, n);
-      } else if (avant !== null && n > avant) {
+        pontAndroid()?.notifier?.('Commandes en ligne', `Vous avez ${texte}.`, total);
+      } else if (hausse) {
         montrer();
         son();
         navigator.vibrate?.([140, 90, 140]);
-        pontAndroid()?.notifier?.('Nouvelle commande en ligne', `Vous avez ${texte}.`, n);
+        pontAndroid()?.notifier?.('Nouvelle commande en ligne', `Vous avez ${texte}.`, total);
         try {
           if (!pontAndroid() && 'Notification' in window && Notification.permission === 'granted' && document.hidden)
             new Notification('DF Gestion — commande en ligne', { body: `Vous avez ${texte}.`, icon: '/icone-192.png' });
         } catch {
           /* notifications indisponibles */
         }
-      } else if (n === 0 && avant) {
+      } else if (total === 0 && avant && avant.nombre + avant.a_affecter + avant.en_attente > 0) {
         pontAndroid()?.notifier?.('', '', 0);
       }
     };
+    // Téléphone Android : vérification en arrière-plan, même application fermée.
+    const pont = pontAndroid();
+    const conf = lireConfiguration();
+    const jeton = pont?.veilleCommandes ? jetonAppareil() : '';
+    if (pont?.veilleCommandes && conf && jeton)
+      void supabase.rpc('enregistrer_appareil', { p_org: org, p_jeton: jeton }).then(({ error }) => {
+        if (!error) pont.veilleCommandes!(conf.url, conf.cle, jeton);
+      });
     void lire();
     const id = window.setInterval(() => void lire(), 20000);
     const auRetour = () => document.visibilityState === 'visible' && void lire();
@@ -108,10 +148,11 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
     };
   }, [org, actif]);
 
-  if (!visible || !etat || total(etat) === 0) return null;
-  const aAffecter = etat.gerante ? Number(etat.a_affecter) : 0;
-  const miennes = Number(etat.nombre);
-  const n = total(etat);
+  if (!visible || !etat) return null;
+  const { c, total: n } = lecture(etat);
+  if (n === 0) return null;
+  const aAffecter = c.a_affecter;
+  const miennes = c.nombre;
   const ouvrir = () => {
     fermer();
     naviguer(aAffecter > 0 ? '/boutique' : '/caisse?commandes=1');
@@ -133,7 +174,9 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
           <span className="lucarne-detail">
             {aAffecter > 0
               ? `${aAffecter} à affecter : choisissez la caissière qui la rassemble.`
-              : `Veuillez rassembler et vérifier ${miennes > 1 ? 'les articles de ces commandes' : 'les articles de la commande'}.`}
+              : miennes > 0
+                ? `Veuillez rassembler et vérifier ${miennes > 1 ? 'les articles de ces commandes' : 'les articles de la commande'}.`
+                : 'La gérante va l’affecter : vous serez prévenue dès qu’elle vous est confiée.'}
             {aAffecter > 0 && miennes > 0 && ` ${miennes} vous ${miennes > 1 ? 'sont affectées' : 'est affectée'}.`}
           </span>
         </span>

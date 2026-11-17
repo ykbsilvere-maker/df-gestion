@@ -13,7 +13,7 @@ import { Boutique, Produit } from './pages/Boutique';
 import { Commander, Panier } from './pages/Commande';
 import { MesCommandes, Suivi } from './pages/Suivi';
 import { Conditions, Recu } from './pages/Recu';
-import { Bons, CommandesCompte, Confidentialite, Connexion, MonCompte, Offre, Profil, VusRecemment } from './pages/Compte';
+import { Bons, CommandesCompte, CompteConfirme, Confidentialite, Connexion, MonCompte, NouveauMotDePasse, Offre, Profil, VusRecemment } from './pages/Compte';
 
 const CIBLES_ONDE =
   'button, .bouton, .carte-boutique, .tuile-rayon, .raccourcis .rond, .liste-commandes a, .encart-boutique, .pastille-lien, .entete-sous a, .rond-lien, .affiche';
@@ -52,7 +52,7 @@ if (animer) {
           io.unobserve(e.target);
         }
     },
-    { rootMargin: '0px 0px -6% 0px', threshold: 0.06 },
+    { rootMargin: '0px 0px 12% 0px', threshold: 0.01 },
   );
   const surveiller = (n: Node) => {
     if (!(n instanceof HTMLElement)) return;
@@ -110,6 +110,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="favoris" element={<Favoris />} />
           <Route path="compte" element={<MonCompte />} />
           <Route path="compte/connexion" element={<Connexion />} />
+          <Route path="compte/confirme" element={<CompteConfirme />} />
+          <Route path="compte/nouveau-mot-de-passe" element={<NouveauMotDePasse />} />
           <Route path="compte/commandes" element={<CommandesCompte />} />
           <Route path="compte/bons" element={<Bons />} />
           <Route path="compte/profil" element={<Profil />} />

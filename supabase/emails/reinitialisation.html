@@ -1,0 +1,14 @@
+<!-- Supabase → Authentication → Emails → « Reset Password ». Objet : Votre nouveau mot de passe -->
+<div style="margin:0;padding:24px 12px;background:#f4f6f4;font-family:Arial,Helvetica,sans-serif;color:#111">
+  <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e6e9e6">
+    <div style="background:#0f5132;padding:22px 26px;color:#ffffff;font-size:20px;font-weight:800">DF Marché · DF Gestion</div>
+    <div style="padding:26px">
+      <h1 style="font-size:22px;margin:0 0 10px">Choisissez un nouveau mot de passe</h1>
+      <p style="font-size:15px;line-height:1.5;margin:0 0 18px;color:#374151">Vous avez demandé à changer le mot de passe du compte <b>{{ .Email }}</b>.</p>
+      <p style="text-align:center;margin:24px 0">
+        <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;font-weight:700;padding:14px 28px;border-radius:999px;font-size:15px">Choisir mon mot de passe</a>
+      </p>
+      <p style="font-size:13px;color:#6b7280;margin:0">Vous n’avez rien demandé ? Ignorez cet e-mail : votre mot de passe ne change pas.</p>
+    </div>
+  </div>
+</div>

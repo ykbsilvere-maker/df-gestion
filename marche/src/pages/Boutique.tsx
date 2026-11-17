@@ -19,6 +19,7 @@ import {
   fcfa,
   remise,
   usePhotos,
+  QuantiteSaisie,
 } from '../composants';
 import { IcoMoins, IcoPartager, IcoPlus, IcoRetour } from '../icones';
 import { ajouter, memoriserVu } from '../panier';
@@ -262,7 +263,7 @@ export function Produit() {
             {dispo > 0 && (
               <div className="quantite" aria-label="Quantité">
                 <button onClick={() => setQ((x) => Math.max(1, x - 1))} aria-label="Moins"><IcoMoins /></button>
-                <span>{q}</span>
+                <QuantiteSaisie q={q} max={dispo} className="quantite-champ" onChange={(n) => setQ(Math.max(1, n))} />
                 <button onClick={() => setQ((x) => Math.min(dispo, x + 1))} aria-label="Plus"><IcoPlus /></button>
               </div>
             )}

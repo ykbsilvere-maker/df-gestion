@@ -116,13 +116,8 @@ export function CartePaiement({ m, numero, montant, beneficiaire, lienWave }: { 
           <strong>{fcfa(montant)}</strong>
         </div>
       </div>
-      {numero && (
-        <div className="carte-paiement-numero">
-          <span>Au numéro de la boutique</span>
-          <strong className="numero">{numero}</strong>
-          <small>{beneficiaire}</small>
-        </div>
-      )}
+      {/* Le numéro n'est pas affiché : un bouton le copie si l'appli de paiement le demande. */}
+      <p className="carte-paiement-benef">Bénéficiaire : <b>{beneficiaire}</b></p>
       <div className="carte-paiement-actions">
         {m.autre?.lien ? (
           <a className="bouton bouton-marque" href={lienAvecMontant(m.autre.lien, montant)} target="_blank" rel="noreferrer">Payer {fcfa(montant)} avec {m.libelle}</a>
@@ -133,7 +128,7 @@ export function CartePaiement({ m, numero, montant, beneficiaire, lienWave }: { 
         ) : m.ussd ? (
           <a className="bouton bouton-marque" href={versUssd(m.ussd)}>Ouvrir {m.libelle} ({m.ussd})</a>
         ) : null}
-        {brut && <Copier texte={brut} libelle="Copier le numéro" />}
+        {brut && <Copier texte={brut} libelle="Copier le numéro du marchand" />}
         <Copier texte={String(Math.round(montant))} libelle="Copier le montant" />
       </div>
       {m.aide && <p className="secondaire petit">{m.aide} Ne communiquez jamais votre code secret : ni la boutique ni DF Marché ne vous le demanderont.</p>}

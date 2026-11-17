@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { appeler, supabase, erreurLisible, type BonAchat, type FicheBoutique } from '../api';
 import { useCompte } from '../compte';
 import { codeMemorise, memoriserCode, texteBon } from './Compte';
-import { Chargement, Erreur, ImageProduit, fcfa, usePhotos } from '../composants';
+import { Chargement, Erreur, ImageProduit, QuantiteSaisie, fcfa, usePhotos } from '../composants';
 import type { PanierBoutique } from '../panier';
 import { A_LA_LIVRAISON, CartePaiement, LogoPaiement, moyensEnLigne, numeroDe, type Moyen } from '../paiement';
 import { changerQuantite, clientMemorise, memoriserClient, memoriserCommande, usePanier, viderBoutique } from '../panier';
@@ -133,7 +133,7 @@ export function Panier() {
                     </div>
                     <div className="quantite petite">
                       <button onClick={() => changerQuantite(b.slug, a.id, a.quantite - 1)} aria-label="Moins">−</button>
-                      <span>{a.quantite}</span>
+                      <QuantiteSaisie q={a.quantite} max={a.disponible} className="quantite-champ" onChange={(n) => changerQuantite(b.slug, a.id, n)} />
                       <button onClick={() => changerQuantite(b.slug, a.id, a.quantite + 1)} aria-label="Plus" disabled={a.quantite >= a.disponible}>+</button>
                     </div>
                     <strong>{fcfa(a.prix * a.quantite)}</strong>
@@ -275,8 +275,9 @@ export function Commander() {
     setErreur('');
     if (!choisi) return setErreur('Choisissez un moyen de paiement.');
     const enLignePaye = choisi.code !== 'livraison';
-    if (enLignePaye && f.payeur.replace(/[^0-9]/g, '').length < 8) return setErreur('Indiquez le numéro qui a effectué le paiement.');
-    if (enLignePaye && !fichier && !f.reference.trim()) return setErreur('Joignez la capture du paiement (ou au moins la référence de la transaction).');
+    const payeur = f.payeur.trim() || f.telephone;
+    if (enLignePaye && payeur.replace(/[^0-9]/g, '').length < 8) return setErreur('Indiquez le numéro qui a effectué le paiement.');
+    if (enLignePaye && !fichier && !f.reference.trim()) return setErreur('Joignez la capture du paiement.');
     if (!enLignePaye && f.especes && f.especes !== 'exact' && especes < total) return setErreur(`Le billet indiqué doit couvrir ${fcfa(total)}.`);
     if (!f.accepte) return setErreur('Cochez « J’ai lu et j’accepte les conditions de vente ».');
     setEnCours(true);
@@ -289,7 +290,7 @@ export function Commander() {
           souhaite_le: f.quand === 'choisir' && f.souhaite ? new Date(f.souhaite).toISOString() : null,
           note: f.note || null, paiement: choisi.code, paiement_autre: choisi.autre?.id ?? null,
           code_promo: bon?.code ?? null, especes_remis: !enLignePaye && f.especes ? especes : null,
-          numero_payeur: enLignePaye ? f.payeur : null, reference_paiement: f.reference || null,
+          numero_payeur: enLignePaye ? f.payeur.trim() || f.telephone : null, reference_paiement: f.reference || null,
           lignes: b!.articles.map((a) => ({ produit_id: a.id, quantite: a.quantite })),
         },
       });
@@ -469,18 +470,21 @@ export function Commander() {
               <div className="instructions-paiement">
                 <CartePaiement m={choisi} numero={numero} montant={total} beneficiaire={v.beneficiaire} lienWave={v.lien_wave} />
                 <ol className="etapes-paiement">
-                  <li>Envoyez <strong>{fcfa(total)}</strong> avec le bouton ci-dessus.</li>
-                  <li>Indiquez le numéro qui a payé et la référence reçue par SMS.</li>
-                  <li>Joignez la capture : la boutique vérifie, confirme, et votre reçu est prêt.</li>
+                  <li>Payez <strong>{fcfa(total)}</strong> avec le bouton ci-dessus.</li>
+                  <li>Joignez la capture du paiement : la boutique vérifie, confirme, et votre reçu est prêt.</li>
                 </ol>
-                <div className="champs-2">
-                  <label>Numéro qui a payé *<input value={f.payeur} onChange={(e) => maj({ payeur: e.target.value })} inputMode="tel" placeholder="07 00 00 00 00" /></label>
-                  <label>Référence de la transaction<input value={f.reference} onChange={(e) => maj({ reference: e.target.value })} maxLength={60} placeholder="Ex. MP231117.1234.A56789" /></label>
-                </div>
-                <label className="depot">
+                <label className={`depot ${fichier ? 'rempli' : ''}`}>
                   <input type="file" accept="image/*,application/pdf" onChange={(e) => setFichier(e.target.files?.[0] ?? null)} />
-                  <span>{fichier ? `📎 ${fichier.name}` : '📎 Joindre la capture du paiement'}</span>
+                  <span className="depot-icone" aria-hidden>{fichier ? '✅' : '📎'}</span>
+                  <span>{fichier ? <><b>Capture jointe</b><small>{fichier.name} · toucher pour changer</small></> : <><b>Joindre la capture du paiement *</b><small>Photo ou capture d’écran du message de confirmation</small></>}</span>
                 </label>
+                <details className="details-payeur">
+                  <summary>Payé depuis un autre numéro que le vôtre ?</summary>
+                  <div className="champs-2">
+                    <label>Numéro qui a payé<input value={f.payeur} onChange={(e) => maj({ payeur: e.target.value })} inputMode="tel" placeholder={f.telephone || '07 00 00 00 00'} /></label>
+                    <label>Référence (facultatif)<input value={f.reference} onChange={(e) => maj({ reference: e.target.value })} maxLength={60} placeholder="Ex. MP231117.1234.A56789" /></label>
+                  </div>
+                </details>
               </div>
             )}
             <label className="case-cgv">

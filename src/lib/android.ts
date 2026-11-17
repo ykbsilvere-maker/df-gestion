@@ -12,6 +12,10 @@ interface PontAndroid {
   version?: () => string;
   /** Depuis la v3.9 : notification du téléphone (nombre ≤ 0 l'efface). */
   notifier?: (titre: string, texte: string, nombre: number) => void;
+  /** Depuis la v3.10 : vérification des commandes toutes les 15 minutes, application fermée. */
+  veilleCommandes?: (url: string, cle: string, jeton: string) => void;
+  /** Depuis la v3.10 : arrête la vérification (déconnexion). */
+  arreterVeille?: () => void;
 }
 
 declare global {

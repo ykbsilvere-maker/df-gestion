@@ -12,9 +12,7 @@ import {
   Chargement,
   Erreur,
   GrilleProduits,
-  LogoBoutique,
   Rangee,
-  RangeeProduits,
   Squelettes,
   TitreRayon,
   VentesFlash,
@@ -26,28 +24,6 @@ import { useCompte } from '../compte';
 import { IcoBoutique, IcoCoeur, IcoFlamme, IcoRecommander, IcoSuivi } from '../icones';
 import { mesCommandes, useFavoris, vusRecemment } from '../panier';
 
-/** Bloc « Chez telle boutique » à la couleur de la boutique, avec ses produits. */
-function BlocBoutique({ v }: { v: Vitrine }) {
-  const [produits, setProduits] = useState<ProduitCarte[] | null>(null);
-  useEffect(() => {
-    appeler<{ produits: ProduitCarte[] }>('marche_produits', { p_boutique: v.slug, p_limite: 10 }).then((r) => setProduits(r.produits)).catch(() => setProduits([]));
-  }, [v.slug]);
-  if (produits && !produits.length) return null;
-  const couleur = v.couleur && /^#[0-9a-f]{6}$/i.test(v.couleur) ? v.couleur : '#8c1620';
-  return (
-    <section className="bloc-boutique revele" style={{ background: `linear-gradient(135deg, ${couleur} 0%, #181311 130%)` }}>
-      <div className="bloc-boutique-tete">
-        <LogoBoutique v={v} />
-        <div>
-          <h2>{v.nom}</h2>
-          <p>{[v.activite, v.commune ?? v.ville, v.livraison ? 'livraison' : 'retrait'].filter(Boolean).join(' · ')}</p>
-        </div>
-        <Link to={`/boutique/${v.slug}`} className="pastille-lien">Voir la boutique</Link>
-      </div>
-      {produits ? <RangeeProduits produits={produits} sansBoutique /> : <Squelettes n={4} rangee />}
-    </section>
-  );
-}
 
 /** Page d'accueil : affiches des soldes, raccourcis, ventes flash, rayons, boutiques, populaires, nouveautés. */
 export function Accueil() {
@@ -78,17 +54,6 @@ export function Accueil() {
         texte={`${salutation()} 👋 Stock réel, prix des boutiques, paiement Wave, Orange Money ou en espèces.`}
         lien={{ vers: '/rayons', libelle: 'Découvrir les produits' }}
       />
-
-      {d.boutiques.length > 0 && (
-        <nav className="ronds-boutiques revele" aria-label="Boutiques">
-          {d.boutiques.map((v) => (
-            <Link key={v.slug} to={`/boutique/${v.slug}`}>
-              <span className="anneau"><LogoBoutique v={v} /></span>
-              {v.nom}
-            </Link>
-          ))}
-        </nav>
-      )}
 
       <nav className="raccourcis revele" aria-label="Raccourcis">
         <Link to="/soldes"><span className="rond orange"><IcoFlamme /></span>Promos</Link>
@@ -138,16 +103,6 @@ export function Accueil() {
         </section>
       )}
 
-      <section className="section revele">
-        <TitreRayon titre="Choisissez votre boutique" lien={{ vers: '/boutiques', libelle: 'Toutes' }} />
-        {d.boutiques.length ? (
-          <Rangee large>{d.boutiques.map((v) => <CarteBoutique key={v.slug} v={v} />)}</Rangee>
-        ) : (
-          <p className="vide">Les premières boutiques arrivent bientôt.</p>
-        )}
-      </section>
-
-      {d.boutiques.slice(0, 3).map((v) => <BlocBoutique key={v.slug} v={v} />)}
 
       {(vus.length > 0 || d.nouveautes.length > 0) && (
         <section className="section bloc-blanc revele">
@@ -155,6 +110,15 @@ export function Accueil() {
           <GrilleProduits produits={(vus.length ? vus : d.nouveautes).slice(0, 10)} />
         </section>
       )}
+
+      <section className="section revele">
+        <TitreRayon titre="Nos boutiques" sous="Tous leurs produits sont déjà sur cette page" lien={{ vers: '/boutiques', libelle: 'Toutes' }} />
+        {d.boutiques.length ? (
+          <Rangee large>{d.boutiques.map((v) => <CarteBoutique key={v.slug} v={v} />)}</Rangee>
+        ) : (
+          <p className="vide">Les premières boutiques arrivent bientôt.</p>
+        )}
+      </section>
 
       <section className="section comment-ca-marche revele">
         <TitreRayon titre="Commander en 4 étapes" sous="Simple, rapide et sûr" />
