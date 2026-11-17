@@ -447,7 +447,7 @@ export function Commander() {
                 {enLigne.map((m) => (
                   <button type="button" role="radio" aria-checked={f.choix === m.cle} key={m.cle} className={f.choix === m.cle ? 'actif' : ''}
                     style={{ ['--marque' as string]: m.couleur }} onClick={() => maj({ choix: m.cle })}>
-                    <LogoPaiement m={m} taille={44} />
+                    <LogoPaiement m={m} taille={26} />
                     <span>{m.libelle}</span>
                   </button>
                 ))}

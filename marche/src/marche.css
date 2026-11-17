@@ -1429,3 +1429,27 @@ label .facultatif { align-self: flex-start; margin: -2px 0 0; }
 .alerte-client-voir { padding: 7px 16px; border-radius: 999px; background: #111; color: #fff; font-weight: 700; font-size: 0.84rem; }
 .alerte-client-actions button { width: 32px; height: 32px; border-radius: 50%; border: 0; background: #f3f4f3; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .alerte-client, .alerte-client-icone { animation: none; } }
+
+/* Moyens de paiement : petites pastilles élégantes (logo + nom sur une ligne) */
+.logos-paiement { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.logos-paiement button {
+  flex-direction: row; gap: 8px; padding: 6px 30px 6px 7px !important; min-height: 0; border-radius: 999px; border-width: 1.5px;
+  font-size: 0.84rem; font-weight: 700; box-shadow: none;
+}
+.logos-paiement button .logo-paiement { border-radius: 8px; }
+.logos-paiement button span { white-space: nowrap; }
+.logos-paiement button::after { top: 50% !important; right: 7px !important; width: 16px !important; height: 16px !important; transform: translateY(-50%); font-size: 0.6rem !important; border-width: 1.5px !important; }
+.logos-paiement button.actif::after { transform: translateY(-50%) scale(1.05) !important; }
+.logos-paiement button.actif { transform: none; box-shadow: 0 0 0 3px rgba(15, 81, 50, 0.12) !important; }
+/* Carte Wave / Orange : plus compacte */
+.carte-paiement { padding: 14px 16px; border-radius: 18px; gap: 8px; }
+.carte-paiement-tete { gap: 10px; }
+.carte-paiement-tete .logo-paiement { border-radius: 10px; }
+.carte-paiement-tete span { font-size: 0.78rem; }
+.carte-paiement-tete strong { font-size: 1.25rem; }
+.carte-paiement-actions { gap: 6px; }
+.carte-paiement-actions .bouton { min-height: 34px; padding: 6px 12px; font-size: 0.8rem; }
+.carte-paiement .secondaire.petit { font-size: 0.74rem; }
+/* Grandes cartes « Mobile Money / Espèces » : icônes plus petites */
+.familles-paiement button > span[aria-hidden] { font-size: 1.15rem; }
+.familles-paiement button { padding-top: 10px; padding-bottom: 10px; }

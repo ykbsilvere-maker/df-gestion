@@ -110,7 +110,7 @@ export function CartePaiement({ m, numero, montant, beneficiaire, lienWave }: { 
   return (
     <div className="carte-paiement" style={{ ['--marque' as string]: m.couleur }}>
       <div className="carte-paiement-tete">
-        <LogoPaiement m={m} taille={48} />
+        <LogoPaiement m={m} taille={34} />
         <div>
           <span>Payez par {m.libelle}</span>
           <strong>{fcfa(montant)}</strong>
