@@ -13,11 +13,6 @@ let riz: string;
 let awa: string; // cliente du site
 const un = async <T>(p: Promise<T[]>) => (await p)[0]!;
 const anonyme = <R>(fn: (q: Execution) => Promise<R>) => enTantQue<R>(pool, null, fn);
-const commande = (extra: object = {}) =>
-  JSON.stringify({
-    boutique: 'chez-alice', client_nom: 'Awa Koné', client_telephone: '05 05 05 05 05', mode: 'retrait', paiement: 'orange_money',
-    numero_payeur: '0505050505', reference_paiement: 'MP231117.1234.A56789', lignes: [{ produit_id: riz, quantite: 2 }], ...extra,
-  });
 
 beforeAll(async () => {
   pool = await preparerBase('v380');
