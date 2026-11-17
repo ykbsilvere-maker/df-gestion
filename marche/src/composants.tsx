@@ -503,7 +503,7 @@ export function EnTete() {
         <NavLink to="/soldes" className={({ isActive }) => `chaud ${isActive ? 'active' : ''}`}>🔥 Soldes</NavLink>
         <NavLink to="/boutiques">Boutiques</NavLink>
         <NavLink to="/rayons">Rayons</NavLink>
-        <NavLink to="/recherche?tri=nouveautes">Nouveautés</NavLink>
+        <Link to="/recherche?tri=nouveautes" className={pathname === '/recherche' && params.get('tri') === 'nouveautes' ? 'active' : ''}>Nouveautés</Link>
         <NavLink to="/mes-commandes">Suivre ma commande</NavLink>
         <NavLink to="/favoris">Favoris</NavLink>
       </nav>
