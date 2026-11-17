@@ -54,10 +54,12 @@ export function Accueil() {
         produits={sansDoublon([d.soldes, d.populaires, d.nouveautes])}
         etiquette={unique ? `🏪 ${unique.nom}${unique.commune ? ` · ${unique.commune}` : ''}` : undefined}
         titre={unique
-          ? <>{unique.slogan || 'Vos courses'}, <em>{unique.livraison ? 'livrées' : 'prêtes'}</em>{unique.livraison ? ' ou prêtes au retrait.' : ' au retrait en boutique.'}</>
+          ? unique.slogan
+            ? <>{unique.slogan}</>
+            : <>Vos courses, <em>{unique.livraison ? 'livrées' : 'prêtes'}</em>{unique.livraison ? ' ou prêtes au retrait.' : ' au retrait en boutique.'}</>
           : <>Les boutiques de votre quartier, <em>livrées</em> ou prêtes au retrait.</>}
         texte={unique
-          ? `${salutation()} 👋 Stock en direct, prix de la boutique, paiement Wave, Orange Money ou en espèces.`
+          ? `${salutation()} 👋 ${unique.livraison ? 'Livraison ou retrait en boutique' : 'Retrait en boutique'}, stock en direct, paiement Wave, Orange Money ou en espèces.`
           : `${salutation()} 👋 Stock réel, prix des boutiques, paiement Wave, Orange Money ou en espèces.`}
         lien={{ vers: '/rayons', libelle: 'Découvrir les produits' }}
       />
