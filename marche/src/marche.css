@@ -1453,3 +1453,43 @@ label .facultatif { align-self: flex-start; margin: -2px 0 0; }
 /* Grandes cartes « Mobile Money / Espèces » : icônes plus petites */
 .familles-paiement button > span[aria-hidden] { font-size: 1.15rem; }
 .familles-paiement button { padding-top: 10px; padding-bottom: 10px; }
+
+/* =====================================================================
+   3.10.1 — Photos de la boutique en fond de bannière, alertes simples, pastilles « bons »
+   ===================================================================== */
+.hero-photos { position: relative; overflow: hidden; margin: 14px 0 20px; border-radius: 26px; min-height: 320px; background: #111; isolation: isolate; }
+.hero-photos-piste { position: absolute; inset: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.hero-photos-piste::-webkit-scrollbar { display: none; }
+.hero-photos-diapo { flex: 0 0 100%; height: 100%; scroll-snap-align: start; overflow: hidden; }
+.hero-photos-diapo img { width: 100%; height: 100%; object-fit: cover; animation: hero-zoom 14s ease-in-out infinite alternate; user-select: none; }
+@keyframes hero-zoom { from { transform: scale(1); } to { transform: scale(1.08); } }
+.hero-photos-voile { position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.05) 75%), linear-gradient(0deg, rgba(0,0,0,0.45) 0%, transparent 45%); }
+.hero-photos-texte { position: relative; z-index: 2; display: grid; gap: 10px; align-content: end; max-width: 600px; min-height: 320px; padding: 26px 22px 46px; color: #fff; pointer-events: none; }
+.hero-photos-texte > * { pointer-events: auto; }
+.hero-photos-texte .hero-frais-etiquette { background: rgba(255,255,255,0.92); color: #111; }
+.hero-photos-texte h1 { margin: 0; font-size: clamp(1.6rem, 5vw, 3rem); font-weight: 900; line-height: 1.05; letter-spacing: -0.035em; text-shadow: 0 2px 18px rgba(0,0,0,0.35); }
+.hero-photos-texte p { margin: 0; font-size: 0.95rem; opacity: 0.95; max-width: 48ch; }
+.bouton-blanc { background: #fff; color: #111; }
+.bouton-blanc .voir-tout-fleche { background: #111; color: #fff; }
+.bouton-blanc:hover { background: #f1f5f2; }
+.hero-photos-fleche { position: absolute; z-index: 3; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; border: 0;
+  background: rgba(255,255,255,0.85); color: #111; font-size: 1.6rem; line-height: 1; cursor: pointer; display: grid; place-items: center; box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
+.hero-photos-fleche.gauche { left: 12px; } .hero-photos-fleche.droite { right: 12px; }
+.hero-photos-points { position: absolute; z-index: 3; left: 0; right: 0; bottom: 14px; display: flex; justify-content: center; gap: 6px; }
+.hero-photos-points button { width: 8px; height: 8px; padding: 0; border-radius: 999px; border: 0; background: rgba(255,255,255,0.5); cursor: pointer; transition: width 0.3s, background 0.3s; }
+.hero-photos-points button.actif { width: 26px; background: #fff; }
+@media (min-width: 820px) { .hero-photos, .hero-photos-texte { min-height: 420px; } .hero-photos-texte { padding: 48px 56px 56px; } }
+@media (max-width: 719px) { .hero-photos-fleche { display: none; } }
+@media (prefers-reduced-motion: reduce) { .hero-photos-diapo img { animation: none; } }
+
+/* Alertes du client : simples, sans bordure de couleur */
+.alerte-client, .alerte-client.ton-or, .alerte-client.ton-bleu, .alerte-client.ton-rouge { border: 1px solid var(--trait); border-left: 1px solid var(--trait); }
+.alerte-client-icone, .ton-or .alerte-client-icone, .ton-bleu .alerte-client-icone, .ton-rouge .alerte-client-icone { background: #f4f5f4; }
+
+/* Pastille du nombre de bons d'achat (Compte, raccourci) */
+.avec-pastille { position: relative; }
+.pastille-bons { position: absolute; top: -2px; right: calc(50% - 22px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: #dc2626; color: #fff; font-size: 0.66rem; font-weight: 800; display: grid; place-items: center; border: 2px solid #fff; font-style: normal; animation: stepper-entree 0.4s var(--ressort); }
+.raccourcis .avec-pastille .pastille-bons { top: -4px; right: calc(50% - 30px); }
+.entete-actions .avec-pastille .pastille-bons { top: 0; right: 4px; }

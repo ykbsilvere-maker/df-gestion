@@ -44,7 +44,7 @@ function Ligne({ vers, icone, children, detail }: { vers: string; icone: string;
 }
 
 export function MonCompte() {
-  const { compte, session, pret } = useCompte();
+  const { compte, session, pret, bons } = useCompte();
   const favoris = useFavoris();
   const naviguer = useNavigate();
   useEffect(() => {
@@ -77,7 +77,7 @@ export function MonCompte() {
       <h2 className="compte-section">Mon compte DF Marché</h2>
       <nav className="liste-compte">
         <Ligne vers="/compte/commandes" icone="📦" detail={compte ? `${compte.commandes}` : mesCommandes().length || undefined}>Mes commandes</Ligne>
-        <Ligne vers="/compte/bons" icone="🎟️">Bons d’achat et codes promo</Ligne>
+        <Ligne vers="/compte/bons" icone="🎟️" detail={bons > 0 ? `${bons}` : undefined}>Bons d’achat et codes promo</Ligne>
         <Ligne vers="/favoris" icone="♡" detail={favoris.length || undefined}>Favoris</Ligne>
         <Ligne vers="/compte/vus" icone="🕘">Consultés récemment</Ligne>
         <Ligne vers="/mes-commandes" icone="📍">Suivre une commande avec son code</Ligne>

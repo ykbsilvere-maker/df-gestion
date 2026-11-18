@@ -500,6 +500,69 @@ export function OngletsRayons({ titre, sous, produits, lien, max = 10 }: { titre
   );
 }
 
+/** Bannière d'accueil de la boutique : ses photos défilent en fond (glisser, flèches, points), le texte par-dessus. */
+export function HeroPhotos({ photos, etiquette, titre, texte, lien }: { photos: string[]; etiquette?: string; titre: ReactNode; texte: ReactNode; lien: { vers: string; libelle: string } }) {
+  const piste = useRef<HTMLDivElement>(null);
+  const [actif, setActif] = useState(0);
+  const pause = useRef(0);
+  const aller = (i: number) => {
+    const el = piste.current;
+    if (!el) return;
+    const n = (i + photos.length) % photos.length;
+    el.scrollTo({ left: n * el.clientWidth, behavior: 'smooth' });
+  };
+  useEffect(() => {
+    if (photos.length < 2) return;
+    const t = window.setInterval(() => {
+      const el = piste.current;
+      if (!el || document.hidden || Date.now() < pause.current) return;
+      aller(Math.round(el.scrollLeft / el.clientWidth) + 1);
+    }, 5000);
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photos.length]);
+  const toucher = () => (pause.current = Date.now() + 9000);
+  return (
+    <section className="hero-photos revele" onPointerDown={toucher} onMouseEnter={toucher}>
+      <div
+        className="hero-photos-piste"
+        ref={piste}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setActif(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+        }}
+      >
+        {photos.map((p, k) => (
+          <div className="hero-photos-diapo" key={p}>
+            <img src={urlPublique('vitrines', p)!} alt="" loading={k === 0 ? 'eager' : 'lazy'} draggable={false} />
+          </div>
+        ))}
+      </div>
+      <div className="hero-photos-voile" aria-hidden />
+      <div className="hero-photos-texte">
+        {etiquette && <span className="hero-frais-etiquette">{etiquette}</span>}
+        <h1>{titre}</h1>
+        <p>{texte}</p>
+        <Link to={lien.vers} className="bouton-noir bouton-blanc">
+          {lien.libelle}
+          <span className="voir-tout-fleche" aria-hidden><IcoFleche /></span>
+        </Link>
+      </div>
+      {photos.length > 1 && (
+        <>
+          <button type="button" className="hero-photos-fleche gauche" aria-label="Photo précédente" onClick={() => { toucher(); aller(actif - 1); }}>‹</button>
+          <button type="button" className="hero-photos-fleche droite" aria-label="Photo suivante" onClick={() => { toucher(); aller(actif + 1); }}>›</button>
+          <div className="hero-photos-points" role="tablist" aria-label="Photos de la boutique">
+            {photos.map((p, k) => (
+              <button key={p} type="button" role="tab" aria-selected={k === actif} className={k === actif ? 'actif' : ''} aria-label={`Photo ${k + 1}`} onClick={() => { toucher(); aller(k); }} />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 /** Grande bannière d'accueil : texte à gauche, produits qui flottent à droite. */
 export function HeroFrais({ produits, titre, texte, lien, etiquette }: { produits: ProduitCarte[]; titre: ReactNode; texte: ReactNode; lien: { vers: string; libelle: string }; etiquette?: string }) {
   const avecPhoto = produits.filter((p) => p.photo).slice(0, 5);
@@ -729,7 +792,7 @@ export function VentesFlash({ soldes }: { soldes: ProduitCarte[] }) {
 /* ---------- En-tête, onglets, pied ---------- */
 
 export function EnTete() {
-  const { compte } = useCompte();
+  const { compte, bons } = useCompte();
   const panier = usePanier();
   const favoris = useFavoris();
   const n = nombreArticles(panier);
@@ -779,7 +842,7 @@ export function EnTete() {
         </form>
         <nav className="entete-actions" aria-label="Raccourcis">
           <NavLink to="/rayons" className="action-ordi"><IcoRayons /><span>Rayons</span></NavLink>
-          <NavLink to="/compte" className="action-ordi"><IcoCompte /><span>{compte ? compte.nom.split(' ')[0] : 'Compte'}</span></NavLink>
+          <NavLink to="/compte" className="action-ordi avec-pastille"><IcoCompte /><span>{compte ? compte.nom.split(' ')[0] : 'Compte'}</span>{bons > 0 && <b className="pastille-bons" title={`${bons} bon(s) d’achat disponible(s)`}>{bons}</b>}</NavLink>
           <NavLink to="/favoris" className="action-ordi"><IcoCoeur /><span>Favoris</span>{favoris.length > 0 && <i className="compteur doux">{favoris.length}</i>}</NavLink>
           <NavLink to="/panier" className={`action-panier ${bond ? 'bond' : ''}`} aria-label={`Panier : ${n} article(s)`}>
             <IcoPanier /><span>Panier</span>{n > 0 && <i className="compteur">{n}</i>}
@@ -799,7 +862,7 @@ export function EnTete() {
 }
 
 export function BarreOnglets() {
-  const { compte } = useCompte();
+  const { compte, bons } = useCompte();
   const panier = usePanier();
   const favoris = useFavoris();
   const n = nombreArticles(panier);
@@ -809,7 +872,7 @@ export function BarreOnglets() {
       <NavLink to="/rayons"><IcoRayons /><span>Rayons</span></NavLink>
       <NavLink to="/panier" className="onglet-panier"><span className="bulle-panier"><IcoPanier />{n > 0 && <i className="compteur">{n}</i>}</span><span>Panier</span></NavLink>
       <NavLink to="/favoris"><IcoCoeur /><span>Favoris</span>{favoris.length > 0 && <i className="point" />}</NavLink>
-      <NavLink to="/compte"><IcoCompte /><span>Compte</span>{compte && <i className="point vert" />}</NavLink>
+      <NavLink to="/compte" className="avec-pastille"><IcoCompte /><span>Compte</span>{bons > 0 ? <b className="pastille-bons" aria-label={`${bons} bons d’achat`}>{bons}</b> : compte && <i className="point vert" />}</NavLink>
     </nav>
   );
 }

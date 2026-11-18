@@ -70,13 +70,27 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
   const naviguer = useNavigate();
 
 
-  const montrer = () => {
+  // Commande affectée : la fenêtre reste affichée et sonne à nouveau toutes les 45 s tant que la
+  // caissière n'a pas touché « Voir » ou « Plus tard ».
+  const insistance = useRef<number | undefined>(undefined);
+  const arreterInsistance = () => {
+    window.clearInterval(insistance.current);
+    insistance.current = undefined;
+  };
+  const montrer = (persistante = false) => {
     setSortie(false);
     setVisible(true);
     window.clearTimeout(minuteur.current);
-    minuteur.current = window.setTimeout(() => fermer(), 14000);
+    if (persistante) {
+      arreterInsistance();
+      insistance.current = window.setInterval(() => {
+        son();
+        navigator.vibrate?.([140, 90, 140]);
+      }, 45000);
+    } else if (!insistance.current) minuteur.current = window.setTimeout(() => fermer(), 15000);
   };
   const fermer = () => {
+    arreterInsistance();
     setSortie(true);
     window.setTimeout(() => setVisible(false), 260);
   };
@@ -104,14 +118,15 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
             : `${c.nombre} commande${pluriel(c.nombre)} à rassembler et vérifier`;
       const hausse = avant !== null && (c.nombre > avant.nombre || c.a_affecter > avant.a_affecter || c.en_attente > avant.en_attente);
       // À l'ouverture de l'application (et de la caisse) : la fenêtre s'affiche s'il y a des commandes.
+      const affecteeAMoi = c.nombre > (avant?.nombre ?? 0);
       if (avant === null && total > 0) {
-        montrer();
+        montrer(c.nombre > 0);
         pontAndroid()?.notifier?.('Commandes en ligne', `Vous avez ${texte}.`, total);
       } else if (hausse) {
-        montrer();
+        montrer(affecteeAMoi);
         son();
         navigator.vibrate?.([140, 90, 140]);
-        pontAndroid()?.notifier?.('Nouvelle commande en ligne', `Vous avez ${texte}.`, total);
+        pontAndroid()?.notifier?.(affecteeAMoi ? 'Commande affectée à vous' : 'Nouvelle commande en ligne', `Vous avez ${texte}.`, total);
         try {
           if (!pontAndroid() && 'Notification' in window && Notification.permission === 'granted' && document.hidden)
             new Notification('DF Gestion — commande en ligne', { body: `Vous avez ${texte}.`, icon: '/icone-192.png' });
@@ -131,7 +146,7 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
         if (!error) pont.veilleCommandes!(conf.url, conf.cle, jeton);
       });
     void lire();
-    const id = window.setInterval(() => void lire(), 20000);
+    const id = window.setInterval(() => void lire(), 12000);
     const auRetour = () => document.visibilityState === 'visible' && void lire();
     document.addEventListener('visibilitychange', auRetour);
     try {
@@ -144,6 +159,7 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
       arret = true;
       window.clearInterval(id);
       window.clearTimeout(minuteur.current);
+      window.clearInterval(insistance.current);
       document.removeEventListener('visibilitychange', auRetour);
     };
   }, [org, actif]);
@@ -169,7 +185,11 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
             <strong>DF Gestion</strong> · maintenant
           </span>
           <span className="lucarne-titre">
-            Vous avez {n} commande{n > 1 ? 's' : ''} en ligne
+            {miennes > 0
+              ? `🧺 ${miennes} commande${miennes > 1 ? 's' : ''} affectée${miennes > 1 ? 's' : ''} à vous`
+              : aAffecter > 0
+                ? `Vous avez ${n} commande${n > 1 ? 's' : ''} en ligne`
+                : `🔔 ${n} nouvelle${n > 1 ? 's' : ''} commande${n > 1 ? 's' : ''} en ligne`}
           </span>
           <span className="lucarne-detail">
             {aAffecter > 0
@@ -186,7 +206,7 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
           Plus tard
         </button>
         <button type="button" className="lucarne-voir" onClick={ouvrir}>
-          {aAffecter > 0 ? 'Affecter' : 'Voir'}
+          {aAffecter > 0 ? 'Affecter' : miennes > 0 ? 'Rassembler' : 'Voir'}
         </button>
       </div>
     </div>

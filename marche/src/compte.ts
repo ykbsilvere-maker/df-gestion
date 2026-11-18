@@ -17,7 +17,7 @@ export function identifiantVersEmail(saisie: string): string {
 
 export const estTelephone = (email: string | null | undefined) => !!email?.endsWith('@tel.dfmarche.ci');
 
-let etat: { session: Session | null; compte: Compte | null; pret: boolean } = { session: null, compte: null, pret: false };
+let etat: { session: Session | null; compte: Compte | null; pret: boolean; bons: number } = { session: null, compte: null, pret: false, bons: 0 };
 const abonnes = new Set<() => void>();
 const publier = (x: Partial<typeof etat>) => {
   etat = { ...etat, ...x };
@@ -26,7 +26,7 @@ const publier = (x: Partial<typeof etat>) => {
 
 export async function rechargerCompte() {
   const { data } = await supabase.auth.getSession();
-  if (!data.session) return publier({ session: null, compte: null, pret: true });
+  if (!data.session) return publier({ session: null, compte: null, pret: true, bons: 0 });
   try {
     let c = await appeler<Compte | null>('compte_marche');
     // Compte confirmé par e-mail : la fiche client est créée à la première connexion, avec le nom saisi à l'inscription.
@@ -35,6 +35,7 @@ export async function rechargerCompte() {
       c = await appeler<Compte | null>('compte_marche_enregistrer', { p: { nom: meta.nom_complet, telephone: meta.telephone || null } });
     }
     publier({ session: data.session, compte: c, pret: true });
+    void compterBons();
   } catch {
     publier({ session: data.session, compte: null, pret: true });
   }
@@ -65,6 +66,20 @@ export async function connexion(identifiant: string, motDePasse: string) {
     throw new Error(/invalid/i.test(error.message) ? 'Adresse e-mail ou mot de passe incorrect.' : error.message);
   }
   await rechargerCompte();
+}
+
+/** Mis à jour par les alertes (vérification régulière). */
+export const publierBons = (n: number) => etat.bons !== n && publier({ bons: n });
+
+/** Nombre de bons d'achat disponibles (affiché sur « Compte » et « Bons d'achat », sans ouvrir la page). */
+export async function compterBons() {
+  if (!etat.session) return publier({ bons: 0 });
+  try {
+    const bons = await appeler<unknown[]>('mes_bons_marche');
+    publier({ bons: Array.isArray(bons) ? bons.length : 0 });
+  } catch {
+    /* compteur indisponible */
+  }
 }
 
 /** Lien de confirmation : il ramène sur DF Marché, qui ouvre la session et crée la fiche client. */
@@ -113,5 +128,5 @@ export async function motDePasseOublie(email: string) {
 
 export async function deconnexion() {
   await supabase.auth.signOut();
-  publier({ session: null, compte: null });
+  publier({ session: null, compte: null, bons: 0 });
 }

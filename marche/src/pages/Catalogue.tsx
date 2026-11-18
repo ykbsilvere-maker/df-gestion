@@ -8,6 +8,7 @@ import {
   CarteBoutique,
   Defilant,
   HeroFrais,
+  HeroPhotos,
   OngletsRayons,
   Chargement,
   Erreur,
@@ -28,7 +29,7 @@ import { mesCommandes, useFavoris, vusRecemment } from '../panier';
 
 /** Page d'accueil : affiches des soldes, raccourcis, ventes flash, rayons, boutiques, populaires, nouveautés. */
 export function Accueil() {
-  const { compte } = useCompte();
+  const { compte, bons } = useCompte();
   const unique = useBoutiqueUnique();
   const [d, setD] = useState<DonneesAccueil | null>(null);
   const [erreur, setErreur] = useState('');
@@ -50,19 +51,29 @@ export function Accueil() {
   const livraison = d.boutiques.some((v) => v.livraison);
   return (
     <>
-      <HeroFrais
-        produits={sansDoublon([d.soldes, d.populaires, d.nouveautes])}
-        etiquette={unique ? `🏪 ${unique.nom}${unique.commune ? ` · ${unique.commune}` : ''}` : undefined}
-        titre={unique
-          ? unique.slogan
-            ? <>{unique.slogan}</>
-            : <>Vos courses, <em>{unique.livraison ? 'livrées' : 'prêtes'}</em>{unique.livraison ? ' ou prêtes au retrait.' : ' au retrait en boutique.'}</>
-          : <>Les boutiques de votre quartier, <em>livrées</em> ou prêtes au retrait.</>}
-        texte={unique
-          ? `${salutation()} 👋 ${unique.livraison ? 'Livraison ou retrait en boutique' : 'Retrait en boutique'}, stock en direct, paiement Wave, Orange Money ou en espèces.`
-          : `${salutation()} 👋 Stock réel, prix des boutiques, paiement Wave, Orange Money ou en espèces.`}
-        lien={{ vers: '/rayons', libelle: 'Découvrir les produits' }}
-      />
+      {unique && (unique.photos?.length ?? 0) > 0 ? (
+        <HeroPhotos
+          photos={unique.photos}
+          etiquette={`🏪 ${unique.nom}${unique.commune ? ` · ${unique.commune}` : ''}`}
+          titre={unique.slogan || <>Vos courses, {unique.livraison ? 'livrées ou prêtes au retrait.' : 'prêtes au retrait.'}</>}
+          texte={`${salutation()} 👋 ${unique.livraison ? 'Livraison ou retrait en boutique' : 'Retrait en boutique'}, stock en direct, paiement Wave, Orange Money ou en espèces.`}
+          lien={{ vers: '/rayons', libelle: 'Découvrir les produits' }}
+        />
+      ) : (
+        <HeroFrais
+          produits={sansDoublon([d.soldes, d.populaires, d.nouveautes])}
+          etiquette={unique ? `🏪 ${unique.nom}${unique.commune ? ` · ${unique.commune}` : ''}` : undefined}
+          titre={unique
+            ? unique.slogan
+              ? <>{unique.slogan}</>
+              : <>Vos courses, <em>{unique.livraison ? 'livrées' : 'prêtes'}</em>{unique.livraison ? ' ou prêtes au retrait.' : ' au retrait en boutique.'}</>
+            : <>Les boutiques de votre quartier, <em>livrées</em> ou prêtes au retrait.</>}
+          texte={unique
+            ? `${salutation()} 👋 ${unique.livraison ? 'Livraison ou retrait en boutique' : 'Retrait en boutique'}, stock en direct, paiement Wave, Orange Money ou en espèces.`
+            : `${salutation()} 👋 Stock réel, prix des boutiques, paiement Wave, Orange Money ou en espèces.`}
+          lien={{ vers: '/rayons', libelle: 'Découvrir les produits' }}
+        />
+      )}
 
       {/* Comme sur les grands sites : les ventes flash et les offres juste sous la bannière. */}
       <VentesFlash soldes={flash} />
@@ -78,7 +89,7 @@ export function Accueil() {
         )}
         <Link to={derniere ? `/suivi/${derniere.code}` : '/mes-commandes'}><span className="rond"><IcoSuivi /></span>Suivi</Link>
         <Link to="/compte/commandes"><span className="rond"><IcoRecommander /></span>Recommander</Link>
-        <Link to="/compte/bons"><span className="rond orange" aria-hidden>🎟️</span>Bons d’achat</Link>
+        <Link to="/compte/bons" className="avec-pastille"><span className="rond orange" aria-hidden>🎟️</span>Bons d’achat{bons > 0 && <b className="pastille-bons">{bons}</b>}</Link>
         <Link to="/favoris"><span className="rond rose"><IcoCoeur /></span>Favoris</Link>
       </nav>
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { appeler, type BonAchat, type CommandeCompte } from './api';
-import { useCompte } from './compte';
+import { publierBons, useCompte } from './compte';
 import { mesCommandes } from './panier';
 
 /* ------------------------------------------------------------------------------------------
@@ -85,6 +85,7 @@ export function AlertesClient() {
       // 1. Bons d'achat (compte connecté)
       if (session) {
         const bons = await appeler<BonAchat[]>('mes_bons_marche').catch(() => [] as BonAchat[]);
+        publierBons(bons.length);
         const inedits = bons.filter((b) => !vus.bons.includes(b.code));
         if (inedits.length === 1) {
           const b = inedits[0]!;

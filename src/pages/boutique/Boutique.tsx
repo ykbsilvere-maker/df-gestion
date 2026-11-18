@@ -876,7 +876,7 @@ type Inactifs = Partial<Record<ChampNumero, string>> & { autres?: AutrePaiement[
 /** Case « proposé aux clients » d'un moyen de paiement. */
 function Interrupteur({ coche, onChange, libelle }: { coche: boolean; onChange: (c: boolean) => void; libelle: string }) {
   return (
-    <label className={`interrupteur ${coche ? 'actif' : ''}`} title={coche ? `Ne plus proposer ${libelle}` : `Proposer ${libelle}`}>
+    <label className={`bascule-moyen ${coche ? 'actif' : ''}`} title={coche ? `Ne plus proposer ${libelle}` : `Proposer ${libelle}`}>
       <input type="checkbox" checked={coche} onChange={(e) => onChange(e.target.checked)} aria-label={`Proposer ${libelle}`} />
       <span aria-hidden />
     </label>
