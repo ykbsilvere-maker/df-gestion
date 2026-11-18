@@ -21,6 +21,7 @@ const FAMILLES: { valeur: string; libelle: string }[] = [
   { valeur: 'commande_web.', libelle: 'Commandes en ligne (suivi complet)' },
   { valeur: 'appareil.', libelle: 'Appareils approuvés' },
   { valeur: 'cle_acces.', libelle: 'Clés d’accès' },
+  { valeur: 'otp.', libelle: 'Codes de connexion Telegram' },
   { valeur: 'credits', libelle: 'Crédits clients et relances' },
   { valeur: 'encaissements_creances.', libelle: 'Règlements de clients' },
   { valeur: 'produits.', libelle: 'Articles du catalogue' },
@@ -56,6 +57,7 @@ function resume(l: LigneAudit): string {
     const t = texteActivite({ action: l.action, contexte: c });
     return `${t.titre} — ${t.detail}`;
   }
+  if (l.action.startsWith('otp.')) return [c.nom, c.telegram, c.essai ? `essai n° ${String(c.essai)}` : ''].filter(Boolean).join(' — ');
   if (l.action.startsWith('appareil.')) return [c.nom, c.appareil].filter(Boolean).join(' — ');
   if (l.action.startsWith('cle_acces.')) return [c.pour ? `Pour ${String(c.pour)}` : '', c.indice ? `clé …${String(c.indice)}` : '', c.appareil].filter(Boolean).join(' — ');
   if (typeof c.motif === 'string') return `Motif : ${c.motif}`;

@@ -8,8 +8,8 @@ import { estAccesEmploye } from './acces';
 import { jetonAppareil, libelleAppareil, numeroSession } from './appareil';
 
 /** Où en est cet appareil pour l'entreprise courante (appareils approuvés). */
-export type StatutAppareil = 'verification' | 'libre' | 'approuve' | 'en_attente' | 'refuse' | 'revoque' | 'inconnu';
-export const APPAREIL_BLOQUE: StatutAppareil[] = ['en_attente', 'refuse', 'revoque'];
+export type StatutAppareil = 'verification' | 'libre' | 'approuve' | 'en_attente' | 'refuse' | 'revoque' | 'inconnu' | 'code_requis';
+export const APPAREIL_BLOQUE: StatutAppareil[] = ['en_attente', 'refuse', 'revoque', 'code_requis'];
 
 export interface InfoPlateforme {
   admin_existe: boolean;
@@ -268,6 +268,12 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
       statut = (connu as StatutAppareil | null) ?? 'libre';
     } else {
       statut = ((data as { statut?: StatutAppareil } | null)?.statut ?? 'libre') as StatutAppareil;
+      // Appareil en règle : la personne a-t-elle aussi un code Telegram à saisir pour cette connexion ?
+      if (statut === 'approuve' || statut === 'libre') {
+        const { data: otp, error: e2 } = await supabase.rpc('otp_etat', { p_org: orgCourante });
+        const o = otp as { exige?: boolean; verifie?: boolean } | null;
+        if (!e2 && o?.exige && !o.verifie) statut = 'code_requis';
+      }
       try {
         localStorage.setItem(cache, statut);
       } catch {
@@ -280,6 +286,9 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!uid || !orgCourante) return;
     void verifierAppareil();
+    // Revérification régulière : une session vérifiée par code ne dure que 12 heures.
+    const id = window.setInterval(() => void verifierAppareil(), 10 * 60 * 1000);
+    return () => window.clearInterval(id);
   }, [uid, orgCourante, cleAppareil, verifierAppareil]);
   const debloquerAppareil = useCallback(
     async (cle: string) => {

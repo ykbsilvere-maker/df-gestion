@@ -60,6 +60,12 @@ const LIBELLES_ACTIONS: Record<string, string> = {
   'cle_acces.annulee': 'Clé d’accès annulée',
   'cle_acces.refusee': 'Clé d’accès refusée (essai invalide)',
   'cle_acces.compte_cree': 'Compte créé avec une clé',
+  'otp.configure': 'Code de connexion Telegram activé',
+  'otp.desactive': 'Code de connexion Telegram retiré',
+  'otp.envoye': 'Code de connexion envoyé sur Telegram',
+  'otp.verifie': 'Connexion validée par le code Telegram',
+  'otp.echec': 'Code de connexion erroné',
+  'otp.autorise_par_gerante': 'Connexion autorisée par la gérante (sans code)',
   'credits.insert': 'Crédit client préparé',
   'credits.update': 'Crédit client modifié (accordé, confié, annulé)',
   'credits_suivi.insert': 'Démarche de recouvrement notée',
@@ -148,6 +154,7 @@ export function libelleAction(code: string): string {
 /** Icône de la famille d'une opération du journal. */
 export function iconeAction(code: string): string {
   if (/^appareil\./.test(code)) return /refuse|revoque/.test(code) ? '⛔' : '📱';
+  if (/^otp\./.test(code)) return /echec/.test(code) ? '⛔' : '✈️';
   if (/^cle_acces\./.test(code)) return /refusee/.test(code) ? '⛔' : '🔑';
   if (/^commande_web\./.test(code)) return /annulee|refuse/.test(code) ? '❌' : '🛍️';
   if (/refuse/.test(code)) return '⛔';

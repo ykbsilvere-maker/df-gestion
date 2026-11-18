@@ -6,7 +6,7 @@ import { Coquille } from './components/Coquille';
 import { Connexion } from './pages/Connexion';
 import { NouveauMotDePasse } from './pages/NouveauMotDePasse';
 import { CreerEntreprise } from './pages/CreerEntreprise';
-import { AppareilEnAttente, AccesAppareils } from './pages/Acces';
+import { AppareilEnAttente, AccesAppareils, CodeTelegram } from './pages/Acces';
 import { Accueil } from './pages/Accueil';
 import { Magasins } from './pages/Magasins';
 import { Utilisateurs } from './pages/Utilisateurs';
@@ -73,6 +73,7 @@ function Protege({ children }: { children: ReactNode }) {
   if (organisations.length === 0) return <Navigate to={adminGeneral ? '/administration' : '/creer-entreprise'} replace />;
   // Appareils approuvés : rien ne s'affiche avant que cet appareil soit reconnu.
   if (appareil === 'verification') return <Chargement />;
+  if (appareil === 'code_requis') return <CodeTelegram />;
   if (APPAREIL_BLOQUE.includes(appareil)) return <AppareilEnAttente />;
   return <>{children}</>;
 }

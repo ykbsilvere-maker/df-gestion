@@ -3,6 +3,14 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.15.** **Code de connexion par Telegram** (migration 042). La gérante principale (ou l'administrateur
+général) crée l'accès de la personne — mot de passe provisoire ou code d'entrée — et renseigne son Telegram
+(*Utilisateurs › ✈️ Activer le code Telegram*, ou dès la création). À chaque connexion, après le mot de passe, un code à
+6 chiffres part sur Telegram : valable **2 minutes**, nouveau code possible après 30 s, 5 essais. Une connexion validée
+reste ouverte 12 heures au plus ; toute nouvelle connexion (après une déconnexion) redemande un code. Sans code, la base
+refuse toute donnée. Si le code n'arrive pas, l'écran le signale et la gérante peut autoriser la connexion d'un toucher.
+Tout est inscrit au journal d'audit.
+
 **Version 3.14.** **Accès réservés et suivi exact** (migration 041, fonction « inscription » mise à jour).
 *Appareils approuvés* (Réglages › Accès et appareils) : une fois la protection activée, une connexion depuis un appareil
 inconnu reste fermée — la base elle-même refuse toute donnée — tant que la gérante principale ne l'a pas approuvée

@@ -63,6 +63,7 @@ export function texteActivite(e: Pick<Evenement, 'action' | 'contexte'>): { icon
 export function SuiviGerante({ org, activites, appareils }: { org: string | undefined; activites: boolean; appareils: boolean }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [enAttente, setEnAttente] = useState<AppareilEnAttente[]>([]);
+  const [connexions, setConnexions] = useState<{ id: string; nom: string | null; envoye_le: string }[]>([]);
   const [masques, setMasques] = useState<string[]>([]);
   const dernier = useRef<number | null>(null);
   const vusAppareils = useRef<Set<string> | null>(null);
@@ -116,6 +117,7 @@ export function SuiviGerante({ org, activites, appareils }: { org: string | unde
         const { data } = await supabase.rpc('commandes_caisse_attente', { p_org: org });
         if (arret || !data) return;
         const liste = ((data as { appareils_liste?: AppareilEnAttente[] }).appareils_liste ?? []) as AppareilEnAttente[];
+        setConnexions(((data as { connexions_en_attente?: { id: string; nom: string | null; envoye_le: string }[] }).connexions_en_attente ?? []));
         const nouveaux = vusAppareils.current ? liste.filter((a) => !vusAppareils.current!.has(a.id)) : liste;
         if (nouveaux.length) {
           son();
@@ -147,8 +149,17 @@ export function SuiviGerante({ org, activites, appareils }: { org: string | unde
     ajouter({ cle: `d${a.id}`, icone: d === 'approuve' ? '✅' : '⛔', titre: d === 'approuve' ? `Appareil de ${a.nom} approuvé` : `Appareil de ${a.nom} refusé`, detail: a.libelle ?? '' });
   }
 
+  async function autoriser(k: { id: string; nom: string | null }) {
+    if (!window.confirm(`Autoriser la connexion de ${k.nom} sans son code Telegram ? Faites-le seulement si vous êtes sûre que c’est bien elle (par exemple au téléphone).`)) return;
+    const { error } = await supabase.rpc('otp_autoriser', { p_code_id: k.id });
+    if (error) return ajouter({ cle: `ek${k.id}`, icone: '⚠️', titre: 'Autorisation non enregistrée', detail: error.message });
+    setConnexions((l) => l.filter((x) => x.id !== k.id));
+    ajouter({ cle: `k${k.id}`, icone: '🔓', titre: `Connexion de ${k.nom} autorisée`, detail: 'inscrit au journal d’audit' });
+  }
+
   const appareilsVisibles = enAttente.filter((a) => !masques.includes(a.id));
-  if (!toasts.length && !appareilsVisibles.length) return null;
+  const connexionsVisibles = connexions.filter((k) => !masques.includes(k.id));
+  if (!toasts.length && !appareilsVisibles.length && !connexionsVisibles.length) return null;
   return (
     <div className="fil-suivi" aria-live="polite">
       {appareilsVisibles.slice(0, 2).map((a) => (
@@ -161,6 +172,19 @@ export function SuiviGerante({ org, activites, appareils }: { org: string | unde
               <button type="button" onClick={() => setMasques((m) => [...m, a.id])}>Plus tard</button>
               <button type="button" onClick={() => void decider(a, 'refuse')}>Refuser</button>
               <button type="button" className="suivi-ok" onClick={() => void decider(a, 'approuve')}>✅ Approuver</button>
+            </span>
+          </span>
+        </div>
+      ))}
+      {connexionsVisibles.slice(0, 2).map((k) => (
+        <div key={k.id} className="suivi-toast suivi-appareil" role="status">
+          <span className="suivi-icone" aria-hidden>🔐</span>
+          <span className="suivi-texte">
+            <strong>{k.nom} attend son code Telegram</strong>
+            <span>Si elle ne le reçoit pas, vous pouvez autoriser sa connexion.</span>
+            <span className="suivi-actions">
+              <button type="button" onClick={() => setMasques((m) => [...m, k.id])}>Masquer</button>
+              <button type="button" className="suivi-ok" onClick={() => void autoriser(k)}>🔓 Autoriser</button>
             </span>
           </span>
         </div>

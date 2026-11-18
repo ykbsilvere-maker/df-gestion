@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { libelleAppareil } from '../lib/appareil';
@@ -383,5 +383,203 @@ export function AccesAppareils() {
       <ClesAcces org={org} membres={membres} />
       <p className="secondaire petit">Chaque approbation, refus, clé créée, utilisée, refusée ou annulée est inscrite au journal d’audit.</p>
     </>
+  );
+}
+
+/* --------------------------------------------------------------------------------------------
+ * Code de connexion Telegram : demandé après le mot de passe (ou le code d'entrée).
+ * ------------------------------------------------------------------------------------------ */
+interface EtatOtp {
+  exige: boolean;
+  verifie?: boolean;
+  telegram?: string;
+  envoye_le?: string | null;
+  expire_le?: string | null;
+  envoi?: { recu?: boolean; statut?: number | null; erreur?: string | null; texte?: string } | null;
+}
+
+/** La réponse du robot Telegram signale-t-elle un échec ? */
+function envoiEchoue(e: EtatOtp['envoi']): string | null {
+  if (!e) return null;
+  if (e.erreur) return e.erreur;
+  const t = (e.texte ?? '').trim();
+  if (Number(e.statut) >= 400 || /error|invalid|not\s+(allowed|authori[sz]ed|registered|found)|blocked|unauthori[sz]ed|start/i.test(t))
+    return t || `Réponse ${e.statut}`;
+  return null;
+}
+
+export function CodeTelegram() {
+  const { organisation, verifierAppareil, deconnecter, session } = useSession();
+  const org = organisation!.organisation_id;
+  const [etat, setEtat] = useState<EtatOtp | null>(null);
+  const [code, setCode] = useState('');
+  const [erreur, setErreur] = useState('');
+  const [enCours, setEnCours] = useState(false);
+  const [maintenant, setMaintenant] = useState(() => Date.now());
+  const [dernierEnvoi, setDernierEnvoi] = useState<number>(0);
+  const envoiAuto = useRef(false);
+
+  const lire = useCallback(async () => {
+    const { data } = await supabase.rpc('otp_etat', { p_org: org });
+    const e = data as EtatOtp | null;
+    if (!e) return null;
+    setEtat(e);
+    if (!e.exige || e.verifie) await verifierAppareil(); // autorisée par la gérante, ou code retiré
+    return e;
+  }, [org, verifierAppareil]);
+
+  const envoyer = useCallback(async () => {
+    setErreur('');
+    setEnCours(true);
+    const { error } = await supabase.rpc('otp_envoyer', { p_org: org });
+    setEnCours(false);
+    if (error) return setErreur(messageErreur(error));
+    setDernierEnvoi(Date.now());
+    setCode('');
+    // La réponse du robot arrive en quelques secondes : on la relit pour signaler un échec.
+    window.setTimeout(() => void lire(), 3500);
+    window.setTimeout(() => void lire(), 8000);
+  }, [org, lire]);
+
+  useEffect(() => {
+    void (async () => {
+      const e = await lire();
+      // À l'ouverture : un code part tout de suite (sauf s'il y en a déjà un valable).
+      const valable = e?.expire_le && new Date(e.expire_le).getTime() > Date.now() + 20000;
+      if (e?.exige && !e.verifie && !valable && !envoiAuto.current) {
+        envoiAuto.current = true;
+        await envoyer();
+      }
+    })();
+    const t = window.setInterval(() => setMaintenant(Date.now()), 1000);
+    const p = window.setInterval(() => void lire(), 6000); // la gérante peut autoriser la connexion
+    return () => {
+      window.clearInterval(t);
+      window.clearInterval(p);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function valider(e: FormEvent) {
+    e.preventDefault();
+    setEnCours(true);
+    setErreur('');
+    const { data, error } = await supabase.rpc('otp_verifier', { p_org: org, p_code: code });
+    setEnCours(false);
+    if (error) return setErreur(messageErreur(error));
+    const r = data as { statut: string; message?: string };
+    if (r.statut === 'verifie') {
+      await verifierAppareil();
+      return;
+    }
+    setCode('');
+    setErreur(r.message ?? 'Code refusé');
+  }
+
+  const expire = etat?.expire_le ? new Date(etat.expire_le).getTime() : 0;
+  const reste = Math.max(0, Math.round((expire - maintenant) / 1000));
+  const attendreRenvoi = Math.max(0, 30 - Math.round((maintenant - dernierEnvoi) / 1000));
+  const echec = envoiEchoue(etat?.envoi);
+
+  return (
+    <main className="page-acces">
+      <section className="carte carte-acces">
+        <div className="acces-icone" aria-hidden>✈️</div>
+        <h1>Code de connexion</h1>
+        <p>
+          Pour protéger <b>{organisation?.nom}</b>, un code à 6 chiffres vient d’être envoyé sur votre <b>Telegram</b>
+          {etat?.telegram ? <> ({etat.telegram})</> : null}. Saisissez-le pour ouvrir DF Gestion.
+        </p>
+        <p className="secondaire">Compte : <b>{session?.user.user_metadata?.nom_complet || session?.user.email}</b></p>
+        {echec ? (
+          <Alerte>
+            Le code n’a pas pu partir sur Telegram ({echec}). Vérifiez que ce compte Telegram a bien envoyé <code>/start</code> au robot
+            @CallMeBot_txtbot, ou demandez à la gérante principale d’autoriser votre connexion.
+          </Alerte>
+        ) : etat?.envoye_le ? (
+          <p className={`compte-a-rebours ${reste <= 20 ? 'urgent' : ''}`}>
+            {reste > 0 ? <>⏱️ Code valable encore <b>{Math.floor(reste / 60)}:{String(reste % 60).padStart(2, '0')}</b></> : <>⌛ Code expiré : demandez-en un nouveau.</>}
+          </p>
+        ) : (
+          <p className="acces-attente"><span className="point-attente" aria-hidden /> Envoi du code…</p>
+        )}
+
+        <form className="formulaire acces-cle" onSubmit={(e) => void valider(e)}>
+          <Champ label="Code reçu sur Telegram">
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="123 456"
+              autoFocus
+              maxLength={6}
+              className="champ-otp"
+            />
+          </Champ>
+          <Alerte>{erreur}</Alerte>
+          <button className="bouton bouton-principal bouton-plein" disabled={code.length !== 6 || enCours || reste === 0}>
+            {enCours ? 'Vérification…' : '🔓 Valider le code'}
+          </button>
+        </form>
+        <button type="button" className="bouton bouton-discret" disabled={attendreRenvoi > 0 || enCours} onClick={() => void envoyer()}>
+          {attendreRenvoi > 0 ? `Renvoyer un code (${attendreRenvoi} s)` : '✈️ Renvoyer un code'}
+        </button>
+        <p className="secondaire petit">Pas de code ? La gérante principale peut aussi autoriser cette connexion depuis son téléphone.</p>
+        <button type="button" className="bouton-lien" onClick={() => void deconnecter()}>Se déconnecter</button>
+      </section>
+    </main>
+  );
+}
+
+/* --------------------------------------------------------------------------------------------
+ * Fenêtre de la gérante : Telegram d'une personne (code de connexion).
+ * ------------------------------------------------------------------------------------------ */
+export function ReglageTelegram({
+  org,
+  userId,
+  email,
+  nom,
+  actuel,
+  onFait,
+}: {
+  org: string;
+  userId?: string;
+  email?: string;
+  nom: string;
+  actuel?: string | null;
+  onFait: (texte: string) => void;
+}) {
+  const [tg, setTg] = useState(actuel ?? '');
+  const [erreur, setErreur] = useState('');
+  async function enregistrer(e: FormEvent, retirer = false) {
+    e.preventDefault();
+    setErreur('');
+    const { error } = await supabase.rpc('otp_configurer', {
+      p_org: org, p_user: userId ?? null, p_telegram: retirer ? null : tg.trim(), p_actif: !retirer, p_email: email ?? null,
+    });
+    if (error) return setErreur(messageErreur(error));
+    onFait(retirer ? `Code Telegram retiré pour ${nom}.` : `Code Telegram activé pour ${nom} : il lui sera demandé à chaque connexion.`);
+  }
+  return (
+    <form className="formulaire" onSubmit={(e) => void enregistrer(e)}>
+      <p>
+        À chaque connexion de <b>{nom}</b>, après son mot de passe ou son code d’entrée, DF Gestion enverra un code à 6 chiffres sur ce
+        compte Telegram. Sans ce code, rien ne s’ouvre.
+      </p>
+      <ol className="etapes-alerte">
+        <li>Sur le téléphone de la personne, ouvrez Telegram et notez son <b>nom d’utilisateur</b> (Paramètres → Nom d’utilisateur).</li>
+        <li>Depuis ce même compte, ouvrez <a href="https://t.me/CallMeBot_txtbot" target="_blank" rel="noreferrer">@CallMeBot_txtbot</a> et envoyez <code>/start</code> (une seule fois).</li>
+        <li>Saisissez le nom d’utilisateur ci-dessous.</li>
+      </ol>
+      <Champ label="Nom d’utilisateur Telegram">
+        <input value={tg} onChange={(e) => setTg(e.target.value)} placeholder="@awa_kone" autoComplete="off" autoCapitalize="none" required />
+      </Champ>
+      <Alerte>{erreur}</Alerte>
+      <div className="actions-piece">
+        {actuel && <button type="button" className="bouton-lien lien-danger" onClick={(e) => void enregistrer(e as unknown as FormEvent, true)}>Retirer le code</button>}
+        <button className="bouton bouton-principal">{actuel ? 'Enregistrer' : 'Activer le code Telegram'}</button>
+      </div>
+    </form>
   );
 }

@@ -2635,3 +2635,6 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 @keyframes suivi-entree { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (max-width: 720px) { .fil-suivi { left: 12px; right: 12px; width: auto; bottom: calc(96px + env(safe-area-inset-bottom)); } }
 @media (prefers-reduced-motion: reduce) { .suivi-toast { animation: none; } }
+.compte-a-rebours { font-weight: 700; color: #166534; }
+.compte-a-rebours.urgent { color: #b91c1c; }
+.champ-otp { font-family: ui-monospace, monospace; font-size: 1.6rem !important; letter-spacing: .35em; text-align: center; }
