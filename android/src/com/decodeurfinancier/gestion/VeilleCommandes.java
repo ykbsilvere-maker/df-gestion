@@ -152,11 +152,20 @@ public class VeilleCommandes extends JobService {
         int nombre = o.optInt("nombre", 0);
         int aAffecter = gerante ? o.optInt("a_affecter", 0) : 0;
         int enAttente = gerante ? 0 : o.optInt("en_attente", 0);
+        int aAccepter = o.optInt("a_accepter", 0);
+        int aLivrer = gerante ? o.optInt("a_livrer", 0) : 0;
         int avantN = p.getInt("nombre", 0), avantA = p.getInt("a_affecter", 0), avantE = p.getInt("en_attente", 0);
-        p.edit().putInt("nombre", nombre).putInt("a_affecter", aAffecter).putInt("en_attente", enAttente).apply();
-        int total = nombre + aAffecter + enAttente;
-        if (nombre > avantN) {
+        int avantL = p.getInt("a_livrer", 0);
+        p.edit().putInt("nombre", nombre).putInt("a_affecter", aAffecter).putInt("en_attente", enAttente)
+                .putInt("a_livrer", aLivrer).apply();
+        int total = nombre + aAffecter + enAttente + aLivrer;
+        if (aAccepter > 0) {
+            // Pas encore acceptée : on rappelle à chaque vérification, jusqu'à ce que la caissière accepte.
+            afficher(this, "Commande affectée à vous", aAccepter + " commande(s) à accepter : ouvrez DF Gestion et touchez « Accepter ».", total);
+        } else if (nombre > avantN) {
             afficher(this, "Commande affectée à vous", nombre + " commande(s) à rassembler et vérifier.", total);
+        } else if (aLivrer > avantL) {
+            afficher(this, "Commande prête à livrer", aLivrer + " commande(s) prête(s) : confirmez la livraison.", total);
         } else if (aAffecter > avantA) {
             afficher(this, "Nouvelle commande en ligne", aAffecter + " commande(s) à affecter à une caissière.", total);
         } else if (enAttente > avantE) {

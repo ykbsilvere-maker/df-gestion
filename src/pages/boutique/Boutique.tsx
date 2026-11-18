@@ -296,6 +296,7 @@ export interface DetailCommande {
   caissier_id?: string | null;
   caissier_nom?: string | null;
   affectee_le?: string | null;
+  prise_en_charge_le?: string | null;
 }
 
 interface Caissiere {
@@ -325,13 +326,22 @@ function Affectation({ c, onFait }: { c: DetailCommande; onFait: (texte: string)
     setEnCours(null);
     if (error) return setErreur(messageErreur(error));
     const nom = liste?.find((x) => x.user_id === u)?.nom;
-    onFait(u ? `Commande affectée à ${nom} : elle reçoit une notification pour rassembler et vérifier les articles.` : 'Affectation retirée.');
+    onFait(u ? `Commande affectée à ${nom} : elle est prévenue (rappel toutes les 2 minutes) jusqu’à ce qu’elle l’accepte.` : 'Affectation retirée.');
   }
   return (
     <div className="affectation">
       <p className="affectation-titre">
         <strong>👤 Qui rassemble cette commande ?</strong>
-        {c.caissier_nom ? <span>Affectée à <b>{c.caissier_nom}</b>{c.affectee_le ? ` · ${heure(c.affectee_le)}` : ''}</span> : <span className="a-affecter">À affecter</span>}
+        {c.caissier_nom ? (
+          <span>
+            Affectée à <b>{c.caissier_nom}</b>
+            {c.affectee_le ? ` · ${heure(c.affectee_le)}` : ''}
+            {' '}
+            {c.prise_en_charge_le ? <Pastille ton="vert">✅ acceptée {heure(c.prise_en_charge_le)}</Pastille> : <Pastille ton="or">⏳ pas encore acceptée</Pastille>}
+          </span>
+        ) : (
+          <span className="a-affecter">À affecter</span>
+        )}
       </p>
       <Alerte>{erreur}</Alerte>
       {!liste ? (
@@ -480,8 +490,11 @@ export function FicheCommandeWeb() {
           />
         )}
         {!termine && !peutValider && c.caissier_nom && <p className="secondaire">👤 Affectée à {c.caissier_nom}</p>}
+        {!termine && !peutValider && c.mode === 'livraison' && c.statut === 'prete' && (
+          <p className="attente-affectation">🛵 Commande prête : <b>la gérante est prévenue</b> et confirme l’envoi. L’argent rapporté s’encaisse ensuite à la caisse.</p>
+        )}
         {!termine && !c.vente && ['confirmee', 'prete', 'en_livraison'].includes(c.statut) && peut('caisse.creer')
-          && (peutValider || (c.caissier_id && c.caissier_id === session?.user.id)) && (
+          && (peutValider || (c.caissier_id && c.caissier_id === session?.user.id && (c.mode === 'retrait' || c.statut === 'en_livraison'))) && (
           <div className="remise-colis">
             <button className="bouton bouton-principal" onClick={() => naviguer(`/caisse?commandes=1&commande=${c.id}`)}>
               🧾 Remettre et encaisser
@@ -799,10 +812,17 @@ export function ProduitsEnLigne() {
                     <td className="nombre col-secondaire">{p.commandes || '—'}</td>
                     <td>
                       {modifier ? (
-                        <label className="interrupteur">
-                          <input type="checkbox" checked={p.en_ligne} onChange={(e) => void publier([p.id], e.target.checked)} />
-                          <span>{p.en_ligne ? 'En ligne' : 'Non'}</span>
-                        </label>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={p.en_ligne}
+                          className={`commutateur-en-ligne ${p.en_ligne ? 'allume' : 'eteint'}`}
+                          onClick={() => void publier([p.id], !p.en_ligne)}
+                          title={p.en_ligne ? 'Retirer de DF Marché' : 'Mettre en ligne sur DF Marché'}
+                        >
+                          <span className="commutateur-piste" aria-hidden><span className="commutateur-bouton" /></span>
+                          <span className="commutateur-texte">{p.en_ligne ? 'En ligne' : 'Hors ligne'}</span>
+                        </button>
                       ) : p.en_ligne ? <Pastille ton="vert">En ligne</Pastille> : '—'}
                     </td>
                   </tr>
@@ -882,8 +902,11 @@ function Interrupteur({ coche, onChange, libelle }: { coche: boolean; onChange: 
     </label>
   );
 }
-type MoyenOptionnel = 'numero_mtn' | 'numero_moov' | 'numero_djamo';
+type MoyenOptionnel = ChampNumero;
+/** Aucun moyen n'est imposé : Wave et Orange Money se retirent et se rajoutent comme les autres. */
 const OPTIONNELS: { champ: MoyenOptionnel; libelle: string; logo: string }[] = [
+  { champ: 'numero_wave', libelle: 'Wave', logo: '/paiement/wave.png' },
+  { champ: 'numero_orange', libelle: 'Orange Money', logo: '/paiement/orange.png' },
   { champ: 'numero_mtn', libelle: 'MTN MoMo', logo: '/paiement/mtn.svg' },
   { champ: 'numero_moov', libelle: 'Moov Money', logo: '/paiement/moov.png' },
   { champ: 'numero_djamo', libelle: 'Djamo', logo: '/paiement/djamo.png' },
@@ -1166,23 +1189,26 @@ export function MaVitrine() {
             </p>
             <label className="case"><input type="checkbox" checked={v.paiement_livraison} onChange={(e) => maj({ paiement_livraison: e.target.checked })} /> Paiement à la livraison ou au retrait</label>
             <div className="moyens-vitrine">
-              {([['numero_wave', 'Wave', '/paiement/wave.png'], ['numero_orange', 'Orange Money', '/paiement/orange.png']] as [ChampNumero, string, string][]).map(([champ, libelle, logo]) => (
-                <div className={`moyen-vitrine ${estPropose(champ) ? '' : 'eteint'}`} key={champ}>
-                  <Interrupteur coche={estPropose(champ)} onChange={(c) => basculerChamp(champ, c)} libelle={libelle} />
-                  <img src={logo} alt="" width={36} height={36} />
-                  <Champ label={`Numéro ${libelle}`}>
-                    <input value={(estPropose(champ) ? v[champ] : inactifs[champ]) ?? ''} disabled={!estPropose(champ)} onChange={(e) => maj({ [champ]: e.target.value } as Partial<Vitrine>)} inputMode="tel" placeholder={estPropose(champ) ? '07 00 00 00 00' : 'Non proposé'} />
-                  </Champ>
-                </div>
-              ))}
               {OPTIONNELS.filter((o) => ajoutes.includes(o.champ) || estPropose(o.champ) || inactifs[o.champ] !== undefined).map((o) => (
                 <div className={`moyen-vitrine ${estPropose(o.champ) ? '' : 'eteint'}`} key={o.champ}>
                   <Interrupteur coche={estPropose(o.champ)} onChange={(c) => basculerChamp(o.champ, c)} libelle={o.libelle} />
                   <img src={o.logo} alt="" width={36} height={36} />
                   <Champ label={`Numéro ${o.libelle}`}>
-                    <input value={(estPropose(o.champ) ? v[o.champ] : inactifs[o.champ]) ?? ''} disabled={!estPropose(o.champ)} onChange={(e) => maj({ [o.champ]: e.target.value } as Partial<Vitrine>)} inputMode="tel" />
+                    <input value={(estPropose(o.champ) ? v[o.champ] : inactifs[o.champ]) ?? ''} disabled={!estPropose(o.champ)} onChange={(e) => maj({ [o.champ]: e.target.value } as Partial<Vitrine>)} inputMode="tel" placeholder={estPropose(o.champ) ? '07 00 00 00 00' : 'Non proposé'} />
                   </Champ>
-                  <button type="button" className="bouton-lien lien-danger" onClick={() => { const r = { ...inactifs }; delete r[o.champ]; maj({ [o.champ]: null, paiements_inactifs: r } as Partial<Vitrine>); setAjoutes(ajoutes.filter((x) => x !== o.champ)); }}>Supprimer</button>
+                  <button
+                    type="button"
+                    className="bouton-lien lien-danger"
+                    onClick={() => {
+                      if (!window.confirm(`Supprimer ${o.libelle} des moyens de paiement du site ? Vous pourrez le rajouter avec « + Ajouter ».`)) return;
+                      const r = { ...inactifs };
+                      delete r[o.champ];
+                      maj({ [o.champ]: null, paiements_inactifs: r, ...(o.champ === 'numero_wave' ? { lien_wave: null } : {}) } as Partial<Vitrine>);
+                      setAjoutes(ajoutes.filter((x) => x !== o.champ));
+                    }}
+                  >
+                    Supprimer
+                  </button>
                 </div>
               ))}
               {(inactifs.autres ?? []).map((a, i) => (
@@ -1221,10 +1247,15 @@ export function MaVitrine() {
                 <button type="button" className="puce-moyen" onClick={() => maj({ autres_paiements: [...(v.autres_paiements ?? []), { libelle: '', numero: null, lien: null, logo: null }] })}>✚ Autre (logo + lien)…</button>
               )}
             </div>
-            <p className="secondaire">Cochez ou décochez chaque moyen : seuls les moyens cochés sont proposés au client. Un moyen décoché garde son numéro pour plus tard.</p>
-            <Champ label="Lien de paiement Wave (facultatif)" aide="Votre lien marchand pay.wave.com : le bouton du site ouvre alors directement Wave avec votre compte">
-              <input value={v.lien_wave ?? ''} onChange={(e) => maj({ lien_wave: e.target.value })} inputMode="url" placeholder="https://pay.wave.com/m/…" />
-            </Champ>
+            <p className="secondaire">
+              Cochez ou décochez chaque moyen : seuls les moyens cochés sont proposés au client (un moyen décoché garde son numéro pour plus tard).
+              « Supprimer » le retire complètement, Wave et Orange Money compris ; « + Ajouter » le remet.
+            </p>
+            {(estPropose('numero_wave') || !!v.lien_wave) && (
+              <Champ label="Lien de paiement Wave (facultatif)" aide="Votre lien marchand pay.wave.com : le bouton du site ouvre alors directement Wave avec votre compte">
+                <input value={v.lien_wave ?? ''} onChange={(e) => maj({ lien_wave: e.target.value })} inputMode="url" placeholder="https://pay.wave.com/m/…" />
+              </Champ>
+            )}
             <Champ label="Nom du bénéficiaire affiché" aide="Le nom qui apparaît chez le client au moment du transfert">
               <input value={v.beneficiaire ?? ''} onChange={(e) => maj({ beneficiaire: e.target.value })} maxLength={80} />
             </Champ>

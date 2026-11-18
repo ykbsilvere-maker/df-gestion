@@ -27,6 +27,7 @@ interface Ligne {
   articles: number;
   a_moi: boolean;
   caissier_nom: string | null;
+  prise_en_charge_le?: string | null;
 }
 
 const CODES: Record<Paiement, string> = { livraison: 'especes', wave: 'wave', orange_money: 'orange_money', mtn: 'mtn_momo', moov: 'moov_money', djamo: 'djamo', autre: '' };
@@ -178,7 +179,23 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer, c
   }
 
   const peutVerifier = (c: Ligne) => peut('boutique.valider') || c.a_moi;
+  const gerante = peut('boutique.valider');
+  const aAccepter = (c: Ligne) => c.a_moi && !c.prise_en_charge_le;
+  /** Livraison : la caissière la prépare ; c'est la gérante qui confirme l'envoi, puis la caisse encaisse. */
+  const livraisonEnAttenteGerante = (c: Ligne) => c.mode === 'livraison' && !gerante && c.statut !== 'en_livraison';
   const toutCoche = !!detail && detail.lignes.every((_, i) => coches[i]);
+
+  async function accepter(c: Ligne) {
+    setEnCours(true);
+    setErreur('');
+    const { error } = await supabase.rpc('accepter_commande_web', { p_id: c.id });
+    setEnCours(false);
+    if (error) return setErreur(messageErreur(error));
+    const maj = { ...c, prise_en_charge_le: new Date().toISOString() };
+    setChoisie(maj);
+    setInfo(`Commande ${c.numero} acceptée : rassemblez et cochez chaque article.`);
+    await charger();
+  }
 
   async function marquerPrete() {
     if (!choisie) return;
@@ -187,7 +204,11 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer, c
     const { error } = await supabase.rpc('avancer_commande_web', { p_id: choisie.id, p_statut: 'prete', p_motif: null });
     setEnCours(false);
     if (error) return setErreur(messageErreur(error));
-    setInfo(`Commande ${choisie.numero} rassemblée et vérifiée : elle attend le client.`);
+    setInfo(
+      choisie.mode === 'livraison'
+        ? `Commande ${choisie.numero} prête : la gérante est prévenue et confirme la livraison.`
+        : `Commande ${choisie.numero} rassemblée et vérifiée : elle attend le client.`,
+    );
     setChoisie({ ...choisie, statut: 'prete' });
     await charger();
   }
@@ -223,12 +244,22 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer, c
                   </span>
                   <span className="credit-reste">
                     {montant(c.total)}
-                    <StatutCommandePastille s={c.statut} />
+                    {c.a_moi && !c.prise_en_charge_le ? <Pastille ton="or">À accepter</Pastille> : <StatutCommandePastille s={c.statut} />}
                   </span>
                 </button>
                 {choisie?.id === c.id && (
                   <form className="formulaire credit-encaissement" onSubmit={encaisser}>
-                    {detail && (
+                    {aAccepter(c) ? (
+                      <div className="accepter-commande">
+                        <p>
+                          <strong>🧺 Cette commande vous est affectée.</strong> Acceptez-la pour commencer : la gérante voit que vous l’avez prise en charge.
+                        </p>
+                        <button type="button" className="bouton bouton-principal bouton-plein" disabled={enCours} onClick={() => void accepter(c)}>
+                          ✅ Accepter la commande
+                        </button>
+                      </div>
+                    ) : null}
+                    {detail && !aAccepter(c) && (
                       <div className="rassemblement">
                         <p className="rassemblement-titre">
                           <strong>🧺 Rassembler et vérifier</strong>
@@ -253,7 +284,13 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer, c
                         )}
                       </div>
                     )}
-                    {bloquee ? (
+                    {aAccepter(c) ? null : livraisonEnAttenteGerante(c) ? (
+                      <p className="attente-affectation">
+                        🛵 {c.statut === 'prete'
+                          ? <>Commande prête. <b>La gérante est prévenue</b> : elle confirme l’envoi, puis l’argent rapporté s’encaisse ici.</>
+                          : <>Livraison : rassemblez les articles puis marquez la commande « prête ». La gérante confirme ensuite l’envoi.</>}
+                      </p>
+                    ) : bloquee ? (
                       <div className="verification-paiement">
                         <p>
                           <strong>Paiement {libellePaiement(c.paiement, detail?.paiement_libelle)}</strong>{' '}
@@ -323,9 +360,9 @@ export function CommandesCaisse({ org, sessionId, moyens, enLigne, onImprimer, c
                       <Link to={`/boutique/commandes/${c.id}`} className="bouton-lien">Voir la commande</Link>
                       <button type="button" className="bouton bouton-discret" disabled={!detail} onClick={imprimerBon}>🧾 {c.paiement_statut === 'confirme' ? 'Reçu' : 'Bon'} (copie)</button>
                       <button type="button" className="bouton bouton-discret" onClick={() => setChoisie(null)}>Fermer</button>
-                      {!bloquee && (
+                      {!bloquee && !aAccepter(c) && !livraisonEnAttenteGerante(c) && (
                         <button className="bouton bouton-principal" disabled={enCours || (c.statut === 'confirmee' && !toutCoche)} title={c.statut === 'confirmee' && !toutCoche ? 'Cochez d’abord chaque article rassemblé' : undefined}>
-                          Remettre et encaisser
+                          {c.mode === 'livraison' ? 'Livrée : encaisser' : 'Remettre et encaisser'}
                         </button>
                       )}
                     </div>

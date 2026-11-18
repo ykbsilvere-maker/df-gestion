@@ -291,9 +291,9 @@ export function useAlerteCommandes(org: string, actif: boolean): { nombre: numbe
     const verifier = async () => {
       const { data } = await supabase.rpc('commandes_caisse_attente', { p_org: org });
       if (arret || !data) return;
-      const d = data as { nombre: number; a_affecter?: number; en_attente?: number; gerante?: boolean };
-      // Mes commandes affectées + celles qui attendent (à affecter pour la gérante, en attente pour la caissière).
-      const attente = Number(d.gerante ? d.a_affecter : d.en_attente) || 0;
+      const d = data as { nombre: number; a_affecter?: number; en_attente?: number; a_livrer?: number; gerante?: boolean };
+      // Mes commandes affectées + celles qui attendent (à affecter ou livraisons prêtes pour la gérante, en attente pour la caissière).
+      const attente = Number(d.gerante ? Number(d.a_affecter ?? 0) + Number(d.a_livrer ?? 0) : d.en_attente) || 0;
       const n = (Number(d.nombre) || 0) + attente;
       setEnAttente(attente);
       if (precedent.current !== null && n > precedent.current) {

@@ -9,10 +9,32 @@ import { pontAndroid } from './android';
 
 export type Cellule = string | number | null | undefined;
 
+/** Cellule calculée par Excel : la formule, et sa valeur déjà calculée (affichée avant tout recalcul). */
+export interface Formule {
+  f: string;
+  v?: Cellule;
+}
+/** Ton d'une colonne : à remplir (fond jaune pâle) ou calculée (fond gris). */
+export type TonColonne = 'saisie' | 'auto' | null;
+/** Liste déroulante sur une colonne (plage nommée du classeur ou formule). */
+export interface Validation {
+  colonne: number;
+  liste: string;
+  /** false : une valeur hors liste est acceptée (avertissement seulement). */
+  strict?: boolean;
+  titre?: string;
+  message?: string;
+}
+
 export interface Feuille {
   nom: string;
   entetes: string[];
   lignes: Cellule[][];
+  /** Ton de chaque colonne sur les lignes de données. */
+  tons?: TonColonne[];
+  validations?: Validation[];
+  /** Onglet masqué (listes de référence). */
+  masquee?: boolean;
   /** Ligne de totaux ajoutée en gras sous le tableau. */
   totaux?: Cellule[];
   /** Lignes d'information au-dessus du tableau (titre, période, filtres). */
@@ -124,10 +146,10 @@ const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <numFmts count="1"><numFmt numFmtId="164" formatCode="0.0%"/></numFmts>
 <fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
-<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE8EEF4"/><bgColor indexed="64"/></patternFill></fill></fills>
+<fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE8EEF4"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF8DC"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEEF2F6"/><bgColor indexed="64"/></patternFill></fill></fills>
 <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="12">
+<cellXfs count="16">
 <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
 <xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
@@ -140,6 +162,10 @@ const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <xf numFmtId="9" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1"/>
 <xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
 <xf numFmtId="164" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyNumberFormat="1"/>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="0" xfId="0" applyFill="1"/>
+<xf numFmtId="0" fontId="0" fillId="4" borderId="0" xfId="0" applyFill="1"/>
+<xf numFmtId="3" fontId="0" fillId="4" borderId="0" xfId="0" applyFill="1" applyNumberFormat="1"/>
+<xf numFmtId="3" fontId="0" fillId="3" borderId="0" xfId="0" applyFill="1" applyNumberFormat="1"/>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -150,7 +176,7 @@ const TEXTE_PCT = /^([+-]?\d[\d\s\u202f\u00a0]*(?:[.,]\d+)?)\s*%$/;
 /** Colonne exprimée en pourcentage (valeurs en points : 18 = 18 %). */
 export const colonnePct = (entete: string) => COLONNE_PCT.test(entete);
 /** Ligne « libellé (%) | valeur » : sa première cellule annonce un pourcentage. */
-export const lignePct = (l: Cellule[]) => typeof l[0] === 'string' && /\(%\)|^taux\b/i.test(l[0].trim());
+export const lignePct = (l: readonly unknown[]) => typeof l[0] === 'string' && /\(%\)|^taux\b/i.test(l[0].trim());
 /** Libellé sans le « (%) » devenu inutile : la cellule est déjà au format pourcentage. */
 export const sansPct = (t: string) => t.replace(/\s*\(%\)/g, '');
 /** Points de pourcentage d'une cellule (18 pour « 18 % »), ou null si ce n'en est pas un. */
@@ -163,8 +189,32 @@ export function pointsPct(v: Cellule, contexte: boolean): number | null {
   return null;
 }
 
-function cellule(ref: string, v: Cellule, styleTexte: number, total = false, pct = false): string {
-  if (v === null || v === undefined || v === '') return '';
+const estFormule = (v: unknown): v is Formule => typeof v === 'object' && v !== null && 'f' in v;
+
+/** Styles 12-15 : texte à saisir, texte calculé, entier calculé, entier à saisir. */
+function styleTon(ton: TonColonne | undefined, nombre: boolean): number | null {
+  if (ton === 'saisie') return nombre ? 15 : 12;
+  if (ton === 'auto') return nombre ? 14 : 13;
+  return null;
+}
+
+function cellule(ref: string, v: Cellule | Formule, styleTexte: number, total = false, pct = false, ton?: TonColonne): string {
+  if (estFormule(v)) {
+    const val = v.v;
+    const nombre = typeof val === 'number' && Number.isFinite(val);
+    const st = styleTon(ton ?? 'auto', nombre) ?? (nombre ? 2 : 0);
+    const f = `<f>${xml(v.f.replace(/^=/, ''))}</f>`;
+    return nombre
+      ? `<c r="${ref}" s="${st}">${f}<v>${val}</v></c>`
+      : `<c r="${ref}" s="${st}" t="str">${f}<v>${xml(String(val ?? ''))}</v></c>`;
+  }
+  if (v === null || v === undefined || v === '') {
+    const st = styleTon(ton, false);
+    return st === null ? '' : `<c r="${ref}" s="${st}"/>`;
+  }
+  if (ton && typeof v === 'number' && Number.isInteger(v)) return `<c r="${ref}" s="${styleTon(ton, true)}"><v>${v}</v></c>`;
+  if (ton && typeof v === 'string' && pointsPct(v, pct) === null)
+    return `<c r="${ref}" s="${styleTon(ton, false)}" t="inlineStr"><is><t xml:space="preserve">${xml(v)}</t></is></c>`;
   const points = pointsPct(v, pct);
   if (points !== null) {
     const fraction = Math.round(points * 1000) / 100000;
@@ -178,7 +228,7 @@ function cellule(ref: string, v: Cellule, styleTexte: number, total = false, pct
   return `<c r="${ref}" s="${styleTexte}" t="inlineStr"><is><t xml:space="preserve">${xml(String(v))}</t></is></c>`;
 }
 
-function feuilleXml(f: Feuille): string {
+function feuilleXml(f: FeuilleXlsx): string {
   const lignes: string[] = [];
   let r = 1;
   for (const t of f.titre ?? []) {
@@ -190,24 +240,44 @@ function feuilleXml(f: Feuille): string {
   const pct = f.entetes.map(colonnePct);
   lignes.push(`<row r="${r}">${f.entetes.map((e, i) => cellule(`${colonne(i)}${r}`, sansPct(e), 1)).join('')}</row>`);
   r++;
+  const premiereDonnee = r;
   for (const l of f.lignes) {
     const lp = lignePct(l);
-    lignes.push(`<row r="${r}">${l.map((v, i) => cellule(`${colonne(i)}${r}`, i === 0 && lp && typeof v === 'string' ? sansPct(v) : v, 0, false, i > 0 && (pct[i] || lp))).join('')}</row>`);
+    const n = Math.max(l.length, f.tons?.length ?? 0);
+    const cases: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const v = l[i];
+      cases.push(cellule(`${colonne(i)}${r}`, i === 0 && lp && typeof v === 'string' ? sansPct(v) : v, 0, false, i > 0 && (pct[i] || lp), f.tons?.[i]));
+    }
+    lignes.push(`<row r="${r}">${cases.join('')}</row>`);
     r++;
   }
+  const derniereDonnee = Math.max(premiereDonnee, r - 1);
   if (f.totaux) {
     lignes.push(`<row r="${r}">${f.totaux.map((v, i) => cellule(`${colonne(i)}${r}`, v, 3, true, pct[i])).join('')}</row>`);
   }
   const largeurs = f.entetes.map((e, i) => {
     const imposee = f.largeurs?.[i];
     if (imposee) return imposee;
-    const max = Math.max(e.length, ...f.lignes.slice(0, 200).map((l) => String(l[i] ?? '').length));
+    const max = Math.max(e.length, ...f.lignes.slice(0, 200).map((l) => { const v = l[i]; return String(estFormule(v) ? v.v ?? '' : v ?? '').length; }));
     return Math.min(45, Math.max(8, max + 2));
   });
   const cols = `<cols>${largeurs.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>`;
   const figer = `<sheetViews><sheetView workbookViewId="0"><pane ySplit="${ligneEntete}" topLeftCell="A${ligneEntete + 1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`;
+  const validations = (f.validations ?? []).map((v) => {
+    const plage = `${colonne(v.colonne)}${premiereDonnee}:${colonne(v.colonne)}${derniereDonnee}`;
+    const strict = v.strict !== false;
+    const aide = v.titre || v.message ? ` showInputMessage="1"${v.titre ? ` promptTitle="${xml(v.titre.slice(0, 32))}"` : ''}${v.message ? ` prompt="${xml(v.message.slice(0, 255))}"` : ''}` : '';
+    return `<dataValidation type="list" allowBlank="1" showErrorMessage="1" errorStyle="${strict ? 'stop' : 'warning'}" errorTitle="Valeur hors liste" error="${strict ? 'Choisissez une valeur dans la liste.' : 'Cette valeur n’est pas dans la liste : elle sera créée à l’import. Continuer ?'}"${aide} sqref="${plage}"><formula1>${xml(v.liste)}</formula1></dataValidation>`;
+  });
+  const dv = validations.length ? `<dataValidations count="${validations.length}">${validations.join('')}</dataValidations>` : '';
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${figer}${cols}<sheetData>${lignes.join('')}</sheetData></worksheet>`;
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${figer}${cols}<sheetData>${lignes.join('')}</sheetData>${dv}</worksheet>`;
+}
+
+/** Feuille Excel : ses lignes peuvent aussi porter des formules. */
+export interface FeuilleXlsx extends Omit<Feuille, 'lignes'> {
+  lignes: (Cellule | Formule)[][];
 }
 
 /** Nom d'onglet accepté par Excel : 31 caractères, sans : \ / ? * [ ]. */
@@ -216,8 +286,11 @@ function nomOnglet(nom: string, i: number): string {
   return n || `Feuille${i + 1}`;
 }
 
-export function classeurXlsx(feuilles: Feuille[]): Uint8Array {
-  const noms = feuilles.map((f, i) => nomOnglet(f.nom, i));
+/**
+ * @param noms plages nommées du classeur (listes déroulantes), ex. { nom: 'ListeFournisseurs', ref: 'Fournisseurs!$A$2:$A$500' }.
+ */
+export function classeurXlsx(feuilles: FeuilleXlsx[], noms: { nom: string; ref: string }[] = []): Uint8Array {
+  const nomsOnglets = feuilles.map((f, i) => nomOnglet(f.nom, i));
   const fichiers: { nom: string; contenu: string }[] = [
     {
       nom: '[Content_Types].xml',
@@ -238,9 +311,9 @@ ${feuilles.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" 
     {
       nom: 'xl/workbook.xml',
       contenu: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${noms
-        .map((n, i) => `<sheet name="${xml(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`)
-        .join('')}</sheets></workbook>`,
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets>${nomsOnglets
+        .map((n, i) => `<sheet name="${xml(n)}" sheetId="${i + 1}"${feuilles[i]!.masquee ? ' state="hidden"' : ''} r:id="rId${i + 1}"/>`)
+        .join('')}</sheets>${noms.length ? `<definedNames>${noms.map((n) => `<definedName name="${xml(n.nom)}">${xml(n.ref)}</definedName>`).join('')}</definedNames>` : ''}${feuilles.some((f) => f.lignes.some((l) => l.some(estFormule))) ? '<calcPr calcId="191029" fullCalcOnLoad="1"/>' : ''}</workbook>`,
     },
     {
       nom: 'xl/_rels/workbook.xml.rels',

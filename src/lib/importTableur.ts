@@ -1,4 +1,4 @@
-import { classeurXlsx, type Cellule } from './excel';
+import { classeurXlsx, type Cellule, type FeuilleXlsx, type Formule, type TonColonne } from './excel';
 import { dateExcel, type FeuilleLue, type Valeur } from './lectureExcel';
 
 /**
@@ -314,6 +314,199 @@ export function modeleClasseur(): Uint8Array {
       largeurs: [18, 26, 12, 80],
     },
   ]);
+}
+
+/* ------------------------------------------------------------------------------------------
+ * Classeur DYNAMIQUE : rempli avec les vrais fournisseurs et le vrai catalogue de l'entreprise,
+ * listes déroulantes et recherches automatiques (code, prix, fournisseur habituel). On choisit
+ * l'article dans la liste, on tape la quantité : le reste se remplit tout seul.
+ * ---------------------------------------------------------------------------------------- */
+
+export interface ArticleClasseur {
+  code: string | null;
+  designation: string;
+  categorie: string | null;
+  marque: string | null;
+  unite: string | null;
+  prix_vente: number | null;
+  prix_achat: number | null;
+  taux_tva: number | null;
+  code_barres: string | null;
+  seuil_min: number | null;
+  seuil_max: number | null;
+  gere_peremption: boolean | null;
+  fournisseur: string | null;
+}
+export interface FournisseurClasseur {
+  nom: string;
+  telephone: string | null;
+  email: string | null;
+  adresse: string | null;
+  ncc: string | null;
+  note: string | null;
+}
+export interface DonneesClasseur {
+  fournisseurs: FournisseurClasseur[];
+  articles: ArticleClasseur[];
+  categories: string[];
+}
+
+const UNITES = ['pièce', 'sac', 'carton', 'paquet', 'sachet', 'boîte', 'bouteille', 'kg', 'litre', 'douzaine', 'botte', 'mètre'];
+const LIGNES_APPRO = 300;
+const LIGNES_NOUVEAUX = 150;
+const MAX_ARTICLES = 5000;
+
+const entetes = (type: TypeImport) => COLONNES[type].map((c) => (c.obligatoire ? `${c.libelle} *` : c.libelle));
+const largeurs = (type: TypeImport) => COLONNES[type].map((c) => Math.max(12, Math.min(34, c.libelle.length + 6)));
+const liste = (feuille: string, col: string, derniere: number) =>
+  `OFFSET(${feuille}!$${col}$2,0,0,MAX(1,COUNTA(${feuille}!$${col}$2:$${col}$${derniere})),1)`;
+
+/** Données d'exemple quand l'entreprise n'a encore ni fournisseur ni article. */
+function exemples(): DonneesClasseur {
+  const f = (l: Cellule[]): FournisseurClasseur => ({
+    nom: String(l[0]), telephone: (l[1] as string) || null, email: (l[2] as string) || null, adresse: (l[3] as string) || null, ncc: null, note: (l[5] as string) || null,
+  });
+  const a = (l: Cellule[]): ArticleClasseur => ({
+    code: (l[0] as string) || null, designation: String(l[1]), categorie: (l[2] as string) || null, marque: (l[3] as string) || null, unite: (l[4] as string) || null,
+    prix_vente: Number(l[5]) || null, prix_achat: Number(l[6]) || null, taux_tva: Number(l[7]) || 0, code_barres: (l[8] as string) || null,
+    seuil_min: Number(l[9]) || null, seuil_max: Number(l[10]) || null, gere_peremption: l[11] === 'oui', fournisseur: (l[14] as string) || null,
+  });
+  return { fournisseurs: EXEMPLES.fournisseurs.map(f), articles: EXEMPLES.catalogue.map(a), categories: ['Épicerie', 'Produits laitiers', 'Boissons', 'Hygiène'] };
+}
+
+/**
+ * Classeur complet et dynamique, avec les données de l'entreprise.
+ * @param premier l'onglet ouvert en premier (celui qu'on vient remplir).
+ */
+export function classeurDynamique(d: DonneesClasseur, premier: TypeImport = 'approvisionnement'): Uint8Array {
+  const vide = !d.articles.length && !d.fournisseurs.length;
+  const donnees = vide ? exemples() : d;
+  const articles = donnees.articles.slice(0, MAX_ARTICLES);
+  const derArticle = MAX_ARTICLES + LIGNES_NOUVEAUX + 1;
+  const derFourn = 1000;
+
+  // --- Fournisseurs
+  const lignesF: (Cellule | Formule)[][] = donnees.fournisseurs.map((x) => [x.nom, x.telephone, x.email, x.adresse, x.ncc, x.note]);
+  for (let i = 0; i < 60; i++) lignesF.push([]);
+  const fournisseurs: FeuilleXlsx = {
+    nom: 'Fournisseurs',
+    entetes: entetes('fournisseurs'),
+    lignes: lignesF,
+    largeurs: [30, 18, 26, 26, 16, 30],
+    tons: COLONNES.fournisseurs.map((): TonColonne => 'saisie'),
+  };
+
+  // --- Catalogue : articles existants, puis lignes libres pour les nouveaux
+  const lignesC: (Cellule | Formule)[][] = articles.map((a) => [
+    a.code, a.designation, a.categorie, a.marque, a.unite, a.prix_vente, a.prix_achat, a.taux_tva ?? 0, a.code_barres,
+    a.seuil_min, a.seuil_max, a.gere_peremption ? 'oui' : 'non', vide ? 10 : null, null, a.fournisseur,
+  ]);
+  for (let i = 0; i < LIGNES_NOUVEAUX; i++) lignesC.push([]);
+  const iC = (cle: string) => COLONNES.catalogue.findIndex((c) => c.cle === cle);
+  const catalogue: FeuilleXlsx = {
+    nom: 'Catalogue',
+    entetes: entetes('catalogue'),
+    lignes: lignesC,
+    largeurs: largeurs('catalogue').map((w, i) => (i === iC('designation') ? 34 : w)),
+    tons: COLONNES.catalogue.map((): TonColonne => 'saisie'),
+    validations: [
+      { colonne: iC('categorie'), liste: 'ListeCategories', strict: false, titre: 'Catégorie', message: 'Choisissez dans la liste, ou tapez une nouvelle catégorie.' },
+      { colonne: iC('unite'), liste: 'ListeUnites', strict: false },
+      { colonne: iC('gere_peremption'), liste: 'OuiNon' },
+      { colonne: iC('fournisseur'), liste: 'ListeFournisseurs', strict: false, titre: 'Fournisseur habituel', message: 'Repris automatiquement à l’approvisionnement.' },
+    ],
+  };
+
+  // --- Approvisionnement : on choisit l'article, le reste se calcule
+  const parNom = new Map(articles.map((a) => [a.designation.trim().toLowerCase(), a]));
+  const C = (col: string) => `Catalogue!$${col}$2:$${col}$${derArticle}`;
+  const cherche = (col: string, r: number) => `INDEX(${C(col)},MATCH($D${r},${C('B')},0))`;
+  const texteCat = (col: string, r: number) => `IF($D${r}="","",IFERROR(${cherche(col, r)}&"",""))`;
+  const nombreCat = (col: string, r: number) => `IF($D${r}="","",IFERROR(IF(${cherche(col, r)}="","",${cherche(col, r)}),""))`;
+  const exemplesAppro: { designation: string; quantite: number }[] = vide
+    ? [{ designation: 'Riz parfumé 5 kg', quantite: 20 }, { designation: 'Huile Dinor 1 L', quantite: 24 }, { designation: 'Lait en poudre 400 g', quantite: 12 }]
+    : [];
+  const lignesA: (Cellule | Formule)[][] = [];
+  for (let k = 0; k < LIGNES_APPRO; k++) {
+    const r = k + 2;
+    const ex = exemplesAppro[k];
+    const a = ex ? parNom.get(ex.designation.toLowerCase()) : undefined;
+    lignesA.push([
+      { f: texteCat('O', r), v: a?.fournisseur ?? '' },
+      { f: texteCat('A', r), v: a?.code ?? '' },
+      { f: texteCat('I', r), v: a?.code_barres ?? '' },
+      ex ? ex.designation : null,
+      ex ? ex.quantite : null,
+      { f: nombreCat('G', r), v: a?.prix_achat ?? '' },
+      null,
+      null,
+      { f: nombreCat('F', r), v: a?.prix_vente ?? '' },
+      { f: texteCat('C', r), v: a?.categorie ?? '' },
+      { f: `IF(OR($E${r}="",$F${r}=""),"",$E${r}*$F${r})`, v: ex && a?.prix_achat ? ex.quantite * a.prix_achat : '' },
+    ]);
+  }
+  const iA = (cle: string) => COLONNES.approvisionnement.findIndex((c) => c.cle === cle);
+  const tonsA: TonColonne[] = COLONNES.approvisionnement.map((c) =>
+    ['code', 'code_barres', 'prix_vente', 'categorie'].includes(c.cle) ? 'auto' : 'saisie',
+  );
+  tonsA.push('auto');
+  const appro: FeuilleXlsx = {
+    nom: 'Approvisionnement',
+    entetes: [...entetes('approvisionnement'), 'Montant (calculé)'],
+    lignes: lignesA,
+    largeurs: [...largeurs('approvisionnement').map((w, i) => (i === iA('designation') ? 34 : i === iA('fournisseur') ? 26 : w)), 16],
+    tons: tonsA,
+    validations: [
+      { colonne: iA('designation'), liste: 'ListeArticles', strict: false, titre: 'Article', message: 'Choisissez l’article : code, prix d’achat et fournisseur se remplissent seuls. Un nom nouveau crée l’article.' },
+      { colonne: iA('fournisseur'), liste: 'ListeFournisseurs', strict: false, titre: 'Fournisseur', message: 'Rempli avec le fournisseur habituel de l’article ; choisissez-en un autre si besoin.' },
+    ],
+  };
+
+  // --- Listes de référence (onglet masqué)
+  const categories = [...new Set([...donnees.categories, ...articles.map((a) => a.categorie ?? '')].map((c) => c.trim()).filter(Boolean))].sort((x, y) =>
+    x.localeCompare(y, 'fr'),
+  );
+  const n = Math.max(categories.length, UNITES.length, 2);
+  const lignesL: Cellule[][] = [];
+  for (let i = 0; i < n; i++) lignesL.push([categories[i] ?? null, UNITES[i] ?? null, i === 0 ? 'oui' : i === 1 ? 'non' : null]);
+  const listes: FeuilleXlsx = { nom: 'Listes', entetes: ['Catégories', 'Unités', 'Oui / non'], lignes: lignesL, masquee: true, tons: ['saisie', null, null] };
+
+  const aide: FeuilleXlsx = {
+    nom: 'Mode d’emploi',
+    titre: [
+      'DF Gestion — classeur dynamique : approvisionnement, catalogue, fournisseurs',
+      vide
+        ? 'Les lignes d’exemple montrent le principe : remplacez-les par vos fournisseurs et vos articles.'
+        : `Ce classeur contient vos ${donnees.fournisseurs.length} fournisseur(s) et vos ${articles.length} article(s) au ${new Date().toLocaleDateString('fr-FR')}.`,
+      'APPROVISIONNEMENT : dans « Désignation », choisissez l’article dans la liste déroulante. Code, code-barres, prix d’achat, prix de vente,',
+      'catégorie et fournisseur habituel se remplissent tout seuls (cases grises). Tapez seulement la quantité reçue (et le lot ou la péremption si besoin).',
+      'Le prix d’achat proposé est celui du catalogue : écrivez par-dessus s’il a changé. Un article tapé à la main (hors liste) sera créé à l’import.',
+      'CATALOGUE et FOURNISSEURS : ajoutez vos nouveautés sur les lignes libres (jaunes) ; elles apparaissent aussitôt dans les listes déroulantes.',
+      'Cases jaunes = à remplir ; cases grises = calculées. Seules les lignes avec une quantité sont importées.',
+      'Dans DF Gestion : Catalogue › 📥 Importer › « Classeur complet » › Choisir le fichier. Les articles déjà présents ne sont pas modifiés',
+      '(sauf si vous cochez « Mettre à jour les articles déjà présents ») ; les réceptions sont préparées en brouillon, à valider.',
+    ],
+    entetes: ['Onglet', 'Colonne', 'Obligatoire', 'À savoir'],
+    lignes: [
+      ...COLONNES.approvisionnement.map((c) => ['Approvisionnement', c.libelle, c.obligatoire ? 'oui' : '', c.aide] as Cellule[]),
+      ...COLONNES.catalogue.map((c) => ['Catalogue', c.libelle, c.obligatoire ? 'oui' : '', c.aide] as Cellule[]),
+      ...COLONNES.fournisseurs.map((c) => ['Fournisseurs', c.libelle, c.obligatoire ? 'oui' : '', c.aide] as Cellule[]),
+    ],
+    largeurs: [18, 26, 12, 90],
+  };
+
+  const parType: Record<TypeImport, FeuilleXlsx> = { approvisionnement: appro, catalogue, fournisseurs };
+  const ordre: TypeImport[] = [premier, ...(['approvisionnement', 'catalogue', 'fournisseurs'] as TypeImport[]).filter((t) => t !== premier)];
+  return classeurXlsx(
+    [...ordre.map((t) => parType[t]), aide, listes],
+    [
+      { nom: 'ListeFournisseurs', ref: liste('Fournisseurs', 'A', derFourn) },
+      { nom: 'ListeArticles', ref: liste('Catalogue', 'B', derArticle) },
+      { nom: 'ListeCategories', ref: liste('Listes', 'A', 500) },
+      { nom: 'ListeUnites', ref: `Listes!$B$2:$B$${UNITES.length + 1}` },
+      { nom: 'OuiNon', ref: 'Listes!$C$2:$C$3' },
+    ],
+  );
 }
 
 /** Découpe en paquets pour les envois au serveur. */

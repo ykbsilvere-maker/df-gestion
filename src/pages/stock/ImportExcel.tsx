@@ -5,11 +5,13 @@ import { useSession } from '../../lib/session';
 import { messageErreur } from '../../lib/format';
 import { telechargerFichier, TYPE_XLSX } from '../../lib/excel';
 import { lireFichierTableur } from '../../lib/lectureExcel';
+import { toutCharger } from '../../lib/export';
 import {
   analyser,
+  classeurDynamique,
+  type DonneesClasseur,
   analyserClasseur,
   cleFichier,
-  modeleClasseur,
   modeleImport,
   ORDRE_CLASSEUR,
   paquets,
@@ -64,6 +66,54 @@ const PERMISSIONS: Record<TypeImport, string[]> = {
   catalogue: ['catalogue.creer', 'catalogue.modifier'],
   approvisionnement: ['stock.creer', 'achats.creer'],
 };
+
+/** Fournisseurs, articles et catégories de l'entreprise, pour le classeur dynamique. */
+async function donneesClasseur(org: string): Promise<DonneesClasseur> {
+  type P = {
+    id: string; code: string | null; designation: string; categorie_id: string | null; marque: string | null; unite: string | null;
+    prix_vente: number | null; prix_achat: number | null; taux_tva: number | null; seuil_min: number | null; seuil_max: number | null;
+    gere_peremption: boolean | null; fournisseur_id: string | null; statut: string | null;
+  };
+  const [fr, cat, prods, codes] = await Promise.all([
+    toutCharger<{ id: string; nom: string; telephone: string | null; email: string | null; adresse: string | null; ncc: string | null; note: string | null; actif: boolean }>(
+      (d, f) => supabase.from('fournisseurs').select('id, nom, telephone, email, adresse, ncc, note, actif').eq('organisation_id', org).order('nom').range(d, f), 5000),
+    toutCharger<{ id: string; nom: string }>((d, f) => supabase.from('categories').select('id, nom').eq('organisation_id', org).range(d, f), 5000),
+    toutCharger<P>(
+      (d, f) => supabase.from('produits')
+        .select('id, code, designation, categorie_id, marque, unite, prix_vente, prix_achat, taux_tva, seuil_min, seuil_max, gere_peremption, fournisseur_id, statut')
+        .eq('organisation_id', org).order('designation').range(d, f),
+      6000,
+    ),
+    toutCharger<{ produit_id: string; code: string }>((d, f) => supabase.from('codes_barres').select('produit_id, code').eq('organisation_id', org).order('created_at').range(d, f), 20000).catch(() => []),
+  ]);
+  const nomCat = new Map(cat.map((c) => [c.id, c.nom]));
+  const nomFourn = new Map(fr.map((x) => [x.id, x.nom]));
+  const codeBarres = new Map<string, string>();
+  for (const c of codes) if (!codeBarres.has(c.produit_id)) codeBarres.set(c.produit_id, c.code);
+  return {
+    fournisseurs: fr.filter((x) => x.actif !== false).map(({ nom, telephone, email, adresse, ncc, note }) => ({ nom, telephone, email, adresse, ncc, note })),
+    categories: cat.map((c) => c.nom),
+    articles: prods
+      .filter((p) => p.statut !== 'arrete')
+      .map((p) => ({
+        code: p.code, designation: p.designation, categorie: p.categorie_id ? nomCat.get(p.categorie_id) ?? null : null, marque: p.marque, unite: p.unite,
+        prix_vente: p.prix_vente === null ? null : Number(p.prix_vente), prix_achat: p.prix_achat === null ? null : Number(p.prix_achat),
+        taux_tva: p.taux_tva === null ? null : Number(p.taux_tva), code_barres: codeBarres.get(p.id) ?? null, seuil_min: p.seuil_min, seuil_max: p.seuil_max,
+        gere_peremption: p.gere_peremption, fournisseur: p.fournisseur_id ? nomFourn.get(p.fournisseur_id) ?? null : null,
+      })),
+  };
+}
+
+/** Télécharge le classeur dynamique, rempli avec les données de l'entreprise. */
+async function telechargerClasseurDynamique(org: string, premier: TypeImport, nom: string): Promise<string | null> {
+  try {
+    const d = await donneesClasseur(org);
+    telechargerFichier(nom, TYPE_XLSX, classeurDynamique(d, premier));
+    return null;
+  } catch (e) {
+    return messageErreur(e);
+  }
+}
 
 /** Réduit la photo, l'envoie dans le stockage puis la rattache à l'article. */
 async function envoyerPhoto(org: string, produitId: string, image: Blob) {
@@ -311,13 +361,14 @@ function ClasseurComplet({ org, permis }: { org: string; permis: (t: TypeImport)
       <ChoixFichier
         fichier={fichier}
         onChoix={(f) => void choisir(f)}
-        modele={() => telechargerFichier('Classeur-DF-Gestion.xlsx', TYPE_XLSX, modeleClasseur())}
-        libelleModele="Classeur modèle (3 onglets)"
+        modele={() => void telechargerClasseurDynamique(org, 'approvisionnement', 'Classeur-DF-Gestion.xlsx').then((e) => e && setErreur(e))}
+        libelleModele="Classeur dynamique (vos articles et fournisseurs)"
         texteModele={
           <>
-            <strong>Un seul fichier, trois onglets</strong> : <em>Fournisseurs</em>, <em>Catalogue</em> (prix d’achat, prix de vente, stock initial et
-            photo de chaque article) et <em>Approvisionnement</em> (marchandises reçues). Pour la photo, collez l’image sur la ligne de l’article dans
-            Excel (Insertion › Image › Placer dans la cellule) ou dans WPS.
+            <strong>Un seul fichier, déjà rempli</strong> avec vos fournisseurs et votre catalogue. Dans <em>Approvisionnement</em>, choisissez
+            l’article dans la <b>liste déroulante</b> : code, prix d’achat, prix de vente et fournisseur habituel se remplissent seuls, il ne reste que la
+            quantité. Ajoutez vos nouveaux articles ou fournisseurs sur les lignes libres : ils apparaissent aussitôt dans les listes. Pour une photo,
+            collez l’image sur la ligne de l’article (Insertion › Image › Placer dans la cellule).
           </>
         }
       />
@@ -474,8 +525,12 @@ function EtapeImport({ org, type }: { org: string; type: TypeImport }) {
       <ChoixFichier
         fichier={fichier}
         onChoix={(f) => void choisir(f)}
-        modele={() => telechargerFichier(`Modele-DF-Gestion-${type}.xlsx`, TYPE_XLSX, modeleImport(type))}
-        libelleModele={`Modèle Excel « ${TITRES[type]} »`}
+        modele={() =>
+          type === 'approvisionnement'
+            ? void telechargerClasseurDynamique(org, 'approvisionnement', 'Approvisionnement-DF-Gestion.xlsx').then((e) => e && setErreur(e))
+            : telechargerFichier(`Modele-DF-Gestion-${type}.xlsx`, TYPE_XLSX, modeleImport(type))
+        }
+        libelleModele={type === 'approvisionnement' ? 'Bon d’approvisionnement dynamique (listes déroulantes)' : `Modèle Excel « ${TITRES[type]} »`}
         texteModele={
           <>
             <strong>Téléchargez le modèle</strong> et remplissez-le (une ligne par {type === 'fournisseurs' ? 'fournisseur' : 'article'}). Votre propre

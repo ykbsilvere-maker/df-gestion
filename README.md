@@ -3,6 +3,15 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.12.** **Circuit des commandes, alertes Telegram, classeur Excel dynamique** (migration 039).
+La gérante affecte ; la caissière doit **accepter** la commande (la fenêtre revient **toutes les 2 minutes** avec son et
+vibration tant qu'elle n'a pas accepté), la rassemble puis la marque « prête ». **Retrait** : la caissière remet et encaisse.
+**Livraison** : la gérante est prévenue quand c'est prêt et **confirme l'envoi** ; l'argent rapporté s'encaisse ensuite.
+Alertes par message : le robot WhatsApp de CallMeBot étant complet, **Telegram** (gratuit, sans clé) prend le relais et
+« Envoyer un essai » affiche **la vraie réponse du service**. Boutique en ligne : bouton **En ligne / Hors ligne** vert/rouge
+refait, **Wave et Orange Money supprimables** comme les autres moyens. Import : **classeur dynamique** déjà rempli avec vos
+fournisseurs et votre catalogue, **listes déroulantes** et recherches automatiques (code, prix, fournisseur habituel).
+
 **Version 3.11.** **Annulation par le gérant principal et achats en attente** (migration 038).
 Une vente saisie par erreur peut être **annulée même après la clôture de la caisse**, par le gérant principal seulement
 (droit « ventes.administrer », propriétaire par défaut) : *Ma caisse → Clôtures → Voir les ventes → Annuler*. Les articles
