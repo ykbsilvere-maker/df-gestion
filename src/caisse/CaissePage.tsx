@@ -110,6 +110,18 @@ export function versRecu(v: VenteLocale): VenteRecu {
   };
 }
 
+/** Achat mis en attente : la caissière le range pour servir le client suivant, puis le reprend. */
+type TicketSuspendu = {
+  id: string;
+  nom: string;
+  mis_le: string;
+  lignes: LigneVente[];
+  code_promo: CodeCaisse | null;
+  devis: string | null;
+  total: number;
+  articles: number;
+};
+
 /** Code promo lu à la caisse (QR du client ou saisi). */
 type CodeCaisse = { code: string; libelle: string | null; type: 'pourcent' | 'montant'; valeur: number; minimum: number; client: string | null };
 const remiseDuCode = (k: CodeCaisse, brut: number) =>
@@ -667,6 +679,58 @@ function PointDeVente({
   const [lectureCode, setLectureCode] = useState(false);
   const [cameraCode, setCameraCode] = useState(false);
   const avecCode = useMemo(() => appliquerCode(panier, codePromo), [panier, codePromo]);
+
+  // Achats en attente : gardés sur l'appareil (par caisse), ils survivent à un rechargement de la page.
+  const cleSuspendus = `dfg_suspendus_${caisse.id}`;
+  const [suspendus, setSuspendus] = useState<TicketSuspendu[]>(() => lireCache<TicketSuspendu[]>(cleSuspendus) ?? []);
+  const majSuspendus = (ts: TicketSuspendu[]) => {
+    setSuspendus(ts);
+    ecrireCache(cleSuspendus, ts);
+  };
+  function ticketCourant(liste: TicketSuspendu[]): TicketSuspendu {
+    const pris = new Set(liste.map((t) => t.nom));
+    let n = 1;
+    while (pris.has(`Client ${n}`)) n++;
+    return {
+      id: nouvelleCle(),
+      nom: codePromo?.client || `Client ${n}`,
+      mis_le: new Date().toISOString(),
+      lignes: panier,
+      code_promo: codePromo,
+      devis: devisImporte.current,
+      total: totalLignes(appliquerCode(panier, codePromo).lignes),
+      articles: panier.reduce((t, l) => t + l.quantite, 0),
+    };
+  }
+  function mettreEnAttente() {
+    if (!panier.length) return;
+    const t = ticketCourant(suspendus);
+    majSuspendus([...suspendus, t]);
+    setPanier([]);
+    setCodePromo(null);
+    devisImporte.current = null;
+    setTerme('');
+    setMessage({ type: 'info', texte: `⏸ Achat de ${t.nom} mis en attente (${montant(t.total)}). Vous pouvez servir le client suivant.` });
+    champ.current?.focus();
+  }
+  function reprendre(t: TicketSuspendu) {
+    // Le panier en cours (s'il y en a un) prend sa place dans l'attente : rien n'est perdu.
+    const reste = suspendus.filter((x) => x.id !== t.id);
+    majSuspendus(panier.length ? [...reste, ticketCourant(reste)] : reste);
+    const connus = t.lignes.filter((l) => !produits.length || produits.some((p) => p.id === l.produit_id));
+    setPanier(connus);
+    setCodePromo(t.code_promo);
+    devisImporte.current = t.devis;
+    setMessage({
+      type: 'info',
+      texte: `▶ Achat de ${t.nom} repris${connus.length < t.lignes.length ? ` (${t.lignes.length - connus.length} article(s) retiré(s) du catalogue)` : ''}.`,
+    });
+    champ.current?.focus();
+  }
+  function abandonner(t: TicketSuspendu) {
+    if (!window.confirm(`Abandonner l’achat en attente de ${t.nom} (${montant(t.total)}) ?`)) return;
+    majSuspendus(suspendus.filter((x) => x.id !== t.id));
+  }
   const total = totalLignes(avecCode.lignes);
   const [parametres, setParametres] = useSearchParams();
   const [commandeInitiale, setCommandeInitiale] = useState<string | null>(null);
@@ -1154,6 +1218,10 @@ function PointDeVente({
               {panier.length > 0 && (
                 <>
                   {' · '}
+                  <button type="button" className="bouton-lien mettre-attente" onClick={mettreEnAttente} title="Ranger cet achat et servir le client suivant">
+                    ⏸ Mettre en attente
+                  </button>
+                  {' · '}
                   <button
                     type="button"
                     className="bouton-lien lien-danger vider-panier"
@@ -1165,6 +1233,27 @@ function PointDeVente({
               )}
             </span>
           </div>
+          {suspendus.length > 0 && (
+            <div className="tickets-attente" aria-label="Achats en attente">
+              <span className="tickets-attente-titre">⏸ En attente ({suspendus.length})</span>
+              <div className="tickets-attente-liste">
+                {suspendus.map((t) => (
+                  <div key={t.id} className="ticket-attente">
+                    <button type="button" className="ticket-attente-corps" onClick={() => reprendre(t)} title="Reprendre cet achat">
+                      <strong>{t.nom}</strong>
+                      <span>
+                        {quantite(t.articles)} art. · {montant(t.total)} · {new Date(t.mis_le).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <em>Reprendre ▶</em>
+                    </button>
+                    <button type="button" className="ticket-attente-x" onClick={() => abandonner(t)} aria-label={`Abandonner l’achat de ${t.nom}`}>
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {message && (
             <div className="message-caisse" role="status" onClick={() => setMessage(null)}>
               <Alerte type={message.type}>{message.texte}</Alerte>
@@ -1489,6 +1578,12 @@ function PointDeVente({
       </Fenetre>
 
       <Fenetre titre="Clôture de la caisse" ouverte={fenetre === 'cloture'} onFermer={() => setFenetre(null)} large>
+        {suspendus.length > 0 && (
+          <Alerte type="info">
+            ⏸ {suspendus.length} achat{suspendus.length > 1 ? 's' : ''} en attente ({suspendus.map((t) => t.nom).join(', ')}) : reprenez-les et encaissez-les, ou
+            abandonnez-les, avant de clôturer. Ils ne sont pas comptés dans la caisse.
+          </Alerte>
+        )}
         {!enLigne ? (
           <Alerte>La clôture se fait connecté : elle calcule les totaux sur le serveur et attribue le numéro Z.</Alerte>
         ) : (

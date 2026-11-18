@@ -3,6 +3,14 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.11.** **Annulation par le gérant principal et achats en attente** (migration 038).
+Une vente saisie par erreur peut être **annulée même après la clôture de la caisse**, par le gérant principal seulement
+(droit « ventes.administrer », propriétaire par défaut) : *Ma caisse → Clôtures → Voir les ventes → Annuler*. Les articles
+**reviennent en stock**, le paiement est retiré et les **espèces attendues et l'écart du Z sont recalculés** ; l'opération
+est tracée au journal (motif, écart avant/après). À la caisse, la caissière peut **mettre un achat en attente**
+(« ⏸ Mettre en attente »), servir le client suivant, puis **reprendre** l'achat d'un toucher ; les achats en attente restent
+sur l'appareil même après un rechargement et la clôture rappelle ceux qui n'ont pas été encaissés.
+
 **Version 3.10.** **Alertes partout, paiement épuré, comptes confirmés par e-mail** (migration 037).
 La **caissière est prévenue de chaque nouvelle commande** (en attente d'affectation) puis quand elle lui est confiée ;
 la fenêtre s'ouvre aussi **dès l'ouverture de la caisse**. L'APK **vérifie les commandes même fermée** (toutes les 15 minutes,

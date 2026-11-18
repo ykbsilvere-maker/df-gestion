@@ -78,7 +78,7 @@ const ONGLETS: { code: Onglet; libelle: string }[] = [
 const heure = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Abidjan' });
 
 export function SuiviCaisse() {
-  const { organisation } = useSession();
+  const { organisation, peut } = useSession();
   const org = organisation!.organisation_id;
   const [params] = useSearchParams();
   const [sessionId, setSessionId] = useState(params.get('session'));
@@ -89,6 +89,9 @@ export function SuiviCaisse() {
   const [saisie, setSaisie] = useState<{ type: 'depense' | 'sortie' | 'apport'; montant: string; motif: string; poste: string; compte: string; reference: string } | null>(null);
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
+  const [aAnnuler, setAAnnuler] = useState<VenteJournal | null>(null);
+  const [motifAnnulation, setMotifAnnulation] = useState('');
+  const [annulationEnCours, setAnnulationEnCours] = useState(false);
   const { imprimerTicket, imprimerA4, format } = useImpressionCaisse();
   const { identite } = useIdentite();
 
@@ -148,6 +151,30 @@ export function SuiviCaisse() {
     await charger();
   }
 
+  async function annulerVente(e: FormEvent) {
+    e.preventDefault();
+    if (!aAnnuler) return;
+    setAnnulationEnCours(true);
+    const { error } = await supabase.rpc('annuler_vente', { p_vente: aAnnuler.id, p_motif: motifAnnulation.trim() });
+    setAnnulationEnCours(false);
+    if (error) return setErreur(messageErreur(error));
+    setInfo(
+      ouverte
+        ? `Vente ${aAnnuler.numero} annulée : les articles sont revenus en stock.`
+        : `Vente ${aAnnuler.numero} annulée : articles remis en stock, espèces attendues et écart du Z recalculés.`,
+    );
+    setAAnnuler(null);
+    setMotifAnnulation('');
+    await charger();
+  }
+
+  function voirSession(c: Cloture) {
+    setErreur('');
+    setInfo('');
+    setSessionId(c.id);
+    setOnglet('journal');
+  }
+
   async function reimprimerZ(c: Cloture, a4 = false) {
     const { data, error } = await supabase.rpc('rapport_session', { p_session: c.id });
     if (error) return setErreur(messageErreur(error));
@@ -164,6 +191,8 @@ export function SuiviCaisse() {
   const depenses = journal?.mouvements.filter((m) => m.type === 'depense') ?? [];
   const sorties = journal?.mouvements.filter((m) => m.type !== 'depense') ?? [];
   const destinations = options.comptes;
+  // Session ouverte : droit « ventes.annuler ». Session clôturée : gérant principal seulement.
+  const peutAnnuler = ouverte ? peut('ventes.annuler') : peut('ventes.administrer');
 
   const nouveau = (type: 'depense' | 'sortie' | 'apport') =>
     setSaisie({
@@ -180,7 +209,13 @@ export function SuiviCaisse() {
       <EnTetePage
         icone="💼"
         titre="Ma caisse"
-        sousTitre={journal ? `Session ouverte à ${heure(journal.session.ouverte_le)}${journal.session.numero_z ? ` · Z n° ${journal.session.numero_z}` : ''}` : 'Suivi du tiroir, des ventes et des clôtures'}
+        sousTitre={
+          journal
+            ? ouverte
+              ? `Session ouverte à ${heure(journal.session.ouverte_le)}`
+              : `Session clôturée${journal.session.numero_z ? ` · Z n° ${journal.session.numero_z}` : ''} · ouverte le ${new Date(journal.session.ouverte_le).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Abidjan' })}`
+            : 'Suivi du tiroir, des ventes et des clôtures'
+        }
         actions={
           <Link to="/caisse" className="bouton bouton-principal">
             Retour à la vente
@@ -275,12 +310,18 @@ export function SuiviCaisse() {
 
       {journal && onglet === 'journal' && (
         <section className="carte">
+          {!ouverte && peutAnnuler && (
+            <p className="note-gerant">
+              🛡️ Caisse clôturée : en tant que gérant principal, vous pouvez annuler une vente saisie par erreur. Les articles reviennent en stock et
+              l’écart du Z est recalculé.
+            </p>
+          )}
           {journal.ventes.length === 0 ? (
             <Vide>Aucune vente dans cette session.</Vide>
           ) : (
             <table className="tableau">
               <thead>
-                <tr><th>Heure</th><th>Ticket</th><th className="col-secondaire">Paiement</th><th className="nombre">Total</th><th>Statut</th></tr>
+                <tr><th>Heure</th><th>Ticket</th><th className="col-secondaire">Paiement</th><th className="nombre">Total</th><th>Statut</th>{peutAnnuler && <th aria-label="Actions" />}</tr>
               </thead>
               <tbody>
                 {journal.ventes.map((v) => (
@@ -290,6 +331,15 @@ export function SuiviCaisse() {
                     <td className="col-secondaire">{v.paiement ?? '—'}</td>
                     <td className="nombre">{montant(v.total)}</td>
                     <td>{v.statut === 'validee' ? <Pastille ton="vert">Validée</Pastille> : <Pastille ton="rouge">Annulée</Pastille>}</td>
+                    {peutAnnuler && (
+                      <td>
+                        {v.statut === 'validee' && (
+                          <button type="button" className="bouton-lien lien-danger" onClick={() => { setErreur(''); setMotifAnnulation(''); setAAnnuler(v); }}>
+                            Annuler
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -297,7 +347,7 @@ export function SuiviCaisse() {
                 <tr className="ligne-total">
                   <td colSpan={3}>Total des ventes validées</td>
                   <td className="nombre">{montant(ventesValides.reduce((s, v) => s + Number(v.total), 0))}</td>
-                  <td />
+                  <td colSpan={peutAnnuler ? 2 : 1} />
                 </tr>
               </tfoot>
             </table>
@@ -396,6 +446,7 @@ export function SuiviCaisse() {
                         {c.motif_ecart && <div className="secondaire">{c.motif_ecart}</div>}
                       </td>
                       <td>
+                        <button className="bouton-lien" onClick={() => voirSession(c)}>Voir les ventes</button>{' · '}
                         <button className="bouton-lien" onClick={() => void reimprimerZ(c)}>Réimprimer</button>{' · '}
                         <button className="bouton-lien" onClick={() => void reimprimerZ(c, true)}>A4</button>
                       </td>
@@ -407,6 +458,29 @@ export function SuiviCaisse() {
           )}
         </section>
       )}
+
+      <Fenetre titre={aAnnuler ? `Annuler la vente ${aAnnuler.numero}` : ''} ouverte={!!aAnnuler} onFermer={() => setAAnnuler(null)}>
+        {aAnnuler && (
+          <form className="formulaire" onSubmit={(e) => void annulerVente(e)}>
+            <p>
+              Montant : <strong>{montant(aAnnuler.total)}</strong>
+              {aAnnuler.paiement ? ` · ${aAnnuler.paiement}` : ''}.
+            </p>
+            <ul className="liste-effets">
+              <li>📦 Les articles reviennent en stock.</li>
+              <li>💵 Le paiement est retiré de la caisse{ouverte ? '' : ' : les espèces attendues et l’écart du Z sont recalculés'}.</li>
+              <li>📒 L’annulation est inscrite au journal, avec votre nom et le motif.</li>
+            </ul>
+            <Alerte>{erreur}</Alerte>
+            <Champ label="Motif *">
+              <textarea rows={2} maxLength={300} value={motifAnnulation} onChange={(e) => setMotifAnnulation(e.target.value)} placeholder="Double saisie, mauvais article, erreur de montant…" autoFocus />
+            </Champ>
+            <button type="submit" className="bouton bouton-danger bouton-plein" disabled={motifAnnulation.trim().length < 3 || annulationEnCours}>
+              {annulationEnCours ? 'Annulation…' : 'Confirmer l’annulation'}
+            </button>
+          </form>
+        )}
+      </Fenetre>
 
       <Fenetre
         titre={saisie?.type === 'depense' ? 'Dépense payée par le tiroir' : saisie?.type === 'sortie' ? 'Sortie d’espèces (versement)' : 'Apport d’espèces'}

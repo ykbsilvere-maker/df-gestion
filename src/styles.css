@@ -2545,3 +2545,21 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .remise-colis .secondaire { flex: 1 1 260px; }
 .attente-affectation { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; background: #fffbeb; border: 1px solid #fde68a; color: #78350f; animation: monter .35s ease both; }
 .interrupteur span { white-space: nowrap; }
+
+/* v3.11 — annulation par le gérant principal */
+.note-gerant { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--fond-doux, #f4f6f8); font-size: 0.92rem; }
+.liste-effets { list-style: none; margin: 4px 0 12px; padding: 0; display: grid; gap: 4px; font-size: 0.92rem; }
+
+/* v3.11 — achats mis en attente à la caisse */
+.panier-titre .mettre-attente { font-size: inherit; font-weight: 600; }
+.tickets-attente { margin: 4px 0 8px; padding: 8px; border-radius: 12px; background: #fff7e6; border: 1px solid #f3d9a4; }
+.tickets-attente-titre { display: block; font-size: 0.82rem; font-weight: 700; color: #8a5a00; margin-bottom: 6px; }
+.tickets-attente-liste { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.ticket-attente { flex: 0 0 auto; display: flex; align-items: stretch; background: #fff; border: 1px solid #ecd7aa; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+.ticket-attente-corps { display: grid; gap: 1px; text-align: left; padding: 6px 10px; background: none; border: 0; cursor: pointer; font: inherit; min-width: 128px; }
+.ticket-attente-corps strong { font-size: 0.9rem; white-space: nowrap; }
+.ticket-attente-corps span { font-size: 0.78rem; color: var(--texte-secondaire, #666); white-space: nowrap; }
+.ticket-attente-corps em { font-style: normal; font-size: 0.78rem; font-weight: 700; color: var(--vert, #1e8e5a); }
+.ticket-attente-corps:hover { background: #fffaf0; }
+.ticket-attente-x { border: 0; border-left: 1px solid #f1e3c4; background: none; padding: 0 10px; cursor: pointer; color: #b04a3a; font-size: 0.9rem; }
+.ticket-attente-x:hover { background: #fdecea; }
