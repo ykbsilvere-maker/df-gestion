@@ -7,6 +7,7 @@ import { appareilLisible, dateHeure, differences, iconeAction, libelleAction, li
 import { imprimerPageA4 } from '../impression/impression';
 import type { LigneAudit, Profil } from '../lib/types';
 import { Alerte, Champ, EnTetePage, Vide } from '../components/ui';
+import { texteActivite } from '../components/SuiviGerante';
 
 const PAR_PAGE = 50;
 
@@ -17,6 +18,9 @@ const FAMILLES: { valeur: string; libelle: string }[] = [
   { valeur: 'journee.', libelle: 'Ouverture et clôture de la journée' },
   { valeur: 'sessions_caisse.', libelle: 'Ouverture et clôture des caisses' },
   { valeur: 'ventes.', libelle: 'Ventes annulées' },
+  { valeur: 'commande_web.', libelle: 'Commandes en ligne (suivi complet)' },
+  { valeur: 'appareil.', libelle: 'Appareils approuvés' },
+  { valeur: 'cle_acces.', libelle: 'Clés d’accès' },
   { valeur: 'credits', libelle: 'Crédits clients et relances' },
   { valeur: 'encaissements_creances.', libelle: 'Règlements de clients' },
   { valeur: 'produits.', libelle: 'Articles du catalogue' },
@@ -48,6 +52,12 @@ function resume(l: LigneAudit): string {
     return [appareil, appareilLisible(c.navigateur as string | undefined)].filter((x) => x && x !== 'Navigateur').join(' — ') || (l.action.includes('code_entree') ? 'Code établissement + matricule' : '');
   }
   if (l.action.startsWith('activite.')) return String(c.module ?? c.document ?? c.fichier ?? '');
+  if (l.action.startsWith('commande_web.')) {
+    const t = texteActivite({ action: l.action, contexte: c });
+    return `${t.titre} — ${t.detail}`;
+  }
+  if (l.action.startsWith('appareil.')) return [c.nom, c.appareil].filter(Boolean).join(' — ');
+  if (l.action.startsWith('cle_acces.')) return [c.pour ? `Pour ${String(c.pour)}` : '', c.indice ? `clé …${String(c.indice)}` : '', c.appareil].filter(Boolean).join(' — ');
   if (typeof c.motif === 'string') return `Motif : ${c.motif}`;
   const etat = l.apres ?? l.avant ?? {};
   const nom = etat.designation ?? etat.nom ?? etat.libelle ?? etat.nom_complet ?? etat.entreprise ?? etat.reference;

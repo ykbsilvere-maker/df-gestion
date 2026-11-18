@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { FournisseurSession, useSession } from './lib/session';
+import { APPAREIL_BLOQUE, FournisseurSession, useSession } from './lib/session';
 import { configurationManquante } from './lib/supabase';
 import { Coquille } from './components/Coquille';
 import { Connexion } from './pages/Connexion';
 import { NouveauMotDePasse } from './pages/NouveauMotDePasse';
 import { CreerEntreprise } from './pages/CreerEntreprise';
+import { AppareilEnAttente, AccesAppareils } from './pages/Acces';
 import { Accueil } from './pages/Accueil';
 import { Magasins } from './pages/Magasins';
 import { Utilisateurs } from './pages/Utilisateurs';
@@ -64,12 +65,15 @@ function Chargement() {
  * général) ou page de création / d'attente.
  */
 function Protege({ children }: { children: ReactNode }) {
-  const { session, chargement, organisations, mdpProvisoire, codeAChoisir, adminGeneral } = useSession();
+  const { session, chargement, organisations, mdpProvisoire, codeAChoisir, adminGeneral, appareil } = useSession();
   if (chargement) return <Chargement />;
   if (!session) return <Navigate to="/connexion" replace />;
   if (codeAChoisir) return <Navigate to="/choisir-code" replace />;
   if (mdpProvisoire) return <Navigate to="/nouveau-mot-de-passe" replace />;
   if (organisations.length === 0) return <Navigate to={adminGeneral ? '/administration' : '/creer-entreprise'} replace />;
+  // Appareils approuvés : rien ne s'affiche avant que cet appareil soit reconnu.
+  if (appareil === 'verification') return <Chargement />;
+  if (APPAREIL_BLOQUE.includes(appareil)) return <AppareilEnAttente />;
   return <>{children}</>;
 }
 
@@ -142,6 +146,7 @@ function Routes_() {
         <Route path="magasins" element={<AvecDroit permission="magasins.consulter"><Magasins /></AvecDroit>} />
         <Route path="utilisateurs" element={<AvecDroit permission="utilisateurs.consulter"><Utilisateurs /></AvecDroit>} />
         <Route path="journal" element={<AvecDroit permission="audit.consulter"><Journal /></AvecDroit>} />
+        <Route path="acces" element={<AvecDroit permission={['utilisateurs.administrer', 'audit.consulter']}><AccesAppareils /></AvecDroit>} />
         <Route path="catalogue" element={<AvecDroit permission="catalogue.consulter"><Catalogue /></AvecDroit>} />
         <Route path="import" element={<AvecDroit permission={['catalogue.creer', 'catalogue.modifier', 'fournisseurs.creer', 'achats.creer', 'stock.creer']}><ImportExcel /></AvecDroit>} />
         <Route path="catalogue/etiquettes" element={<AvecDroit permission="catalogue.consulter"><EtiquettesPage /></AvecDroit>} />

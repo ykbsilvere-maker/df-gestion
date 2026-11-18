@@ -100,8 +100,8 @@ describe('Circuit des commandes en ligne', () => {
 describe('Droit d’affecter délégué', () => {
   it('la caissière désignée est prévenue des commandes à affecter et peut les confier', async () => {
     const c = await commander('Mariam');
-    await expect(enTantQue(pool, carine, (q) => q(`select public.affecter_commande_web($1, $2)`, [c, carine]))).rejects.toThrow(/boutique.valider/);
-    await expect(enTantQue(pool, carine, (q) => q(`select public.affecteur_definir($1, $2, true)`, [org, carine]))).rejects.toThrow(/Seule la gérante/);
+    await expect(enTantQue(pool, carine, (q) => q(`select public.affecter_commande_web($1, $2)`, [c, carine]))).rejects.toThrow(/gérante principale/);
+    await expect(enTantQue(pool, carine, (q) => q(`select public.affecteur_definir($1, $2, true)`, [org, carine]))).rejects.toThrow(/Seule la gérante principale/);
     await enTantQue(pool, alice, (q) => q(`select public.affecteur_definir($1, $2, true)`, [org, carine]));
     const a = await enTantQue(pool, carine, (q) => un(q<{ r: { a_affecter: number; affecteur: boolean; a_livrer: number } }>(`select public.commandes_caisse_attente($1) r`, [org]))).then((x) => x.r);
     expect(a.affecteur).toBe(true);

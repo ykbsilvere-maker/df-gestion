@@ -3,6 +3,15 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.14.** **Accès réservés et suivi exact** (migration 041, fonction « inscription » mise à jour).
+*Appareils approuvés* (Réglages › Accès et appareils) : une fois la protection activée, une connexion depuis un appareil
+inconnu reste fermée — la base elle-même refuse toute donnée — tant que la gérante principale ne l'a pas approuvée
+(fenêtre « Nouvel appareil à approuver » avec Approuver / Refuser) ou que la personne n'a pas saisi sa **clé d'accès
+personnelle** (DFG-XXXX-XX, usage unique, expiration, annulable). La création d'un compte exige aussi une clé quand
+l'inscription libre est fermée. *Commandes en ligne* : seule la gérante principale affecte (ou la personne qu'elle désigne) ;
+elle reçoit chaque activité qui suit (affectée, acceptée, prête, envoyée, encaissée, paiement vérifié, annulée), et chaque
+manipulation est inscrite **automatiquement** au journal d'audit (déclencheur sur les commandes).
+
 **Version 3.13.** **Droit d'affecter délégué** (migration 040). Seule la gérante affecte les commandes en ligne ; dans
 *Boutique en ligne › Commandes*, carte « Qui peut affecter les commandes ? », elle peut donner ce seul droit à une caissière
 de confiance (« boutique.affecter »). Celle-ci est prévenue des commandes à affecter et peut les confier ; paiements,

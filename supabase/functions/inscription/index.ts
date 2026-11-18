@@ -1,9 +1,11 @@
 // Fonction serveur « inscription » (Supabase Edge Function, Deno).
 //
-// Création libre d'un accès (nom, e-mail, mot de passe) depuis l'application ou le site,
-// sans attendre d'e-mail de confirmation : la personne est connectée tout de suite et remplit
-// la fiche de son entreprise. Elle n'obtient AUCUN droit tant que l'administrateur général
-// n'a pas validé sa demande. Un quota horaire freine les créations en masse.
+// Création d'un accès (nom, e-mail, mot de passe) depuis l'application, sans attendre d'e-mail
+// de confirmation. Depuis la v3.14, quand l'inscription libre est fermée, une CLÉ D'ACCÈS
+// personnelle (DFG-XXXX-XX, à usage unique, avec date d'expiration) est exigée : remise par la
+// gérante principale (personne invitée) ou par l'administrateur général (futur gérant).
+// La personne n'obtient AUCUN droit tant qu'elle n'est pas rattachée à une entreprise.
+// Un quota horaire freine les créations en masse.
 //
 // Déploiement : Supabase > Edge Functions > « inscription », désactiver « Verify JWT ».
 
@@ -37,7 +39,7 @@ Deno.serve(async (req) => {
   const secrete = cle('SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEYS');
   if (!url || !secrete) return reponse({ ok: false, message: 'Fonction mal configurée (clés absentes)' }, 500);
 
-  let corps: { email?: string; mot_de_passe?: string; nom?: string };
+  let corps: { email?: string; mot_de_passe?: string; nom?: string; cle?: string };
   try {
     corps = await req.json();
   } catch {
@@ -56,7 +58,13 @@ Deno.serve(async (req) => {
   if (eq) return reponse({ ok: false, message: 'Service indisponible, réessayez.' }, 500);
   if (quota !== true) return reponse({ ok: false, message: 'Beaucoup de demandes en ce moment : réessayez dans une heure.' });
 
-  const { error } = await service.auth.admin.createUser({
+  // Clé d'accès personnelle (exigée quand l'inscription libre est fermée).
+  const { data: verif, error: ev } = await service.rpc('cle_inscription_verifier', { p_cle: String(corps.cle ?? ''), p_email: email });
+  if (ev) return reponse({ ok: false, message: 'Service indisponible, réessayez.' }, 500);
+  const v = (verif ?? {}) as { ok?: boolean; message?: string; cle_id?: string };
+  if (!v.ok) return reponse({ ok: false, cle: true, message: v.message ?? 'Clé d’accès requise.' });
+
+  const { data: cree, error } = await service.auth.admin.createUser({
     email,
     password: motDePasse,
     email_confirm: true,
@@ -67,5 +75,6 @@ Deno.serve(async (req) => {
       return reponse({ ok: false, existe: true, message: 'Un compte existe déjà avec cette adresse : connectez-vous.' });
     return reponse({ ok: false, message: 'Création impossible, réessayez.' }, 500);
   }
+  if (v.cle_id && cree?.user) await service.rpc('cle_inscription_utiliser', { p_cle_id: v.cle_id, p_user: cree.user.id });
   return reponse({ ok: true });
 });

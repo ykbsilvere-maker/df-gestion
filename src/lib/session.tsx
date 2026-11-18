@@ -5,6 +5,11 @@ import { supabase } from './supabase';
 import type { MonOrganisation } from './types';
 import { nomAppareil } from './format';
 import { estAccesEmploye } from './acces';
+import { jetonAppareil, libelleAppareil, numeroSession } from './appareil';
+
+/** Où en est cet appareil pour l'entreprise courante (appareils approuvés). */
+export type StatutAppareil = 'verification' | 'libre' | 'approuve' | 'en_attente' | 'refuse' | 'revoque' | 'inconnu';
+export const APPAREIL_BLOQUE: StatutAppareil[] = ['en_attente', 'refuse', 'revoque'];
 
 export interface InfoPlateforme {
   admin_existe: boolean;
@@ -38,6 +43,11 @@ interface EtatSession {
   peut: (permission: string) => boolean;
   apresConnexion: () => Promise<void>;
   deconnecter: () => Promise<void>;
+  /** Cet appareil est-il approuvé pour l'entreprise courante ? */
+  appareil: StatutAppareil;
+  verifierAppareil: () => Promise<StatutAppareil>;
+  /** Ouvre cet appareil avec une clé d'accès personnelle. Renvoie un message d'erreur, ou null. */
+  debloquerAppareil: (cle: string) => Promise<string | null>;
 }
 
 const Contexte = createContext<EtatSession | null>(null);
@@ -237,6 +247,55 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
     [organisation],
   );
 
+  // --- Appareils approuvés : chaque nouvelle session doit être ouverte par un appareil reconnu.
+  const [appareil, setAppareil] = useState<{ cle: string; statut: StatutAppareil } | null>(null);
+  const orgCourante = organisation?.organisation_id ?? '';
+  const uid = session?.user.id ?? '';
+  const cleAppareil = `${uid}|${orgCourante}|${numeroSession(session?.access_token)}`;
+  const verifierAppareil = useCallback(async (): Promise<StatutAppareil> => {
+    if (!uid || !orgCourante) return 'libre';
+    const cache = `dfg_appareil_${uid}_${orgCourante}`;
+    const { data, error } = await supabase.rpc('appareil_ouvrir', { p_org: orgCourante, p_jeton: jetonAppareil(), p_libelle: libelleAppareil() });
+    let statut: StatutAppareil;
+    if (error) {
+      // Sans réseau (caisse hors ligne) : on garde le dernier état connu ; le serveur revérifiera à la synchronisation.
+      let connu: string | null = null;
+      try {
+        connu = localStorage.getItem(cache);
+      } catch {
+        /* rien */
+      }
+      statut = (connu as StatutAppareil | null) ?? 'libre';
+    } else {
+      statut = ((data as { statut?: StatutAppareil } | null)?.statut ?? 'libre') as StatutAppareil;
+      try {
+        localStorage.setItem(cache, statut);
+      } catch {
+        /* rien */
+      }
+    }
+    setAppareil({ cle: cleAppareil, statut });
+    return statut;
+  }, [uid, orgCourante, cleAppareil]);
+  useEffect(() => {
+    if (!uid || !orgCourante) return;
+    void verifierAppareil();
+  }, [uid, orgCourante, cleAppareil, verifierAppareil]);
+  const debloquerAppareil = useCallback(
+    async (cle: string) => {
+      const { data, error } = await supabase.rpc('appareil_debloquer', {
+        p_org: orgCourante, p_jeton: jetonAppareil(), p_cle: cle, p_libelle: libelleAppareil(),
+      });
+      if (error) return error.message;
+      const r = data as { statut: string; message?: string };
+      if (r.statut !== 'approuve') return r.message ?? 'Clé refusée';
+      await verifierAppareil();
+      return null;
+    },
+    [orgCourante, verifierAppareil],
+  );
+  const statutAppareil: StatutAppareil = !uid || !orgCourante ? 'libre' : appareil?.cle === cleAppareil ? appareil.statut : 'verification';
+
   const valeur: EtatSession = {
     session,
     plateforme,
@@ -254,6 +313,9 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
     peut,
     apresConnexion,
     deconnecter,
+    appareil: statutAppareil,
+    verifierAppareil,
+    debloquerAppareil,
   };
   return <Contexte.Provider value={valeur}>{children}</Contexte.Provider>;
 }

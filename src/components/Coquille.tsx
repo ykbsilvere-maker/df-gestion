@@ -11,6 +11,7 @@ import { FiletSecurite } from './FiletSecurite';
 import { useSession } from '../lib/session';
 import { useCommandesWeb } from '../pages/boutique/alerte';
 import { LucarneCommandes } from './LucarneCommandes';
+import { SuiviGerante } from './SuiviGerante';
 import { useIdentite } from '../lib/identite';
 import { identifiantAffiche } from '../lib/acces';
 import { reprendreLogoDemande } from '../lib/demandeOuverture';
@@ -38,6 +39,7 @@ const LIENS: { vers: string; libelle: string; permission?: string | string[]; ad
   { vers: '/magasins', libelle: 'Magasins', permission: 'magasins.consulter', icone: '🏪', groupe: 'reglages' },
   { vers: '/utilisateurs', libelle: 'Utilisateurs', permission: 'utilisateurs.consulter', icone: '👥', groupe: 'reglages' },
   { vers: '/journal', libelle: 'Journal', permission: 'audit.consulter', icone: '📜', groupe: 'reglages' },
+  { vers: '/acces', libelle: 'Accès et appareils', permission: 'utilisateurs.administrer', icone: '🔐', groupe: 'reglages' },
   { vers: '/personnalisation', libelle: 'Personnalisation', permission: 'administration.consulter', icone: '🎨', groupe: 'reglages' },
   { vers: '/compte', libelle: 'Mon compte', icone: '👤', groupe: 'reglages' },
 ];
@@ -365,6 +367,11 @@ export function Coquille() {
       </div>
       <AlertesEquipe org={organisation?.organisation_id} />
       <LucarneCommandes org={idOrg} actif={peut('boutique.consulter')} />
+      <SuiviGerante
+        org={idOrg}
+        activites={peut('boutique.administrer') || peut('boutique.affecter')}
+        appareils={peut('utilisateurs.administrer')}
+      />
 
       <nav className="app-onglets">
         {principaux.map((l) => lien(l))}

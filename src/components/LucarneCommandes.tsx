@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { jetonAppareil } from '../lib/appareil';
 import { lireConfiguration } from '../lib/config';
 import { pontAndroid } from '../lib/android';
 
 /** Deux notes douces, comme une messagerie. */
-function son() {
+export function son() {
   try {
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
@@ -46,30 +47,15 @@ type Compteurs = { nombre: number; a_affecter: number; en_attente: number; a_acc
 /** Une commande affectée et pas encore acceptée revient toutes les 2 minutes. */
 const RAPPEL_MS = 120000;
 
-/** Jeton de ce téléphone : l'APK interroge le serveur toutes les 15 minutes, même fermée. */
-function jetonAppareil(): string {
-  const cle = 'dfg_jeton_appareil';
-  try {
-    let j = localStorage.getItem(cle);
-    if (!j) {
-      const o = new Uint8Array(24);
-      crypto.getRandomValues(o);
-      j = Array.from(o, (x) => x.toString(16).padStart(2, '0')).join('');
-      localStorage.setItem(cle, j);
-    }
-    return j;
-  } catch {
-    return '';
-  }
-}
 
 /** Ce qui doit être signalé, selon le rôle. */
 function lecture(e: Etat) {
   const n = (v: unknown) => Number(v) || 0;
   const c: Compteurs = {
     nombre: n(e.nombre),
-    a_affecter: e.gerante || e.affecteur ? n(e.a_affecter) : 0,
-    en_attente: e.gerante || e.affecteur ? 0 : n(e.en_attente),
+    // Seule la gérante principale (ou la personne désignée) affecte ; les autres sont simplement informés.
+    a_affecter: e.affecteur ? n(e.a_affecter) : 0,
+    en_attente: e.affecteur ? 0 : n(e.en_attente),
     a_accepter: n(e.a_accepter),
     a_livrer: e.gerante ? n(e.a_livrer) : 0,
   };
@@ -265,7 +251,8 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
     fermer();
     naviguer(aAffecter > 0 || aLivrer > 0 ? '/boutique' : '/caisse?commandes=1');
   };
-  const gerante = etat.gerante || !!etat.affecteur;
+  // Volet « gérante » seulement s'il y a quelque chose à affecter ou une livraison à confirmer.
+  const gerante = aAffecter > 0 || aLivrer > 0;
 
   return (
     <div className={`lucarne ${sortie ? 'lucarne-sortie' : ''}`} role="alert" aria-live="assertive">
@@ -283,7 +270,7 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
                 ? `${aAffecter} commande${pluriel(aAffecter)} à affecter`
                 : aLivrer > 0
                   ? `🛵 ${aLivrer} livraison${pluriel(aLivrer)} prête${pluriel(aLivrer)}`
-                  : `🧺 ${miennes} commande${pluriel(miennes)} à rassembler`
+                  : ''
               : miennes > 0
                 ? `🧺 ${miennes} commande${pluriel(miennes)} à rassembler`
                 : `🔔 ${c.en_attente} nouvelle${pluriel(c.en_attente)} commande${pluriel(c.en_attente)} en ligne`}
@@ -294,10 +281,10 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
                   aAffecter > 0 ? 'Choisissez la caissière qui la rassemble.' : '',
                   aLivrer > 0 ? `${aLivrer} prête${pluriel(aLivrer)} à livrer : confirmez l’envoi.` : '',
                   miennes > 0 && aAffecter + aLivrer > 0 ? `${miennes} vous ${miennes > 1 ? 'sont affectées' : 'est affectée'}.` : '',
-                ].filter(Boolean).join(' ') || 'Rassemblez et vérifiez les articles.'
+                ].filter(Boolean).join(' ')
               : miennes > 0
                 ? 'Rassemblez et vérifiez les articles, puis marquez la commande « prête ».'
-                : 'La gérante va l’affecter : vous serez prévenue dès qu’elle vous est confiée.'}
+                : 'La gérante principale va l’affecter : vous serez prévenue dès qu’elle vous est confiée.'}
           </span>
         </span>
       </button>

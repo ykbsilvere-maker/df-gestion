@@ -74,9 +74,14 @@ export interface ResultatConnexion {
  * compte prêt tout de suite, sans e-mail de confirmation. Il ne donne aucun droit tant que
  * l'administrateur général n'a pas validé la demande d'entreprise.
  */
-export async function creerMonAcces(nom: string, email: string, motDePasse: string): Promise<{ ok: boolean; message?: string; existe?: boolean; absente?: boolean }> {
+export async function creerMonAcces(
+  nom: string,
+  email: string,
+  motDePasse: string,
+  cle = '',
+): Promise<{ ok: boolean; message?: string; existe?: boolean; absente?: boolean; cle?: boolean }> {
   const { supabase } = await import('./supabase');
-  const { data, error } = await supabase.functions.invoke('inscription', { body: { nom, email, mot_de_passe: motDePasse } });
+  const { data, error } = await supabase.functions.invoke('inscription', { body: { nom, email, mot_de_passe: motDePasse, cle } });
   if (error) {
     const statut = (error as { context?: Response }).context?.status;
     if (statut === 404) return { ok: false, absente: true };

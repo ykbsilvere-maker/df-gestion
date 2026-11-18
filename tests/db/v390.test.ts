@@ -64,7 +64,7 @@ describe('Commandes en ligne affectées à une caissière', () => {
       await q('savepoint a');
       await expect(q(`select public.encaisser_commande_web($1, $2)`, [c.id, s])).rejects.toThrow(/pas affectée/);
       await q('rollback to savepoint a');
-      await expect(q(`select public.affecter_commande_web($1, $2)`, [c.id, carine])).rejects.toThrow(/boutique.valider/);
+      await expect(q(`select public.affecter_commande_web($1, $2)`, [c.id, carine])).rejects.toThrow(/gérante principale/);
       await q('rollback to savepoint a');
     });
 

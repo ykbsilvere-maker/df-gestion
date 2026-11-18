@@ -246,7 +246,7 @@ export function CommandesWeb() {
           </div>
         )}
       </section>
-      {peut('boutique.valider') && <EquipeAffectation org={org} />}
+      {peut('boutique.administrer') && <EquipeAffectation org={org} />}
     </>
   );
 }
@@ -284,8 +284,9 @@ function EquipeAffectation({ org }: { org: string }) {
     <section className="carte equipe-affectation">
       <h2>👥 Qui peut affecter les commandes ?</h2>
       <p className="secondaire">
-        Vous affectez chaque commande à la caissière qui la prépare. Vous pouvez aussi donner ce droit à une caissière de confiance : elle est
-        prévenue des nouvelles commandes et peut les confier (à elle-même ou à une collègue). Les paiements, les livraisons et la vitrine restent à vous.
+        Vous seule affectez les commandes à la caissière qui les prépare. Vous pouvez aussi autoriser une caissière de confiance à affecter :
+        elle est prévenue des nouvelles commandes et peut les confier. Vous recevez chaque activité qui suit (affectée, acceptée, prête,
+        encaissée…), et tout est inscrit au journal d’audit. Les paiements, les livraisons et la vitrine restent à vous.
       </p>
       <Alerte>{erreur}</Alerte>
       {!equipe ? (
@@ -294,7 +295,7 @@ function EquipeAffectation({ org }: { org: string }) {
         <ul className="liste-affecteurs">
           {equipe.filter((m) => m.gerante).map((m) => (
             <li key={m.user_id}>
-              <span><strong>{m.nom}</strong>{m.moi ? ' (vous)' : ''} <small className="secondaire">gère la boutique</small></span>
+              <span><strong>{m.nom}</strong>{m.moi ? ' (vous)' : ''} <small className="secondaire">gérante principale</small></span>
               <Pastille ton="vert">affecte</Pastille>
             </li>
           ))}
@@ -398,6 +399,7 @@ function Affectation({ c, onFait }: { c: DetailCommande; onFait: (texte: string)
     if (error) return setErreur(messageErreur(error));
     const nom = liste?.find((x) => x.user_id === u)?.nom;
     onFait(u ? `Commande affectée à ${nom} : elle est prévenue (rappel toutes les 2 minutes) jusqu’à ce qu’elle l’accepte.` : 'Affectation retirée.');
+    window.dispatchEvent(new Event('dfg-activite')); // le fil de suivi s'actualise tout de suite
   }
   return (
     <div className="affectation">
@@ -458,7 +460,8 @@ export function FicheCommandeWeb() {
   const [motif, setMotif] = useState<null | { pour: 'annulee' | 'paiement'; texte: string }>(null);
   const [enCours, setEnCours] = useState(false);
   const peutValider = peut('boutique.valider');
-  const peutAffecter = peutValider || peut('boutique.affecter');
+  // Seule la gérante principale affecte, ou la personne qu'elle a désignée.
+  const peutAffecter = peut('boutique.administrer') || peut('boutique.affecter');
   const { identite } = useIdentite();
   const { imprimer } = useImpression();
 

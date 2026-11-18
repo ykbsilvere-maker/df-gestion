@@ -63,6 +63,7 @@ export function Connexion() {
   const [motDePasse, setMotDePasse] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [nom, setNom] = useState('');
+  const [cleAcces, setCleAcces] = useState('');
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
   const [envoi, setEnvoi] = useState(false);
@@ -70,6 +71,8 @@ export function Connexion() {
   const naviguer = useNavigate();
   // Première installation : aucun administrateur général encore désigné.
   const premiere = plateforme?.admin_existe === false;
+  // Inscription fermée : une clé d'accès personnelle (remise par la gérante ou l'administrateur) est exigée.
+  const cleExigee = !premiere && plateforme?.inscription_libre !== true;
   useEffect(() => {
     if (premiere) {
       setMode('inscription');
@@ -130,7 +133,8 @@ export function Connexion() {
         if (motDePasse !== confirmation) throw new Error('Les deux mots de passe sont différents.');
         if (!premiere) {
           // Accès créé tout de suite, puis connexion : la personne remplit la fiche de son entreprise.
-          const r = await creerMonAcces(nom.trim(), email.trim(), motDePasse);
+          if (cleExigee && cleAcces.replace(/[^A-Za-z0-9]/g, '').length < 9) throw new Error('Saisissez la clé d’accès personnelle qu’on vous a remise (DFG-XXXX-XX).');
+          const r = await creerMonAcces(nom.trim(), email.trim(), motDePasse, cleAcces);
           if (r.ok) {
             const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: motDePasse });
             if (error) throw error;
@@ -145,7 +149,7 @@ export function Connexion() {
             setType('email');
             throw new Error(r.message ?? 'Un compte existe déjà avec cette adresse : connectez-vous.');
           }
-          if (!r.absente) throw new Error(r.message ?? 'Création impossible, réessayez.');
+          if (!r.absente || cleExigee) throw new Error(r.message ?? 'Création impossible, réessayez.');
           // Fonction serveur pas encore installée : création classique (avec e-mail de confirmation).
         }
         const { data, error } = await supabase.auth.signUp({
@@ -282,9 +286,25 @@ export function Connexion() {
           )}
           {mode === 'inscription' && !premiere && (
             <p className="secondaire petit-texte">
-              Première connexion ? Créez vos accès, puis présentez votre entreprise : Décodeur Financier étudie votre demande
-              et vous ouvre l’application.
+              {cleExigee
+                ? 'DF Gestion est réservé : pour créer vos accès, saisissez la clé personnelle remise par votre gérante (ou par Décodeur Financier). Elle ne sert qu’une fois.'
+                : 'Première connexion ? Créez vos accès, puis présentez votre entreprise : Décodeur Financier étudie votre demande et vous ouvre l’application.'}
             </p>
+          )}
+          {mode === 'inscription' && cleExigee && (
+            <Champ label="Clé d’accès personnelle" aide="Format DFG-XXXX-XX">
+              <input
+                value={cleAcces}
+                onChange={(e) => setCleAcces(e.target.value.toUpperCase())}
+                required
+                maxLength={16}
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                placeholder="DFG-7K4P-29"
+                className="champ-code"
+              />
+            </Champ>
           )}
           {mode === 'inscription' && (
             <Champ label="Nom et prénoms">

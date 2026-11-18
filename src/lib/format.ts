@@ -31,6 +31,35 @@ export function dateHeure(iso: string | null | undefined): string {
 /** Libellés des actions du journal d'audit. */
 const LIBELLES_ACTIONS: Record<string, string> = {
   'session.connexion': 'Connexion',
+  'commande_web.recue': 'Commande en ligne reçue',
+  'commande_web.affectee': 'Commande en ligne affectée',
+  'commande_web.reaffectee': 'Commande en ligne réaffectée',
+  'commande_web.desaffectee': 'Affectation de commande retirée',
+  'commande_web.acceptee': 'Commande acceptée par la caissière',
+  'commande_web.confirmee': 'Commande en ligne confirmée',
+  'commande_web.prete': 'Commande prête',
+  'commande_web.en_livraison': 'Commande envoyée en livraison',
+  'commande_web.livree': 'Commande livrée / remise',
+  'commande_web.annulee': 'Commande en ligne annulée',
+  'commande_web.encaissee': 'Commande encaissée à la caisse',
+  'commande_web.paiement_confirme': 'Paiement Mobile Money confirmé',
+  'commande_web.paiement_refuse': 'Paiement Mobile Money refusé',
+  'commande_web.paiement_a_verifier': 'Justificatif de paiement reçu',
+  'commande_web.paiement_a_la_livraison': 'Paiement remis à la livraison',
+  'boutique.affecteur_ajoute': 'Droit d’affecter donné',
+  'boutique.affecteur_retire': 'Droit d’affecter retiré',
+  'appareil.demande': 'Nouvel appareil : demande d’accès',
+  'appareil.enregistre': 'Appareil reconnu',
+  'appareil.approuve': 'Appareil approuvé',
+  'appareil.approuve_par_cle': 'Appareil ouvert avec une clé',
+  'appareil.refuse': 'Appareil refusé',
+  'appareil.revoque': 'Accès d’un appareil retiré',
+  'appareil.exigence_activee': 'Protection des appareils activée',
+  'appareil.exigence_desactivee': 'Protection des appareils désactivée',
+  'cle_acces.creee': 'Clé d’accès créée',
+  'cle_acces.annulee': 'Clé d’accès annulée',
+  'cle_acces.refusee': 'Clé d’accès refusée (essai invalide)',
+  'cle_acces.compte_cree': 'Compte créé avec une clé',
   'credits.insert': 'Crédit client préparé',
   'credits.update': 'Crédit client modifié (accordé, confié, annulé)',
   'credits_suivi.insert': 'Démarche de recouvrement notée',
@@ -118,6 +147,9 @@ export function libelleAction(code: string): string {
 
 /** Icône de la famille d'une opération du journal. */
 export function iconeAction(code: string): string {
+  if (/^appareil\./.test(code)) return /refuse|revoque/.test(code) ? '⛔' : '📱';
+  if (/^cle_acces\./.test(code)) return /refusee/.test(code) ? '⛔' : '🔑';
+  if (/^commande_web\./.test(code)) return /annulee|refuse/.test(code) ? '❌' : '🛍️';
   if (/refuse/.test(code)) return '⛔';
   if (/^activite\.(impression|export)/.test(code)) return code.includes('export') ? '⬇️' : '🖨️';
   if (/^activite\./.test(code)) return '🖱️';

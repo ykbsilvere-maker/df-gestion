@@ -1,3 +1,4 @@
+import { ClesAcces } from './Acces';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -275,10 +276,14 @@ export function Administration() {
             Inscription libre : toute personne peut créer sa propre entreprise
           </label>
           <p className="secondaire">
-            Fermée (recommandé) : seul l’administrateur général crée les entreprises et l’accès de leur gérant principal.
+            Fermée (recommandé) : seul l’administrateur général crée les entreprises et l’accès de leur gérant principal ; toute
+            création de compte exige alors une clé d’accès personnelle (ci-dessous pour un futur gérant, page « Accès et appareils »
+            de chaque entreprise pour son équipe).
           </p>
         </section>
       </div>
+
+      <ClesAcces org={null} membres={[]} />
 
       <Fenetre
         titre={
