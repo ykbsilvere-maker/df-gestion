@@ -3,6 +3,12 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.17.** **Modifier les codes d'entrée et réinitialiser les mots de passe sans e-mail** (migration 044).
+Dans *Utilisateurs*, la gérante principale choisit elle-même (ou fait générer) le nouveau code d'entrée de 4 chiffres d'un
+employé par matricule, ou un mot de passe provisoire pour un compte par e-mail ; les identifiants sont à transmettre
+directement (WhatsApp, en main propre). Dans *Administration*, l'administrateur général peut aussi donner au gérant
+principal un code d'entrée provisoire (code établissement + matricule 0000). Chaque changement est inscrit au journal d'audit.
+
 **Version 3.16.** **Robot Telegram « DF Gestion » et écran OTP simplifié** (migration 043, fonction « telegram »).
 L'administrateur crée son robot avec @BotFather et colle le jeton dans *Administration › Robot Telegram* : nom, description
 et logo sont réglés automatiquement, le jeton reste sur le serveur. Pour chaque personne, la gérante crée un lien d'activation

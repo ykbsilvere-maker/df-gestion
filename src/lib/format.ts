@@ -116,6 +116,8 @@ const LIBELLES_ACTIONS: Record<string, string> = {
   'ventes.annulation': 'Annulation de vente',
   'compte.acces_cree': 'Accès créé (mot de passe provisoire)',
   'compte.mot_de_passe_reinitialise': 'Mot de passe réinitialisé',
+  'utilisateurs.code_entree_donne': 'Nouveau code d’entrée donné',
+  'admin.code_entree_gerant': 'Code d’entrée du gérant modifié par l’administrateur',
   'plateforme.admin_general': 'Administrateur général désigné',
   'plateforme.inscription_libre': 'Règle d’inscription modifiée',
   'connexion.code_entree': 'Connexion avec le code d’entrée',

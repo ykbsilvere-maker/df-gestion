@@ -8,6 +8,7 @@ import { montantEn } from '../lib/argent';
 import { ChoixDevise } from '../components/ChoixDevise';
 import { encoderCode, lireConfiguration } from '../lib/config';
 import { genererMotDePasse, gererCompte, messageIdentifiants } from '../lib/comptes';
+import { codeEntreeValide, genererCodeProvisoire, messageAccesEmploye } from '../lib/acces';
 import { REGIMES, type RegimeFiscal } from '../lib/types';
 import { Alerte, Champ, EnTetePage, Fenetre, Ico, MontantFort, Pastille, Vide } from '../components/ui';
 import { ChoixModules } from '../components/ChoixModules';
@@ -226,7 +227,7 @@ export function Administration() {
                   </button>
                   {e.gerants.length > 0 && (
                     <button type="button" className="bouton-lien" onClick={() => setFenetre({ type: 'motdepasse', e })}>
-                      Mot de passe du gérant
+                      🔑 Mot de passe / code du gérant
                     </button>
                   )}
                   {e.actif ? (
@@ -293,7 +294,7 @@ export function Administration() {
             : fenetre?.type === 'gerant'
               ? `Ajouter un gérant — ${fenetre.e.nom}`
               : fenetre?.type === 'motdepasse'
-                ? `Mot de passe du gérant — ${fenetre.e.nom}`
+                ? `Accès du gérant — ${fenetre.e.nom}`
                 : fenetre?.type === 'suspendre'
                   ? `Suspendre ${fenetre.e.nom}`
                   : fenetre?.type === 'modules'
@@ -326,7 +327,7 @@ export function Administration() {
           <FormulaireReinitialisation
             entreprise={fenetre.e}
             onFini={async (texte) => {
-              await apres('Mot de passe réinitialisé.');
+              await apres(texte.includes('Matricule : 0000') ? 'Code d’entrée du gérant modifié.' : 'Mot de passe réinitialisé.');
               setFenetre({ type: 'identifiants', titre: 'Nouveaux identifiants à transmettre', texte });
             }}
           />
@@ -600,22 +601,51 @@ function FormulaireGerant({
 
 function FormulaireReinitialisation({ entreprise, onFini }: { entreprise: LigneEntreprise; onFini: (texte: string) => Promise<void> }) {
   const [email, setEmail] = useState(entreprise.gerants[0]?.email ?? '');
+  const [mode, setMode] = useState<'mdp' | 'code'>('mdp');
   const [motDePasse, setMotDePasse] = useState(genererMotDePasse());
+  const [code, setCode] = useState(genererCodeProvisoire);
   const [erreur, setErreur] = useState('');
   const [envoi, setEnvoi] = useState(false);
 
   async function soumettre(e: FormEvent) {
     e.preventDefault();
+    if (envoi) return;
+    setErreur('');
+    const g = entreprise.gerants.find((x) => x.email === email);
+    if (mode === 'code') {
+      if (!codeEntreeValide(code)) return setErreur('4 chiffres, sans chiffres tous identiques ni suite (1234, 4321…).');
+      setEnvoi(true);
+      const { data, error } = await supabase.rpc('admin_definir_pin_gerant', { p_org: entreprise.organisation_id, p_email: email, p_pin: code });
+      setEnvoi(false);
+      if (error) return setErreur(messageErreur(error));
+      const r = data as { code_acces: string; matricule: string };
+      return onFini(messageAccesEmploye({ nom: g?.nom ?? undefined, entreprise: entreprise.nom, code: r.code_acces, matricule: r.matricule, codeProvisoire: code }));
+    }
     setEnvoi(true);
     const r = await gererCompte('reinitialiser', email, motDePasse);
     setEnvoi(false);
     if (!r.ok) return setErreur(r.message);
-    const g = entreprise.gerants.find((x) => x.email === email);
     await onFini(messageIdentifiants({ nom: g?.nom ?? undefined, entreprise: entreprise.nom, email, motDePasse }));
   }
 
   return (
     <form className="formulaire" onSubmit={soumettre}>
+      <div className="choix-type-acces" role="radiogroup" aria-label="Que réinitialiser ?">
+        <label className={mode === 'mdp' ? 'actif' : ''}>
+          <input type="radio" checked={mode === 'mdp'} onChange={() => setMode('mdp')} />
+          <span>
+            <strong>Mot de passe</strong>
+            Connexion avec l’adresse e-mail et un mot de passe provisoire.
+          </span>
+        </label>
+        <label className={mode === 'code' ? 'actif' : ''}>
+          <input type="radio" checked={mode === 'code'} onChange={() => setMode('code')} />
+          <span>
+            <strong>Code d’entrée (sans e-mail)</strong>
+            Connexion avec le code établissement, le matricule 0000 et un code de 4 chiffres.
+          </span>
+        </label>
+      </div>
       <Alerte>{erreur}</Alerte>
       <Champ label="Gérant">
         <select value={email} onChange={(e) => setEmail(e.target.value)}>
@@ -626,16 +656,36 @@ function FormulaireReinitialisation({ entreprise, onFini }: { entreprise: LigneE
           ))}
         </select>
       </Champ>
-      <Champ label="Nouveau mot de passe provisoire">
-        <div className="champ-avec-bouton">
-          <input value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} minLength={8} required />
-          <button type="button" className="bouton bouton-discret" onClick={() => setMotDePasse(genererMotDePasse())}>
-            Générer
-          </button>
-        </div>
-      </Champ>
+      {mode === 'mdp' ? (
+        <Champ label="Nouveau mot de passe provisoire">
+          <div className="champ-avec-bouton">
+            <input value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} minLength={8} required />
+            <button type="button" className="bouton bouton-discret" onClick={() => setMotDePasse(genererMotDePasse())}>
+              Générer
+            </button>
+          </div>
+        </Champ>
+      ) : (
+        <Champ label="Nouveau code d’entrée provisoire (4 chiffres)">
+          <div className="champ-avec-bouton">
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              maxLength={4}
+              required
+              autoComplete="off"
+            />
+            <button type="button" className="bouton bouton-discret" onClick={() => setCode(genererCodeProvisoire())}>
+              Générer
+            </button>
+          </div>
+        </Champ>
+      )}
+      <p className="secondaire">Provisoire : le gérant en choisit un nouveau à sa prochaine connexion. L’ancien ne marche plus.</p>
       <button className="bouton bouton-principal bouton-plein" disabled={envoi}>
-        {envoi ? 'Réinitialisation…' : 'Réinitialiser le mot de passe'}
+        {envoi ? 'Enregistrement…' : mode === 'code' ? 'Enregistrer le nouveau code' : 'Réinitialiser le mot de passe'}
       </button>
     </form>
   );

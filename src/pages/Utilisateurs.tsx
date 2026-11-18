@@ -29,6 +29,7 @@ type Fenetres =
   | { type: 'desactiver'; membre: Membre }
   | { type: 'droits'; membre: Membre }
   | { type: 'motdepasse'; membre: Membre }
+  | { type: 'code'; membre: Membre }
   | { type: 'telegram'; membre: Membre }
   | { type: 'identifiants'; texte: string }
   | null;
@@ -149,19 +150,18 @@ export function Utilisateurs() {
     lien ? `${texte}\n\n🔐 Code OTP : ouvrez ce lien sur votre téléphone et touchez « Démarrer » (une seule fois) :\n${lien}` : texte;
 
   /** Nouveau code d'entrée provisoire (4 chiffres) pour un employé par matricule. */
-  async function redonnerCode(email: string, nom?: string) {
+  async function redonnerCode(email: string, nom: string | undefined, code: string): Promise<string | null> {
     const a = lireAccesEmploye(email);
-    if (!a || !org || !organisation) return;
-    if (!window.confirm(`Donner un nouveau code d’entrée au matricule ${a.matricule} ? L’ancien ne marchera plus.`)) return;
-    const code = genererCodeProvisoire();
+    if (!a || !org || !organisation) return 'Accès introuvable.';
     setErreur('');
     const { error } = await supabase.rpc('definir_pin_employe', { p_org: org, p_matricule: a.matricule, p_pin: code });
-    if (error) return setErreur(messageErreur(error));
+    if (error) return messageErreur(error);
     setInfo(`Nouveau code provisoire pour le matricule ${a.matricule}.`);
     setFenetre({
       type: 'identifiants',
       texte: messageAccesEmploye({ nom, entreprise: organisation.nom, code: a.code, matricule: a.matricule, codeProvisoire: code }),
     });
+    return null;
   }
 
   async function envoyerReinitialisation(email: string | null) {
@@ -295,12 +295,12 @@ export function Utilisateurs() {
                                   </button>
                                 )}
                                 {lireAccesEmploye(p?.email) ? (
-                                  <button className="bouton-lien" onClick={() => void redonnerCode(p?.email ?? '', p?.nom_complet ?? undefined)}>
-                                    Code d’entrée
+                                  <button className="bouton-lien" onClick={() => setFenetre({ type: 'code', membre: m })}>
+                                    🔑 Modifier le code d’entrée
                                   </button>
                                 ) : (
                                   <button className="bouton-lien" onClick={() => setFenetre({ type: 'motdepasse', membre: m })}>
-                                    Mot de passe
+                                    🔑 Réinitialiser le mot de passe
                                   </button>
                                 )}
                                 <button
@@ -381,7 +381,9 @@ export function Utilisateurs() {
               : fenetre?.type === 'desactiver'
                 ? 'Désactiver le compte'
                 : fenetre?.type === 'motdepasse'
-                  ? 'Mot de passe'
+                  ? 'Réinitialiser le mot de passe'
+                  : fenetre?.type === 'code'
+                    ? 'Modifier le code d’entrée'
                   : fenetre?.type === 'telegram'
                     ? 'Code OTP de connexion'
                   : fenetre?.type === 'identifiants'
@@ -525,6 +527,15 @@ export function Utilisateurs() {
               setFenetre(null);
               void chargerOtp();
             }}
+          />
+        )}
+        {fenetre?.type === 'code' && (
+          <FormulaireCodeEntree
+            identifiant={identifiantAffiche(d.profils[fenetre.membre.user_id]?.email)}
+            nom={d.profils[fenetre.membre.user_id]?.nom_complet || undefined}
+            onValider={(code) =>
+              redonnerCode(d.profils[fenetre.membre.user_id]?.email ?? '', d.profils[fenetre.membre.user_id]?.nom_complet ?? undefined, code)
+            }
           />
         )}
         {fenetre?.type === 'motdepasse' && (
@@ -881,6 +892,57 @@ function FormulaireMotDePasse({
           </button>
         </div>
       )}
+    </form>
+  );
+}
+
+/** Nouveau code d'entrée (4 chiffres) : la gérante le choisit ou le fait générer ; il est provisoire. */
+export function FormulaireCodeEntree({
+  identifiant,
+  nom,
+  onValider,
+}: {
+  identifiant: string;
+  nom?: string;
+  onValider: (code: string) => Promise<string | null>;
+}) {
+  const [code, setCode] = useState(genererCodeProvisoire);
+  const [erreur, setErreur] = useState('');
+  const [envoi, setEnvoi] = useState(false);
+  async function soumettre(e: FormEvent) {
+    e.preventDefault();
+    if (envoi) return;
+    if (!codeEntreeValide(code)) return setErreur('4 chiffres, sans chiffres tous identiques ni suite (1234, 4321…).');
+    setEnvoi(true);
+    setErreur((await onValider(code)) ?? '');
+    setEnvoi(false);
+  }
+  return (
+    <form className="formulaire" onSubmit={soumettre}>
+      <p>
+        Nouveau code d’entrée pour <strong>{nom ? `${nom} (${identifiant})` : identifiant}</strong>. L’ancien ne marchera plus ; ce code est
+        provisoire : la personne choisit le sien à sa prochaine connexion.
+      </p>
+      <Alerte>{erreur}</Alerte>
+      <Champ label="Code d’entrée (4 chiffres)">
+        <div className="champ-avec-bouton">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            inputMode="numeric"
+            pattern="[0-9]{4}"
+            maxLength={4}
+            required
+            autoComplete="off"
+          />
+          <button type="button" className="bouton bouton-discret" onClick={() => setCode(genererCodeProvisoire())}>
+            Générer
+          </button>
+        </div>
+      </Champ>
+      <button className="bouton bouton-principal bouton-plein" disabled={envoi}>
+        {envoi ? 'Enregistrement…' : 'Enregistrer le nouveau code'}
+      </button>
     </form>
   );
 }
