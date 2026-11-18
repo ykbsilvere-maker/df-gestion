@@ -62,3 +62,24 @@ describe('Code de connexion Telegram', () => {
     expect(await enSession(carine, S(3), visibles)).toBe(1);
   });
 });
+
+describe('Robot Telegram DF Gestion', () => {
+  it('lien d’activation : le code n’est exigé qu’une fois le Telegram relié ; 2 h sans activité referment la session', async () => {
+    await pool.query(`select public.telegram_robot_enregistrer('123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef1234', 'dfgestion_test_bot', 'DF Gestion', 'secret', $1)`, [alice]);
+    const lien = await enSession(alice, S(9), (q) => rpc<{ lien: string }>(q, 'public.otp_lien($1, $2)', [org, carine]));
+    expect(lien.lien).toMatch(/^https:\/\/t\.me\/dfgestion_test_bot\?start=[a-f0-9]{32}$/);
+    expect(await enSession(carine, S(10), visibles)).toBe(1); // pas encore relié : rien n'est exigé
+    const code = lien.lien.split('start=')[1]!;
+    const r = (await pool.query(`select public.telegram_relier($1, 4242, '@carine_k') r`, [code])).rows[0].r as { ok: boolean };
+    expect(r.ok).toBe(true);
+    expect(((await pool.query(`select public.telegram_relier($1, 1, 'x') r`, [code])).rows[0].r as { ok: boolean }).ok).toBe(false);
+    expect(await enSession(carine, S(11), visibles)).toBe(0);
+    await pool.query(`update prive.otp_codes set envoye_le = envoye_le - interval '20 minutes'`);
+    expect((await enSession(carine, S(11), (q) => rpc<{ statut: string }>(q, 'public.otp_envoyer($1)', [org]))).statut).toBe('envoye');
+    await pool.query(`update prive.otp_codes set code_hash = prive.hash_jeton($1 || ':654321') where session_id = $1`, [S(11)]);
+    await enSession(carine, S(11), (q) => q(`select public.otp_verifier($1, '654321')`, [org]));
+    expect(await enSession(carine, S(11), visibles)).toBe(1);
+    await pool.query(`update prive.sessions_otp set vu_le = now() - interval '3 hours' where session_id = $1`, [S(11)]);
+    expect(await enSession(carine, S(11), visibles)).toBe(0);
+  });
+});

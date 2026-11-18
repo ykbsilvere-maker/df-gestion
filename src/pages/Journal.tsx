@@ -21,7 +21,7 @@ const FAMILLES: { valeur: string; libelle: string }[] = [
   { valeur: 'commande_web.', libelle: 'Commandes en ligne (suivi complet)' },
   { valeur: 'appareil.', libelle: 'Appareils approuvés' },
   { valeur: 'cle_acces.', libelle: 'Clés d’accès' },
-  { valeur: 'otp.', libelle: 'Codes de connexion Telegram' },
+  { valeur: 'otp.', libelle: 'Codes OTP de connexion' },
   { valeur: 'credits', libelle: 'Crédits clients et relances' },
   { valeur: 'encaissements_creances.', libelle: 'Règlements de clients' },
   { valeur: 'produits.', libelle: 'Articles du catalogue' },

@@ -3,6 +3,13 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.16.** **Robot Telegram « DF Gestion » et écran OTP simplifié** (migration 043, fonction « telegram »).
+L'administrateur crée son robot avec @BotFather et colle le jeton dans *Administration › Robot Telegram* : nom, description
+et logo sont réglés automatiquement, le jeton reste sur le serveur. Pour chaque personne, la gérante crée un lien d'activation
+(t.me/<robot>?start=…) : un toucher sur « Démarrer » relie son Telegram, et c'est ce robot qui envoie les codes OTP.
+L'écran de connexion se limite à « Entrez le code OTP » (6 cases) et « Renvoyer le code ». Une connexion validée se
+referme après **2 heures sans activité**.
+
 **Version 3.15.** **Code de connexion par Telegram** (migration 042). La gérante principale (ou l'administrateur
 général) crée l'accès de la personne — mot de passe provisoire ou code d'entrée — et renseigne son Telegram
 (*Utilisateurs › ✈️ Activer le code Telegram*, ou dès la création). À chaque connexion, après le mot de passe, un code à

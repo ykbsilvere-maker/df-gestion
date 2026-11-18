@@ -43,11 +43,11 @@ export function Utilisateurs() {
   const { organisation, peut, session, adminGeneral } = useSession();
   // Code de connexion Telegram : la gérante principale (ou l'administrateur général) le règle.
   const peutTelegram = peut('utilisateurs.administrer') || adminGeneral;
-  const [otp, setOtp] = useState<Record<string, { telegram: string; actif: boolean }>>({});
+  const [otp, setOtp] = useState<Record<string, { telegram: string | null; actif: boolean; en_attente_liaison?: boolean }>>({});
   const chargerOtp = useCallback(async () => {
     if (!organisation?.organisation_id || !(peut('utilisateurs.administrer') || adminGeneral)) return;
     const { data } = await supabase.rpc('otp_liste', { p_org: organisation.organisation_id });
-    if (data) setOtp(data as Record<string, { telegram: string; actif: boolean }>);
+    if (data) setOtp(data as Record<string, { telegram: string | null; actif: boolean; en_attente_liaison?: boolean }>);
   }, [organisation?.organisation_id, peut, adminGeneral]);
   useEffect(() => {
     void chargerOtp();
@@ -127,13 +127,26 @@ export function Utilisateurs() {
     return true;
   }
 
-  /** Telegram renseigné à la création : le code de connexion sera demandé dès la première connexion. */
-  async function activerTelegram(email: string, telegram?: string): Promise<string> {
-    if (!org || !telegram?.trim()) return '';
-    const { error } = await supabase.rpc('otp_configurer', { p_org: org, p_user: null, p_telegram: telegram.trim(), p_actif: true, p_email: email });
+  /**
+   * Code OTP demandé dès la création : avec le robot DF Gestion, un lien d'activation à joindre aux
+   * identifiants ; sinon (pas encore de robot), le nom Telegram saisi (CallMeBot).
+   */
+  async function activerOtp(email: string, v: ValeursRole): Promise<{ msg: string; lien?: string }> {
+    if (!org || !v.otp) return { msg: '' };
+    const robot = await supabase.rpc('telegram_robot_etat');
+    if ((robot.data as { configure?: boolean } | null)?.configure) {
+      const { data, error } = await supabase.rpc('otp_lien', { p_org: org, p_user: null, p_email: email });
+      await chargerOtp();
+      if (error) return { msg: ` Code OTP non activé : ${messageErreur(error)}` };
+      return { msg: ' Code OTP : joignez le lien d’activation aux identifiants.', lien: (data as { lien: string }).lien };
+    }
+    if (!v.telegram?.trim()) return { msg: ' Code OTP non activé : nom Telegram manquant.' };
+    const { error } = await supabase.rpc('otp_configurer', { p_org: org, p_user: null, p_telegram: v.telegram.trim(), p_actif: true, p_email: email });
     await chargerOtp();
-    return error ? ` Code Telegram non activé : ${messageErreur(error)}` : ' Code Telegram activé : il sera demandé à chaque connexion.';
+    return { msg: error ? ` Code OTP non activé : ${messageErreur(error)}` : ' Code OTP activé : il sera demandé à chaque connexion.' };
   }
+  const avecLien = (texte: string, lien?: string) =>
+    lien ? `${texte}\n\n🔐 Code OTP : ouvrez ce lien sur votre téléphone et touchez « Démarrer » (une seule fois) :\n${lien}` : texte;
 
   /** Nouveau code d'entrée provisoire (4 chiffres) pour un employé par matricule. */
   async function redonnerCode(email: string, nom?: string) {
@@ -232,7 +245,11 @@ export function Utilisateurs() {
                       <strong>{p?.nom_complet || '—'}</strong>
                       {soiMeme && <span className="mention"> (vous)</span>}
                       <div className="secondaire">{identifiantAffiche(p?.email)}</div>
-                      {otp[m.user_id]?.actif && <div className="secondaire petit">✈️ code Telegram {otp[m.user_id]!.telegram}</div>}
+                      {otp[m.user_id]?.actif ? (
+                        <div className="secondaire petit">🔐 code OTP {otp[m.user_id]!.telegram ?? ''}</div>
+                      ) : otp[m.user_id]?.en_attente_liaison ? (
+                        <div className="secondaire petit">🔗 code OTP : lien envoyé, en attente de « Démarrer »</div>
+                      ) : null}
                     </td>
                     <td>
                       {libelleRole[m.role_code]}
@@ -262,7 +279,7 @@ export function Utilisateurs() {
                       <td className="cellule-actions">
                         {peutTelegram && m.actif && !protege && (
                           <button className="bouton-lien" onClick={() => setFenetre({ type: 'telegram', membre: m })}>
-                            {otp[m.user_id]?.actif ? '✈️ Code Telegram' : '✈️ Activer le code Telegram'}
+                            {otp[m.user_id]?.actif ? '🔐 Code OTP' : '🔐 Activer le code OTP'}
                           </button>
                         )}
                         {!soiMeme && !protege && (
@@ -366,7 +383,7 @@ export function Utilisateurs() {
                 : fenetre?.type === 'motdepasse'
                   ? 'Mot de passe'
                   : fenetre?.type === 'telegram'
-                    ? 'Code de connexion Telegram'
+                    ? 'Code OTP de connexion'
                   : fenetre?.type === 'identifiants'
                     ? 'Identifiants à transmettre'
                     : 'Droits individuels'
@@ -407,17 +424,20 @@ export function Utilisateurs() {
                   setErreur(`Accès créé, mais le code d’entrée n’a pas pu être enregistré : ${messageErreur(pin.error)}. Utilisez « Code d’entrée » sur sa ligne.`);
                   return setFenetre(null);
                 }
-                const tgMsg = await activerTelegram(inv.data as string, v.telegram);
-                setInfo(`Accès créé pour le matricule ${v.matricule.toUpperCase()}.${tgMsg}`);
+                const o = await activerOtp(inv.data as string, v);
+                setInfo(`Accès créé pour le matricule ${v.matricule.toUpperCase()}.${o.msg}`);
                 return setFenetre({
                   type: 'identifiants',
-                  texte: messageAccesEmploye({
-                    nom: v.nom,
-                    entreprise: organisation.nom,
-                    code: acces?.code_acces ?? '',
-                    matricule: v.matricule.toUpperCase(),
-                    codeProvisoire: v.motDePasse,
-                  }),
+                  texte: avecLien(
+                    messageAccesEmploye({
+                      nom: v.nom,
+                      entreprise: organisation.nom,
+                      code: acces?.code_acces ?? '',
+                      matricule: v.matricule.toUpperCase(),
+                      codeProvisoire: v.motDePasse,
+                    }),
+                    o.lien,
+                  ),
                 });
               }
               const ok = await appeler(
@@ -436,11 +456,11 @@ export function Utilisateurs() {
               if (!v.creerAcces) return setFenetre(null);
               const r = await gererCompte('creer', v.email, v.motDePasse, v.nom);
               if (r.ok) {
-                const tgMsg = await activerTelegram(v.email, v.telegram);
-                setInfo(`Accès créé pour ${v.email}.${tgMsg}`);
+                const o = await activerOtp(v.email, v);
+                setInfo(`Accès créé pour ${v.email}.${o.msg}`);
                 setFenetre({
                   type: 'identifiants',
-                  texte: messageIdentifiants({ nom: v.nom, entreprise: organisation.nom, email: v.email, motDePasse: v.motDePasse }),
+                  texte: avecLien(messageIdentifiants({ nom: v.nom, entreprise: organisation.nom, email: v.email, motDePasse: v.motDePasse }), o.lien),
                 });
               } else {
                 setInfo(
@@ -585,7 +605,9 @@ export function Utilisateurs() {
 }
 
 interface ValeursRole {
-  /** Nom d'utilisateur Telegram : code de connexion demandé à chaque connexion (facultatif). */
+  /** Code OTP par Telegram à chaque connexion. */
+  otp?: boolean;
+  /** Nom d'utilisateur Telegram (seulement sans robot DF Gestion configuré). */
   telegram?: string;
   typeAcces: 'matricule' | 'email';
   matricule: string;
@@ -629,6 +651,11 @@ function FormulaireRole({
     caisses: initial?.caisses ?? [],
   });
   const [envoi, setEnvoi] = useState(false);
+  // Robot Telegram DF Gestion configuré ? (sinon, le nom Telegram de la personne est demandé)
+  const [robotOtp, setRobotOtp] = useState<boolean | null>(null);
+  useEffect(() => {
+    void supabase.rpc('telegram_robot_etat').then(({ data }) => setRobotOtp(!!(data as { configure?: boolean } | null)?.configure));
+  }, []);
   useEffect(() => {
     if (matriculeSuivant) setV((x) => (x.matricule ? x : { ...x, matricule: matriculeSuivant }));
   }, [matriculeSuivant]);
@@ -734,9 +761,18 @@ function FormulaireRole({
         </>
       )}
       {avecEmail && (parMatricule || v.creerAcces) && (
-        <Champ label="Telegram de la personne (code de connexion)" aide="Facultatif. Rempli : à chaque connexion, après le mot de passe, un code à 6 chiffres part sur ce Telegram. La personne doit avoir envoyé /start à @CallMeBot_txtbot.">
-          <input value={v.telegram ?? ''} onChange={(e) => setV({ ...v, telegram: e.target.value })} placeholder="@awa_kone" autoComplete="off" autoCapitalize="none" />
-        </Champ>
+        <>
+          <label className="case">
+            <input type="checkbox" checked={!!v.otp} onChange={(e) => setV({ ...v, otp: e.target.checked })} />
+            🔐 Demander un code OTP (Telegram) à chaque connexion
+          </label>
+          {v.otp && robotOtp === false && (
+            <Champ label="Nom d’utilisateur Telegram" aide="Le robot DF Gestion n’est pas encore configuré : la personne doit avoir envoyé /start à @CallMeBot_txtbot.">
+              <input value={v.telegram ?? ''} onChange={(e) => setV({ ...v, telegram: e.target.value })} placeholder="@awa_kone" autoComplete="off" autoCapitalize="none" required />
+            </Champ>
+          )}
+          {v.otp && robotOtp && <p className="champ-aide">Un lien d’activation sera joint aux identifiants : la personne l’ouvre et touche « Démarrer ».</p>}
+        </>
       )}
       <Champ label="Rôle">
         <select value={v.role} onChange={(e) => setV({ ...v, role: e.target.value })}>

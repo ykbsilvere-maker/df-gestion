@@ -1,4 +1,4 @@
-import { ClesAcces } from './Acces';
+import { ClesAcces, RobotTelegram } from './Acces';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -283,6 +283,7 @@ export function Administration() {
         </section>
       </div>
 
+      <RobotTelegram />
       <ClesAcces org={null} membres={[]} />
 
       <Fenetre

@@ -150,7 +150,7 @@ export function SuiviGerante({ org, activites, appareils }: { org: string | unde
   }
 
   async function autoriser(k: { id: string; nom: string | null }) {
-    if (!window.confirm(`Autoriser la connexion de ${k.nom} sans son code Telegram ? Faites-le seulement si vous êtes sûre que c’est bien elle (par exemple au téléphone).`)) return;
+    if (!window.confirm(`Autoriser la connexion de ${k.nom} sans son code OTP ? Faites-le seulement si vous êtes sûre que c’est bien elle (par exemple au téléphone).`)) return;
     const { error } = await supabase.rpc('otp_autoriser', { p_code_id: k.id });
     if (error) return ajouter({ cle: `ek${k.id}`, icone: '⚠️', titre: 'Autorisation non enregistrée', detail: error.message });
     setConnexions((l) => l.filter((x) => x.id !== k.id));
@@ -180,7 +180,7 @@ export function SuiviGerante({ org, activites, appareils }: { org: string | unde
         <div key={k.id} className="suivi-toast suivi-appareil" role="status">
           <span className="suivi-icone" aria-hidden>🔐</span>
           <span className="suivi-texte">
-            <strong>{k.nom} attend son code Telegram</strong>
+            <strong>{k.nom} attend son code OTP</strong>
             <span>Si elle ne le reçoit pas, vous pouvez autoriser sa connexion.</span>
             <span className="suivi-actions">
               <button type="button" onClick={() => setMasques((m) => [...m, k.id])}>Masquer</button>

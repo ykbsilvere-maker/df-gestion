@@ -303,6 +303,33 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
     },
     [orgCourante, verifierAppareil],
   );
+  // Code OTP : la connexion se referme après 2 heures sans activité. On signale l'activité réelle
+  // (toucher, clavier) au serveur toutes les 5 minutes au plus ; au retour sur l'application, on revérifie.
+  useEffect(() => {
+    if (!uid || !orgCourante) return;
+    let actif = false;
+    const marquer = () => {
+      actif = true;
+    };
+    const id = window.setInterval(() => {
+      if (!actif) return;
+      actif = false;
+      void supabase.rpc('otp_activite', { p_org: orgCourante });
+    }, 5 * 60 * 1000);
+    const retour = () => {
+      if (document.visibilityState === 'visible') void verifierAppareil();
+    };
+    window.addEventListener('pointerdown', marquer, { passive: true });
+    window.addEventListener('keydown', marquer);
+    document.addEventListener('visibilitychange', retour);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('pointerdown', marquer);
+      window.removeEventListener('keydown', marquer);
+      document.removeEventListener('visibilitychange', retour);
+    };
+  }, [uid, orgCourante, verifierAppareil]);
+
   const statutAppareil: StatutAppareil = !uid || !orgCourante ? 'libre' : appareil?.cle === cleAppareil ? appareil.statut : 'verification';
 
   const valeur: EtatSession = {
