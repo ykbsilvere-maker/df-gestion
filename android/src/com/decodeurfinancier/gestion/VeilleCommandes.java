@@ -150,8 +150,9 @@ public class VeilleCommandes extends JobService {
         JSONObject o = new JSONObject(corps);
         boolean gerante = o.optBoolean("gerante", false);
         int nombre = o.optInt("nombre", 0);
-        int aAffecter = gerante ? o.optInt("a_affecter", 0) : 0;
-        int enAttente = gerante ? 0 : o.optInt("en_attente", 0);
+        boolean affecteur = gerante || o.optBoolean("affecteur", false);
+        int aAffecter = affecteur ? o.optInt("a_affecter", 0) : 0;
+        int enAttente = affecteur ? 0 : o.optInt("en_attente", 0);
         int aAccepter = o.optInt("a_accepter", 0);
         int aLivrer = gerante ? o.optInt("a_livrer", 0) : 0;
         int avantN = p.getInt("nombre", 0), avantA = p.getInt("a_affecter", 0), avantE = p.getInt("en_attente", 0);

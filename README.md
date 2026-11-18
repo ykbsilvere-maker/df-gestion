@@ -3,6 +3,11 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.13.** **Droit d'affecter délégué** (migration 040). Seule la gérante affecte les commandes en ligne ; dans
+*Boutique en ligne › Commandes*, carte « Qui peut affecter les commandes ? », elle peut donner ce seul droit à une caissière
+de confiance (« boutique.affecter »). Celle-ci est prévenue des commandes à affecter et peut les confier ; paiements,
+livraisons et vitrine restent à la gérante. La caissière qui reçoit l'affectation accepte puis prépare, comme avant.
+
 **Version 3.12.** **Circuit des commandes, alertes Telegram, classeur Excel dynamique** (migration 039).
 La gérante affecte ; la caissière doit **accepter** la commande (la fenêtre revient **toutes les 2 minutes** avec son et
 vibration tant qu'elle n'a pas accepté), la rassemble puis la marque « prête ». **Retrait** : la caissière remet et encaisse.

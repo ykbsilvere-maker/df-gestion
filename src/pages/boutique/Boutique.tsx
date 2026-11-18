@@ -101,7 +101,7 @@ export function StatutCommandePastille({ s }: { s: StatutCommande }) {
 }
 
 export function CommandesWeb() {
-  const { organisation } = useSession();
+  const { organisation, peut } = useSession();
   const org = organisation!.organisation_id;
   const naviguer = useNavigate();
   const [filtre, setFiltre] = useState('en_cours');
@@ -246,7 +246,78 @@ export function CommandesWeb() {
           </div>
         )}
       </section>
+      {peut('boutique.valider') && <EquipeAffectation org={org} />}
     </>
+  );
+}
+
+interface MembreAffectation {
+  user_id: string;
+  nom: string;
+  role: string;
+  gerante: boolean;
+  affecteur: boolean;
+  moi: boolean;
+}
+
+/** La gérante choisit qui, en plus d'elle, peut affecter les commandes en ligne. */
+function EquipeAffectation({ org }: { org: string }) {
+  const [equipe, setEquipe] = useState<MembreAffectation[] | null>(null);
+  const [erreur, setErreur] = useState('');
+  const [enCours, setEnCours] = useState<string | null>(null);
+  useEffect(() => {
+    void supabase.rpc('affecteurs_commandes', { p_org: org }).then(({ data, error }) => {
+      if (error) setErreur(messageErreur(error));
+      else setEquipe((data as MembreAffectation[]) ?? []);
+    });
+  }, [org]);
+  async function basculer(m: MembreAffectation) {
+    setEnCours(m.user_id);
+    setErreur('');
+    const { data, error } = await supabase.rpc('affecteur_definir', { p_org: org, p_user: m.user_id, p_actif: !m.affecteur });
+    setEnCours(null);
+    if (error) return setErreur(messageErreur(error));
+    setEquipe((data as MembreAffectation[]) ?? []);
+  }
+  const autres = (equipe ?? []).filter((m) => !m.gerante);
+  return (
+    <section className="carte equipe-affectation">
+      <h2>👥 Qui peut affecter les commandes ?</h2>
+      <p className="secondaire">
+        Vous affectez chaque commande à la caissière qui la prépare. Vous pouvez aussi donner ce droit à une caissière de confiance : elle est
+        prévenue des nouvelles commandes et peut les confier (à elle-même ou à une collègue). Les paiements, les livraisons et la vitrine restent à vous.
+      </p>
+      <Alerte>{erreur}</Alerte>
+      {!equipe ? (
+        <p className="secondaire">Chargement de l’équipe…</p>
+      ) : (
+        <ul className="liste-affecteurs">
+          {equipe.filter((m) => m.gerante).map((m) => (
+            <li key={m.user_id}>
+              <span><strong>{m.nom}</strong>{m.moi ? ' (vous)' : ''} <small className="secondaire">gère la boutique</small></span>
+              <Pastille ton="vert">affecte</Pastille>
+            </li>
+          ))}
+          {autres.length === 0 && <li className="secondaire">Aucune autre personne n’a accès à la boutique en ligne.</li>}
+          {autres.map((m) => (
+            <li key={m.user_id}>
+              <span><strong>{m.nom}</strong> <small className="secondaire">{m.role.replace('_', ' ')}</small></span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={m.affecteur}
+                disabled={enCours === m.user_id}
+                className={`commutateur-en-ligne ${m.affecteur ? 'allume' : 'eteint'}`}
+                onClick={() => void basculer(m)}
+              >
+                <span className="commutateur-piste" aria-hidden><span className="commutateur-bouton" /></span>
+                <span className="commutateur-texte">{m.affecteur ? 'Peut affecter' : 'Ne peut pas affecter'}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -387,6 +458,7 @@ export function FicheCommandeWeb() {
   const [motif, setMotif] = useState<null | { pour: 'annulee' | 'paiement'; texte: string }>(null);
   const [enCours, setEnCours] = useState(false);
   const peutValider = peut('boutique.valider');
+  const peutAffecter = peutValider || peut('boutique.affecter');
   const { identite } = useIdentite();
   const { imprimer } = useImpression();
 
@@ -480,7 +552,7 @@ export function FicheCommandeWeb() {
           ))}
         </ol>
         {c.statut === 'annulee' && <p className="texte-negatif">Annulée le {heure(c.annulee_le)} — {c.motif}</p>}
-        {!termine && peutValider && !c.vente && (
+        {!termine && peutAffecter && !c.vente && (
           <Affectation
             c={c}
             onFait={(t) => {
@@ -489,7 +561,7 @@ export function FicheCommandeWeb() {
             }}
           />
         )}
-        {!termine && !peutValider && c.caissier_nom && <p className="secondaire">👤 Affectée à {c.caissier_nom}</p>}
+        {!termine && !peutAffecter && c.caissier_nom && <p className="secondaire">👤 Affectée à {c.caissier_nom}</p>}
         {!termine && !peutValider && c.mode === 'livraison' && c.statut === 'prete' && (
           <p className="attente-affectation">🛵 Commande prête : <b>la gérante est prévenue</b> et confirme l’envoi. L’argent rapporté s’encaisse ensuite à la caisse.</p>
         )}

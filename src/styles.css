@@ -2594,3 +2594,9 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .resultat-essai ul { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 4px; }
 .resultat-essai li.ok { color: #15803d; }
 .resultat-essai li.ko { color: #b91c1c; }
+
+/* v3.13 — droit d'affecter délégué */
+.liste-affecteurs { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.liste-affecteurs li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 10px; background: #f7f7f8; flex-wrap: wrap; }
+.equipe-affectation .commutateur-en-ligne.eteint .commutateur-piste { background: #d1d5db; }
+.equipe-affectation .commutateur-en-ligne.eteint .commutateur-texte { color: #6b7280; }

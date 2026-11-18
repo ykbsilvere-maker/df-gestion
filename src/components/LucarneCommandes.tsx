@@ -38,6 +38,8 @@ type Etat = {
   a_accepter_liste?: AAccepter[];
   a_livrer?: number;
   gerante: boolean;
+  /** Gérante, ou caissière à qui la gérante a donné le droit d'affecter. */
+  affecteur?: boolean;
 };
 type Compteurs = { nombre: number; a_affecter: number; en_attente: number; a_accepter: number; a_livrer: number };
 
@@ -66,8 +68,8 @@ function lecture(e: Etat) {
   const n = (v: unknown) => Number(v) || 0;
   const c: Compteurs = {
     nombre: n(e.nombre),
-    a_affecter: e.gerante ? n(e.a_affecter) : 0,
-    en_attente: e.gerante ? 0 : n(e.en_attente),
+    a_affecter: e.gerante || e.affecteur ? n(e.a_affecter) : 0,
+    en_attente: e.gerante || e.affecteur ? 0 : n(e.en_attente),
     a_accepter: n(e.a_accepter),
     a_livrer: e.gerante ? n(e.a_livrer) : 0,
   };
@@ -263,7 +265,7 @@ export function LucarneCommandes({ org, actif }: { org: string | undefined; acti
     fermer();
     naviguer(aAffecter > 0 || aLivrer > 0 ? '/boutique' : '/caisse?commandes=1');
   };
-  const gerante = etat.gerante;
+  const gerante = etat.gerante || !!etat.affecteur;
 
   return (
     <div className={`lucarne ${sortie ? 'lucarne-sortie' : ''}`} role="alert" aria-live="assertive">
