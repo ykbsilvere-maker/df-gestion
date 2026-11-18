@@ -38,6 +38,8 @@ async function api(jeton: string, methode: string, corps: Record<string, unknown
   return (await r.json().catch(() => ({ ok: false, description: `HTTP ${r.status}` }))) as { ok: boolean; result?: unknown; description?: string };
 }
 
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 function aleatoire(n = 24): string {
   const o = new Uint8Array(n);
   crypto.getRandomValues(o);
@@ -72,10 +74,10 @@ Deno.serve(async (req) => {
       const { data } = await service.rpc('telegram_relier', { p_code: code, p_chat_id: chat, p_nom_telegram: nomTg });
       const r = data as { ok: boolean; nom?: string; entreprise?: string } | null;
       message = r?.ok
-        ? `✅ Bonjour ${r.nom ?? ''} !\nCe Telegram est relié à votre accès <b>${r.entreprise ?? 'DF Gestion'}</b>.\nVos codes OTP de connexion arriveront ici.`
+        ? `✅ Bonjour ${esc(r.nom ?? '')} !\nCe Telegram est relié à votre accès <b>${esc(r.entreprise ?? 'DF Gestion')}</b>.\nVos codes OTP de connexion arriveront ici.`
         : '⚠️ Ce lien d’activation n’est plus valable. Demandez-en un nouveau à votre gérante.';
     } else {
-      message = `👋 Bonjour ! Je suis le robot <b>${robot.nom ?? 'DF Gestion'}</b>.\nJ’envoie les codes OTP de connexion. Pour être relié, ouvrez le lien d’activation remis par votre gérante.`;
+      message = `👋 Bonjour ! Je suis le robot <b>${esc(robot.nom ?? 'DF Gestion')}</b>.\nJ’envoie les codes OTP de connexion. Pour être relié, ouvrez le lien d’activation remis par votre gérante.`;
     }
     await api(robot.jeton, 'sendMessage', { chat_id: chat, text: message, parse_mode: 'HTML' });
     return new Response('ok');
