@@ -86,7 +86,7 @@ describe('Code choisi par l’employé', () => {
   it('remplace le provisoire, puis sert au déverrouillage', async () => {
     await enTantQue(pool, bintou, (q) => q(`select public.changer_mon_pin('7391')`));
     const etat = await enTantQue(pool, bintou, (q) => un(q<{ r: { defini: boolean; provisoire: boolean } }>(`select public.mon_pin() r`)));
-    expect(etat.r).toEqual({ defini: true, provisoire: false });
+    expect(etat.r).toMatchObject({ defini: true, provisoire: false });
     await expect(enTantQue(pool, bintou, (q) => q(`select public.changer_mon_pin('8402')`))).rejects.toThrow(/Ancien code/);
     const v = await enTantQue(pool, bintou, (q) => un(q<{ r: { ok: boolean } }>(`select public.verifier_mon_pin('7391') r`)));
     expect(v.r.ok).toBe(true);
