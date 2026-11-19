@@ -3,6 +3,13 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.18.** **Identifiant sans e-mail, OTP après 4 h d'inactivité, changement mensuel** (migration 045).
+L'administrateur crée le gérant principal avec un identifiant généré d'après son nom (ex. awa.kone27) et un mot de passe
+provisoire ; l'adresse e-mail reste possible. Après 4 heures sans activité, la session se referme : la personne ressaisit
+ses accès puis le code OTP reçu sur Telegram. Le code OTP du gérant principal est géré uniquement par l'administrateur
+(*Administration › 🔐 Code OTP du gérant*) ; celui des employés par la gérante principale. Mots de passe et codes d'entrée
+se changent tous les 30 jours (le nouveau doit être différent de l'ancien).
+
 **Version 3.17.** **Modifier les codes d'entrée et réinitialiser les mots de passe sans e-mail** (migration 044).
 Dans *Utilisateurs*, la gérante principale choisit elle-même (ou fait générer) le nouveau code d'entrée de 4 chiffres d'un
 employé par matricule, ou un mot de passe provisoire pour un compte par e-mail ; les identifiants sont à transmettre

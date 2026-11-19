@@ -33,6 +33,9 @@ interface EtatSession {
   /** Code d'entrée de 4 chiffres défini pour ce compte (sert au déverrouillage). */
   codeEntreeDefini: boolean;
   rechargerCodeEntree: () => Promise<void>;
+  /** Mot de passe ou code d'entrée de plus de 30 jours : à changer avant de continuer. */
+  echeanceDepassee: boolean;
+  rechargerMotDePasse: () => Promise<void>;
   rechargerPlateforme: () => Promise<void>;
   chargement: boolean;
   organisations: MonOrganisation[];
@@ -58,11 +61,16 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
   const [chargement, setChargement] = useState(true);
   const [organisations, setOrganisations] = useState<MonOrganisation[]>([]);
   const [plateforme, setPlateforme] = useState<InfoPlateforme | null>(null);
-  const [codeEntree, setCodeEntree] = useState<{ defini: boolean; provisoire: boolean } | null>(null);
+  const [codeEntree, setCodeEntree] = useState<{ defini: boolean; provisoire: boolean; expire?: boolean } | null>(null);
+  const [mdpExpire, setMdpExpire] = useState(false);
+  const rechargerMotDePasse = useCallback(async () => {
+    const { data, error } = await supabase.rpc('mon_mot_de_passe');
+    if (!error) setMdpExpire((data as { expire?: boolean } | null)?.expire === true);
+  }, []);
   const rechargerCodeEntree = useCallback(async () => {
     const { data, error } = await supabase.rpc('mon_pin');
     // Sans réseau : on garde l'état connu (le serveur revérifie à chaque connexion).
-    if (!error) setCodeEntree(data as { defini: boolean; provisoire: boolean });
+    if (!error) setCodeEntree(data as { defini: boolean; provisoire: boolean; expire?: boolean });
   }, []);
   const [orgId, setOrgId] = useState<string | null>(() => {
     try {
@@ -159,6 +167,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
           rechargerOrganisations().catch(() => appliquerOrganisations([])),
           rechargerPlateforme(),
           rechargerCodeEntree().catch(() => undefined),
+          rechargerMotDePasse().catch(() => undefined),
         ]);
         if (actif) setChargement(false);
       }, 0);
@@ -167,7 +176,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
       actif = false;
       data.subscription.unsubscribe();
     };
-  }, [rechargerOrganisations, rechargerPlateforme, appliquerOrganisations, rechargerCodeEntree]);
+  }, [rechargerOrganisations, rechargerPlateforme, appliquerOrganisations, rechargerCodeEntree, rechargerMotDePasse]);
 
   // Droits modifiés par le propriétaire : appliqués sur cet appareil en moins de 30 s,
   // et tout de suite au retour sur l'application ou au retour du réseau.
@@ -273,6 +282,16 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
         const { data: otp, error: e2 } = await supabase.rpc('otp_etat', { p_org: orgCourante });
         const o = otp as { exige?: boolean; verifie?: boolean } | null;
         if (!e2 && o?.exige && !o.verifie) statut = 'code_requis';
+        // 4 heures sans activité : on referme la session, la personne ressaisit tous ses accès.
+        if (!e2 && (o as { expiree?: boolean } | null)?.expiree) {
+          try {
+            sessionStorage.setItem('dfg_motif_sortie', 'Plus de 4 heures sans activité : reconnectez-vous, puis saisissez le code OTP reçu.');
+          } catch {
+            /* rien */
+          }
+          void deconnecter();
+          return 'code_requis' as StatutAppareil;
+        }
       }
       try {
         localStorage.setItem(cache, statut);
@@ -282,7 +301,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
     }
     setAppareil({ cle: cleAppareil, statut });
     return statut;
-  }, [uid, orgCourante, cleAppareil]);
+  }, [uid, orgCourante, cleAppareil, deconnecter]);
   useEffect(() => {
     if (!uid || !orgCourante) return;
     void verifierAppareil();
@@ -303,7 +322,7 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
     },
     [orgCourante, verifierAppareil],
   );
-  // Code OTP : la connexion se referme après 2 heures sans activité. On signale l'activité réelle
+  // Code OTP : la connexion se referme après 4 heures sans activité. On signale l'activité réelle
   // (toucher, clavier) au serveur toutes les 5 minutes au plus ; au retour sur l'application, on revérifie.
   useEffect(() => {
     if (!uid || !orgCourante) return;
@@ -336,8 +355,10 @@ export function FournisseurSession({ children }: { children: ReactNode }) {
     session,
     plateforme,
     adminGeneral: !!plateforme?.je_suis_admin,
-    mdpProvisoire: session?.user.user_metadata?.mdp_provisoire === true,
+    mdpProvisoire: session?.user.user_metadata?.mdp_provisoire === true || (mdpExpire && !estAccesEmploye(session?.user.email)),
     codeAChoisir: estAccesEmploye(session?.user.email) && !!codeEntree && (!codeEntree.defini || codeEntree.provisoire),
+    echeanceDepassee: estAccesEmploye(session?.user.email) ? codeEntree?.expire === true : mdpExpire,
+    rechargerMotDePasse,
     codeEntreeDefini: !!codeEntree?.defini,
     rechargerCodeEntree,
     rechargerPlateforme,

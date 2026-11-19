@@ -1,6 +1,7 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { encoderCode, lireConfiguration } from './config';
+import { lireIdentifiant } from './acces';
 
 export interface ResultatCompte {
   ok: boolean;
@@ -60,9 +61,9 @@ export function messageIdentifiants(p: { nom?: string; entreprise?: string; emai
   return [
     `Bonjour${p.nom ? ` ${p.nom}` : ''},`,
     `Votre accès au logiciel Le Décodeur Financier${p.entreprise ? ` pour ${p.entreprise}` : ''} :`,
-    `• Identifiant : ${p.email}`,
+    `• Identifiant : ${lireIdentifiant(p.email) ?? p.email}`,
     `• Mot de passe provisoire : ${p.motDePasse}`,
-    'À la première connexion, vous choisirez votre propre mot de passe.',
+    'À la première connexion, vous choisirez votre propre mot de passe (à changer ensuite tous les mois).',
     ...(config
       ? ['', 'Si l’application demande sa configuration, collez ce code :', encoderCode(config)]
       : []),

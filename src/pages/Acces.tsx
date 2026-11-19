@@ -581,7 +581,7 @@ export function ReglageTelegram({
     <div className="formulaire">
       <p>
         À chaque connexion de <b>{nom}</b>, après son mot de passe ou son code d’entrée, un <b>code OTP</b> à 6 chiffres lui est envoyé par
-        le robot {robot.robot ?? 'Telegram'}. Sans ce code, rien ne s’ouvre ; après 2 heures sans activité, un nouveau code est demandé.
+        le robot {robot.robot ?? 'Telegram'}. Sans ce code, rien ne s’ouvre ; après 4 heures sans activité, il faut se reconnecter puis saisir un nouveau code.
       </p>
       {robot.configure ? (
         <>

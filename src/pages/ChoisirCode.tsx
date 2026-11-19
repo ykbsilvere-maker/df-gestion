@@ -12,7 +12,7 @@ import { MarqueDecodeur } from '../components/Marque';
  * possible ensuite depuis « Mon compte » (l'ancien code est alors demandé).
  */
 export function ChoisirCode() {
-  const { session, codeAChoisir, codeEntreeDefini, rechargerCodeEntree, deconnecter } = useSession();
+  const { session, codeAChoisir, codeEntreeDefini, echeanceDepassee, rechargerCodeEntree, deconnecter } = useSession();
   const naviguer = useNavigate();
   const changement = codeEntreeDefini && !codeAChoisir;
   const [etape, setEtape] = useState<'ancien' | 'nouveau' | 'confirmer'>(changement ? 'ancien' : 'nouveau');
@@ -74,6 +74,11 @@ export function ChoisirCode() {
           <span className={etape === 'confirmer' ? 'actif' : ''}>Confirmer</span>
         </div>
         <h1>{titres[etape]}</h1>
+        {echeanceDepassee && etape === 'nouveau' && (
+          <p className="secondaire">
+            <b>Votre code a plus d’un mois.</b> Pour votre sécurité, choisissez-en un nouveau, différent de l’ancien.
+          </p>
+        )}
         <p className="secondaire">
           {identifiantAffiche(session?.user.email)} — 4 chiffres que vous seul connaissez. Ce code vous sera demandé à chaque
           connexion et après 5 minutes sans activité. N’utilisez pas votre code Mobile Money.

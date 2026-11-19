@@ -15,6 +15,8 @@ import {
   emailEmploye,
   identifiantAffiche,
   lireAccesEmploye,
+  lireIdentifiant,
+  versEmailConnexion,
   marquerVerrou,
   memoriserCodeEntreprise,
   normaliserCode,
@@ -51,7 +53,7 @@ function oublier(email: string) {
 export function Connexion() {
   const [mode, setMode] = useState<Mode>('connexion');
   const [recents, setRecents] = useState<string[]>(lireRecents);
-  const [email, setEmail] = useState(() => (lireAccesEmploye(lireRecents()[0]) ? '' : (lireRecents()[0] ?? '')));
+  const [email, setEmail] = useState(() => (lireAccesEmploye(lireRecents()[0]) ? '' : (lireIdentifiant(lireRecents()[0]) ?? lireRecents()[0] ?? '')));
   // Employés : code entreprise + matricule + code secret ; gérant principal : adresse e-mail.
   const [type, setType] = useState<'employe' | 'email'>(() => {
     const dernier = lireRecents()[0];
@@ -65,7 +67,16 @@ export function Connexion() {
   const [nom, setNom] = useState('');
   const [cleAcces, setCleAcces] = useState('');
   const [erreur, setErreur] = useState('');
-  const [info, setInfo] = useState('');
+  const [info, setInfo] = useState(() => {
+    // Motif d'une déconnexion automatique (ex. 4 heures sans activité).
+    try {
+      const m = sessionStorage.getItem('dfg_motif_sortie') ?? '';
+      sessionStorage.removeItem('dfg_motif_sortie');
+      return m;
+    } catch {
+      return '';
+    }
+  });
   const [envoi, setEnvoi] = useState(false);
   const { apresConnexion, plateforme, rechargerPlateforme } = useSession();
   const naviguer = useNavigate();
@@ -116,7 +127,7 @@ export function Connexion() {
     setEnvoi(true);
     try {
       if (mode === 'connexion') {
-        const identifiant = parMatricule ? emailEmploye(codeEntreprise, matricule) : email.trim();
+        const identifiant = parMatricule ? emailEmploye(codeEntreprise, matricule) : versEmailConnexion(email);
         const { error } = await supabase.auth.signInWithPassword({ email: identifiant, password: motDePasse });
         if (error) {
           if (parMatricule && /invalid login|credentials/i.test(error.message))
@@ -175,6 +186,8 @@ export function Connexion() {
           setMode('connexion');
         }
       } else {
+        if (!email.includes('@'))
+          throw new Error('Compte sans adresse e-mail : demandez un nouveau mot de passe provisoire à votre administrateur (ou à votre gérante).');
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: `${window.location.origin}/nouveau-mot-de-passe`,
         });
@@ -239,14 +252,14 @@ export function Connexion() {
                         setEtape('code');
                       } else {
                         setType('email');
-                        setEmail(r);
+                        setEmail(lireIdentifiant(r) ?? r);
                       }
                     }}
                     title={identifiantAffiche(r)}
                   >
-                    <span className="compte-recent-initiale">{lireAccesEmploye(r) ? '#' : r.charAt(0).toUpperCase()}</span>
+                    <span className="compte-recent-initiale">{lireAccesEmploye(r) ? '#' : (lireIdentifiant(r) ?? r).charAt(0).toUpperCase()}</span>
                     <span className="compte-recent-email">
-                      {lireAccesEmploye(r) ? `${identifiantAffiche(r)} · ${lireAccesEmploye(r)!.code}` : r}
+                      {lireAccesEmploye(r) ? `${identifiantAffiche(r)} · ${lireAccesEmploye(r)!.code}` : (lireIdentifiant(r) ?? r)}
                     </span>
                   </button>
                   <button
@@ -256,7 +269,7 @@ export function Connexion() {
                     onClick={() => {
                       oublier(r);
                       setRecents(lireRecents());
-                      if (email === r) setEmail('');
+                      if (email === r || email === lireIdentifiant(r)) setEmail('');
                     }}
                   >
                     ×
@@ -280,7 +293,7 @@ export function Connexion() {
                 🔢 Code d’entrée
               </button>
               <button type="button" role="tab" aria-selected={type === 'email'} className={type === 'email' ? 'actif' : ''} onClick={() => setType('email')}>
-                ✉️ E-mail
+                🔑 Identifiant / e-mail
               </button>
             </div>
           )}
@@ -356,14 +369,17 @@ export function Connexion() {
               </Champ>
             </div>
           ) : (
-            <Champ label="Adresse e-mail">
+            <Champ label={mode === 'inscription' ? 'Adresse e-mail' : 'Adresse e-mail ou identifiant'}>
               <input
-                type="email"
+                type={mode === 'inscription' ? 'email' : 'text'}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                autoComplete="email"
+                autoComplete={mode === 'inscription' ? 'email' : 'username'}
+                autoCapitalize="none"
+                spellCheck={false}
                 inputMode="email"
+                placeholder={mode === 'inscription' ? undefined : 'ex. awa.kone27 ou awa@exemple.ci'}
               />
             </Champ>
           )}

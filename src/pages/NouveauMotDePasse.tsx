@@ -11,7 +11,8 @@ import { estAccesEmploye, lireAccesEmploye } from '../lib/acces';
  * ou à la première connexion avec un mot de passe provisoire donné par un responsable.
  */
 export function NouveauMotDePasse() {
-  const { session, mdpProvisoire, deconnecter } = useSession();
+  const { session, mdpProvisoire, echeanceDepassee, rechargerMotDePasse, deconnecter } = useSession();
+  const mensuel = echeanceDepassee && session?.user.user_metadata?.mdp_provisoire !== true;
   const [mdp, setMdp] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [erreur, setErreur] = useState('');
@@ -31,8 +32,14 @@ export function NouveauMotDePasse() {
     if (mdp !== confirmation) return setErreur(`Les deux ${employe ? 'codes' : 'mots de passe'} ne correspondent pas.`);
     setEnvoi(true);
     const { error } = await supabase.auth.updateUser({ password: mdp, data: { mdp_provisoire: false } });
+    if (error) {
+      setEnvoi(false);
+      return setErreur(/same.?password|different from the old/i.test(`${error.message} ${(error as { code?: string }).code ?? ''}`)
+        ? `Choisissez un ${mot} différent de l’ancien.`
+        : messageErreur(error));
+    }
+    await rechargerMotDePasse();
     setEnvoi(false);
-    if (error) return setErreur(messageErreur(error));
     naviguer('/');
   }
 
@@ -41,7 +48,12 @@ export function NouveauMotDePasse() {
       <section className="panneau-public">
         <form className="carte formulaire" onSubmit={soumettre}>
           <h1>{mdpProvisoire ? `Choisissez votre ${mot}` : `Nouveau ${mot}`}</h1>
-          {mdpProvisoire && (
+          {mensuel && (
+            <p className="sous-titre">
+              Pour votre sécurité, le mot de passe se change tous les mois. Choisissez-en un nouveau, différent de l’ancien.
+            </p>
+          )}
+          {mdpProvisoire && !mensuel && (
             <p className="sous-titre">
               {employe
                 ? `Matricule ${lireAccesEmploye(session?.user.email)?.matricule} : votre accès a été créé avec un code provisoire. Choisissez un code secret que vous seul connaissez (au moins 6 chiffres) — pas votre code Mobile Money.`

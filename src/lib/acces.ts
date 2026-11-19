@@ -28,7 +28,47 @@ export function lireAccesEmploye(email: string | null | undefined): { matricule:
 /** Ce qu'on affiche à la place de l'adresse : « Matricule 0012 » ou l'e-mail. */
 export function identifiantAffiche(email: string | null | undefined): string {
   const a = lireAccesEmploye(email);
-  return a ? `Matricule ${a.matricule}` : (email ?? '');
+  if (a) return `Matricule ${a.matricule}`;
+  const id = lireIdentifiant(email);
+  return id ? `Identifiant ${id}` : (email ?? '');
+}
+
+// ---------------------------------------------------------------------------
+// Identifiant sans e-mail (gérants créés par l'administrateur) : « awa.kone27 »
+// ---------------------------------------------------------------------------
+
+export const DOMAINE_IDENTIFIANT = 'id.dfgestion.app';
+
+export function emailIdentifiant(id: string): string {
+  return `${id.trim().toLowerCase()}@${DOMAINE_IDENTIFIANT}`;
+}
+
+/** L'identifiant (sans le domaine technique) d'un compte créé sans e-mail, sinon null. */
+export function lireIdentifiant(email: string | null | undefined): string | null {
+  const e = (email ?? '').toLowerCase();
+  return e.endsWith(`@${DOMAINE_IDENTIFIANT}`) ? e.slice(0, -DOMAINE_IDENTIFIANT.length - 1) : null;
+}
+
+/** Saisie de connexion : une adresse e-mail telle quelle, un identifiant complété par le domaine technique. */
+export function versEmailConnexion(saisie: string): string {
+  const s = saisie.trim().toLowerCase();
+  return s.includes('@') ? s : emailIdentifiant(s);
+}
+
+export const identifiantValide = (id: string) => /^[a-z][a-z0-9._-]{3,39}$/.test(id) && !/[._-]{2}|[._-]$/.test(id);
+
+/** Identifiant proposé à partir du nom : « Awa Koné » → « awa.kone » + 2 chiffres. */
+export function identifiantDepuisNom(nom: string): string {
+  const mots = nom
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .split(' ')
+    .filter(Boolean);
+  const base = (mots.length > 1 ? `${mots[0]}.${mots[mots.length - 1]}` : (mots[0] ?? 'gerant')).slice(0, 30);
+  const n = crypto.getRandomValues(new Uint32Array(1))[0]! % 90 + 10;
+  return `${/^[a-z]/.test(base) ? base : `g${base}`}${n}`;
 }
 
 export function codeEntrepriseMemorise(): string {

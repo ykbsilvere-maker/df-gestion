@@ -1,4 +1,4 @@
-import { ClesAcces, RobotTelegram } from './Acces';
+import { ClesAcces, ReglageTelegram, RobotTelegram } from './Acces';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -8,7 +8,7 @@ import { montantEn } from '../lib/argent';
 import { ChoixDevise } from '../components/ChoixDevise';
 import { encoderCode, lireConfiguration } from '../lib/config';
 import { genererMotDePasse, gererCompte, messageIdentifiants } from '../lib/comptes';
-import { codeEntreeValide, genererCodeProvisoire, messageAccesEmploye } from '../lib/acces';
+import { codeEntreeValide, emailIdentifiant, genererCodeProvisoire, identifiantAffiche, identifiantDepuisNom, identifiantValide, lireIdentifiant, messageAccesEmploye } from '../lib/acces';
 import { REGIMES, type RegimeFiscal } from '../lib/types';
 import { Alerte, Champ, EnTetePage, Fenetre, Ico, MontantFort, Pastille, Vide } from '../components/ui';
 import { ChoixModules } from '../components/ChoixModules';
@@ -39,6 +39,7 @@ type Fenetres =
   | { type: 'nouvelle' }
   | { type: 'gerant'; e: LigneEntreprise }
   | { type: 'motdepasse'; e: LigneEntreprise }
+  | { type: 'otp'; e: LigneEntreprise }
   | { type: 'suspendre'; e: LigneEntreprise }
   | { type: 'modules'; e: LigneEntreprise }
   | { type: 'identifiants'; texte: string; titre: string }
@@ -203,14 +204,14 @@ export function Administration() {
                   <span className="champ-label">Gérant principal</span>
                   {e.gerants.map((g) => (
                     <div key={g.email}>
-                      <strong>{g.nom || g.email}</strong>
-                      {g.nom && <span className="secondaire"> {g.email}</span>}
+                      <strong>{g.nom || identifiantAffiche(g.email)}</strong>
+                      {g.nom && <span className="secondaire"> {identifiantAffiche(g.email)}</span>}
                       <span className="secondaire"> · dernière connexion : {g.derniere_connexion ? dateHeure(g.derniere_connexion) : 'jamais'}</span>
                     </div>
                   ))}
                   {e.gerants_en_attente.map((m) => (
                     <div key={m}>
-                      {m} <Pastille ton="or">pas encore connecté</Pastille>
+                      {identifiantAffiche(m)} <Pastille ton="or">pas encore connecté</Pastille>
                     </div>
                   ))}
                   {!e.gerants.length && !e.gerants_en_attente.length && <span className="secondaire">Aucun</span>}
@@ -228,6 +229,11 @@ export function Administration() {
                   {e.gerants.length > 0 && (
                     <button type="button" className="bouton-lien" onClick={() => setFenetre({ type: 'motdepasse', e })}>
                       🔑 Mot de passe / code du gérant
+                    </button>
+                  )}
+                  {(e.gerants.length > 0 || e.gerants_en_attente.length > 0) && (
+                    <button type="button" className="bouton-lien" onClick={() => setFenetre({ type: 'otp', e })}>
+                      🔐 Code OTP du gérant
                     </button>
                   )}
                   {e.actif ? (
@@ -295,6 +301,8 @@ export function Administration() {
               ? `Ajouter un gérant — ${fenetre.e.nom}`
               : fenetre?.type === 'motdepasse'
                 ? `Accès du gérant — ${fenetre.e.nom}`
+                : fenetre?.type === 'otp'
+                  ? `Code OTP du gérant — ${fenetre.e.nom}`
                 : fenetre?.type === 'suspendre'
                   ? `Suspendre ${fenetre.e.nom}`
                   : fenetre?.type === 'modules'
@@ -323,6 +331,7 @@ export function Administration() {
             }}
           />
         )}
+        {fenetre?.type === 'otp' && <OtpGerant entreprise={fenetre.e} onFait={async (t) => { await apres(t); setFenetre(null); }} />}
         {fenetre?.type === 'motdepasse' && (
           <FormulaireReinitialisation
             entreprise={fenetre.e}
@@ -399,7 +408,7 @@ function ErreursSignalees() {
 /** Création de l'accès (mot de passe provisoire) ; repli sur l'invitation si la fonction serveur manque. */
 async function creerAcces(email: string, nom: string, motDePasse: string, entreprise: string) {
   const r = await gererCompte('creer', email, motDePasse, nom);
-  if (r.ok) return { message: `Accès créé pour ${email}.`, texte: messageIdentifiants({ nom, entreprise, email, motDePasse }) };
+  if (r.ok) return { message: `Accès créé pour ${lireIdentifiant(email) ?? email}.`, texte: messageIdentifiants({ nom, entreprise, email, motDePasse }) };
   if (r.statut === 'existe') return { message: `${email} avait déjà un compte : accès ajouté, il se connecte avec son mot de passe habituel.` };
   if (r.absente)
     return {
@@ -408,23 +417,73 @@ async function creerAcces(email: string, nom: string, motDePasse: string, entrep
   return { message: `Invitation enregistrée, mais l’accès n’a pas pu être créé : ${r.message}` };
 }
 
-function ChampsAcces({
-  v,
-  maj,
-}: {
-  v: { gerantNom: string; gerantEmail: string; motDePasse: string };
-  maj: (cle: 'gerantNom' | 'gerantEmail' | 'motDePasse', valeur: string) => void;
-}) {
+type ValeursAcces = { gerantNom: string; gerantEmail: string; motDePasse: string; mode: 'identifiant' | 'email'; identifiant: string; idModifie: string };
+const accesVide = (): ValeursAcces => ({ gerantNom: '', gerantEmail: '', motDePasse: genererMotDePasse(), mode: 'identifiant', identifiant: '', idModifie: '' });
+
+/** Adresse de connexion du gérant : sa vraie adresse, ou l'identifiant généré (sans e-mail). */
+function emailDuGerant(v: ValeursAcces): string | null {
+  if (v.mode === 'email') return v.gerantEmail.trim().toLowerCase();
+  const id = v.identifiant.trim().toLowerCase();
+  return identifiantValide(id) ? emailIdentifiant(id) : null;
+}
+
+function ChampsAcces({ v, maj }: { v: ValeursAcces; maj: (cle: keyof ValeursAcces, valeur: string) => void }) {
   return (
     <fieldset className="groupe">
       <legend>Gérant principal (tous les droits sur son entreprise)</legend>
       <Champ label="Nom et prénoms">
-        <input value={v.gerantNom} onChange={(e) => maj('gerantNom', e.target.value)} required autoComplete="off" />
+        <input
+          value={v.gerantNom}
+          onChange={(e) => {
+            maj('gerantNom', e.target.value);
+            // Identifiant proposé d'après le nom, tant que l'administrateur ne l'a pas retouché.
+            if (!v.idModifie) maj('identifiant', e.target.value.trim() ? identifiantDepuisNom(e.target.value) : '');
+          }}
+          required
+          autoComplete="off"
+        />
       </Champ>
-      <Champ label="Adresse e-mail (identifiant)">
-        <input type="email" value={v.gerantEmail} onChange={(e) => maj('gerantEmail', e.target.value)} required autoComplete="off" />
-      </Champ>
-      <Champ label="Mot de passe provisoire" aide="Il le remplacera à sa première connexion.">
+      <div className="choix-type-acces" role="radiogroup" aria-label="Connexion du gérant">
+        <label className={v.mode === 'identifiant' ? 'actif' : ''}>
+          <input type="radio" checked={v.mode === 'identifiant'} onChange={() => maj('mode', 'identifiant')} />
+          <span>
+            <strong>Identifiant (sans e-mail)</strong>
+            Généré d’après son nom ; vous le lui transmettez avec le mot de passe.
+          </span>
+        </label>
+        <label className={v.mode === 'email' ? 'actif' : ''}>
+          <input type="radio" checked={v.mode === 'email'} onChange={() => maj('mode', 'email')} />
+          <span>
+            <strong>Adresse e-mail</strong>
+            Il se connecte avec son adresse e-mail.
+          </span>
+        </label>
+      </div>
+      {v.mode === 'identifiant' ? (
+        <Champ label="Identifiant" aide="Lettres minuscules, chiffres, point ou tiret (ex. awa.kone27).">
+          <div className="champ-avec-bouton">
+            <input
+              value={v.identifiant}
+              onChange={(e) => {
+                maj('identifiant', e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''));
+                maj('idModifie', '1');
+              }}
+              required
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+            />
+            <button type="button" className="bouton bouton-discret" onClick={() => maj('identifiant', identifiantDepuisNom(v.gerantNom || 'gerant'))}>
+              Générer
+            </button>
+          </div>
+        </Champ>
+      ) : (
+        <Champ label="Adresse e-mail (identifiant)">
+          <input type="email" value={v.gerantEmail} onChange={(e) => maj('gerantEmail', e.target.value)} required autoComplete="off" />
+        </Champ>
+      )}
+      <Champ label="Mot de passe provisoire" aide="Il le remplacera à sa première connexion, puis tous les mois.">
         <div className="champ-avec-bouton">
           <input value={v.motDePasse} onChange={(e) => maj('motDePasse', e.target.value)} minLength={8} required autoComplete="off" />
           <button type="button" className="bouton bouton-discret" onClick={() => maj('motDePasse', genererMotDePasse())}>
@@ -447,9 +506,7 @@ function FormulaireEntreprise({ onFini }: { onFini: (r: { message: string; texte
     regime: 'non_precise' as RegimeFiscal,
     devise: 'XOF',
     magasin: 'Magasin principal',
-    gerantNom: '',
-    gerantEmail: '',
-    motDePasse: genererMotDePasse(),
+    ...accesVide(),
   });
   const [erreur, setErreur] = useState('');
   const [envoi, setEnvoi] = useState(false);
@@ -458,9 +515,10 @@ function FormulaireEntreprise({ onFini }: { onFini: (r: { message: string; texte
   async function soumettre(e: FormEvent) {
     e.preventDefault();
     if (envoi) return;
-    setEnvoi(true);
     setErreur('');
-    const email = v.gerantEmail.trim().toLowerCase();
+    const email = emailDuGerant(v);
+    if (!email) return setErreur('Identifiant invalide : 4 à 40 caractères, commence par une lettre (ex. awa.kone27).');
+    setEnvoi(true);
     const { data: orgId, error } = await supabase.rpc('admin_creer_entreprise', {
       p_nom: v.nom,
       p_gerant_email: email,
@@ -569,14 +627,17 @@ function FormulaireGerant({
   entreprise: LigneEntreprise;
   onFini: (r: { message: string; texte?: string }) => Promise<void>;
 }) {
-  const [v, setV] = useState({ gerantNom: '', gerantEmail: '', motDePasse: genererMotDePasse() });
+  const [v, setV] = useState<ValeursAcces>(accesVide);
   const [erreur, setErreur] = useState('');
   const [envoi, setEnvoi] = useState(false);
 
   async function soumettre(e: FormEvent) {
     e.preventDefault();
+    if (envoi) return;
+    setErreur('');
+    const email = emailDuGerant(v);
+    if (!email) return setErreur('Identifiant invalide : 4 à 40 caractères, commence par une lettre (ex. awa.kone27).');
     setEnvoi(true);
-    const email = v.gerantEmail.trim().toLowerCase();
     const { error } = await supabase.rpc('admin_ajouter_gerant', { p_org: entreprise.organisation_id, p_email: email });
     if (error) {
       setEnvoi(false);
@@ -596,6 +657,54 @@ function FormulaireGerant({
         {envoi ? 'Enregistrement…' : 'Ajouter le gérant'}
       </button>
     </form>
+  );
+}
+
+/** Code OTP du gérant principal : activé, relié ou retiré uniquement par l'administrateur général. */
+function OtpGerant({ entreprise, onFait }: { entreprise: LigneEntreprise; onFait: (texte: string) => Promise<void> }) {
+  const personnes = [
+    ...entreprise.gerants.map((g) => ({ email: g.email, nom: g.nom || identifiantAffiche(g.email) })),
+    ...entreprise.gerants_en_attente.map((m) => ({ email: m, nom: identifiantAffiche(m) })),
+  ];
+  const [email, setEmail] = useState(personnes[0]?.email ?? '');
+  const [liste, setListe] = useState<Record<string, { email: string; telegram: string | null; relie: boolean; en_attente_liaison: boolean }> | null>(null);
+  useEffect(() => {
+    void supabase.rpc('otp_liste', { p_org: entreprise.organisation_id }).then(({ data }) => setListe((data as typeof liste) ?? {}));
+  }, [entreprise.organisation_id]);
+  const etat = liste && Object.values(liste).find((o) => o.email === email.toLowerCase());
+  const p = personnes.find((x) => x.email === email);
+  return (
+    <div className="formulaire">
+      {personnes.length > 1 && (
+        <Champ label="Gérant">
+          <select value={email} onChange={(e) => setEmail(e.target.value)}>
+            {personnes.map((x) => (
+              <option key={x.email} value={x.email}>
+                {x.nom}
+              </option>
+            ))}
+          </select>
+        </Champ>
+      )}
+      {liste === null ? (
+        <p className="secondaire">Chargement…</p>
+      ) : (
+        <>
+          <p className="secondaire">
+            État :{' '}
+            {etat?.relie ? `🔐 code OTP actif (${etat.telegram ?? 'Telegram relié'})` : etat?.en_attente_liaison ? '🔗 lien envoyé, en attente de « Démarrer »' : 'pas de code OTP'}
+          </p>
+          <ReglageTelegram
+            key={email}
+            org={entreprise.organisation_id}
+            email={email}
+            nom={p?.nom ?? email}
+            actuel={etat?.relie || etat?.en_attente_liaison ? (etat.telegram ?? 'lien en attente') : null}
+            onFait={(t) => void onFait(t)}
+          />
+        </>
+      )}
+    </div>
   );
 }
 
@@ -651,7 +760,7 @@ function FormulaireReinitialisation({ entreprise, onFini }: { entreprise: LigneE
         <select value={email} onChange={(e) => setEmail(e.target.value)}>
           {entreprise.gerants.map((g) => (
             <option key={g.email} value={g.email}>
-              {g.nom ? `${g.nom} — ${g.email}` : g.email}
+              {g.nom ? `${g.nom} — ${identifiantAffiche(g.email)}` : identifiantAffiche(g.email)}
             </option>
           ))}
         </select>

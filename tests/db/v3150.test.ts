@@ -64,7 +64,7 @@ describe('Code de connexion Telegram', () => {
 });
 
 describe('Robot Telegram DF Gestion', () => {
-  it('lien d’activation : le code n’est exigé qu’une fois le Telegram relié ; 2 h sans activité referment la session', async () => {
+  it('lien d’activation : le code n’est exigé qu’une fois le Telegram relié ; 4 h sans activité referment la session', async () => {
     await pool.query(`select public.telegram_robot_enregistrer('123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef1234', 'dfgestion_test_bot', 'DF Gestion', 'secret', $1)`, [alice]);
     const lien = await enSession(alice, S(9), (q) => rpc<{ lien: string }>(q, 'public.otp_lien($1, $2)', [org, carine]));
     expect(lien.lien).toMatch(/^https:\/\/t\.me\/dfgestion_test_bot\?start=[a-f0-9]{32}$/);
@@ -79,7 +79,7 @@ describe('Robot Telegram DF Gestion', () => {
     await pool.query(`update prive.otp_codes set code_hash = prive.hash_jeton($1 || ':654321') where session_id = $1`, [S(11)]);
     await enSession(carine, S(11), (q) => q(`select public.otp_verifier($1, '654321')`, [org]));
     expect(await enSession(carine, S(11), visibles)).toBe(1);
-    await pool.query(`update prive.sessions_otp set vu_le = now() - interval '3 hours' where session_id = $1`, [S(11)]);
+    await pool.query(`update prive.sessions_otp set vu_le = now() - interval '5 hours' where session_id = $1`, [S(11)]);
     expect(await enSession(carine, S(11), visibles)).toBe(0);
   });
 });

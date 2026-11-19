@@ -277,7 +277,7 @@ export function Utilisateurs() {
                     </td>
                     {(peutModifier || peutTelegram) && (
                       <td className="cellule-actions">
-                        {peutTelegram && m.actif && !protege && (
+                        {peutTelegram && m.actif && !protege && (m.role_code !== 'proprietaire' || adminGeneral) && (
                           <button className="bouton-lien" onClick={() => setFenetre({ type: 'telegram', membre: m })}>
                             {otp[m.user_id]?.actif ? '🔐 Code OTP' : '🔐 Activer le code OTP'}
                           </button>
