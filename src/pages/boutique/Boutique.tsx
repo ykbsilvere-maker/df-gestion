@@ -48,7 +48,7 @@ export function BoutiqueModule() {
           <span className="onglet-icone" aria-hidden>👥</span>Clients du site
         </NavLink>
         <NavLink to="/boutique/alertes">
-          <span className="onglet-icone" aria-hidden>🔔</span>Mes alertes
+          <span className="onglet-icone" aria-hidden>🔔</span>Mes notifications
         </NavLink>
         {peut('boutique.modifier') && (
           <NavLink to="/boutique/vitrine">

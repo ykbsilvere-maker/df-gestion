@@ -3,6 +3,12 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.20.** **Notifications et code OTP, suite ; choix plus simples sur DF Marché** (migration 047).
+La page *Mes notifications* montre l'état du Telegram de chacun (relié par l'administrateur pour le gérant principal, par la
+gérante pour les employés) ; plus de réglage CallMeBot à faire soi-même. Les caissiers sont prévenus de chaque nouvelle
+commande. Code OTP : renvoi au bout de 2 minutes ; sur le même appareil, moins de 4 heures après la dernière activité, se
+reconnecter ne redemande pas de code. DF Marché : réception, créneau et montant en espèces plus simples.
+
 **Version 3.19.** **Tout passe par le robot Telegram DF Gestion** (migration 046).
 Les notifications des commandes en ligne arrivent sur le même Telegram que les codes OTP : nouvelle commande (gérante et
 personnes désignées pour affecter), commande affectée (caissière), puis acceptée, prête, en livraison, livrée/encaissée,

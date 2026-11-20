@@ -168,7 +168,8 @@ export function ClesAcces({ org, membres }: { org: string | null; membres: Membr
           </button>
         </div>
       )}
-      <form className="formulaire grille-cle" onSubmit={(e) => void creer(e)}>
+      <form className="formulaire formulaire-cle" onSubmit={(e) => void creer(e)}>
+        <div className="grille-cle">
         {org && (
           <Champ label="Pour qui ?">
             <select value={pour} onChange={(e) => setPour(e.target.value)}>
@@ -184,7 +185,7 @@ export function ClesAcces({ org, membres }: { org: string | null; membres: Membr
             <Champ label="Nom">
               <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Awa Koné" maxLength={80} />
             </Champ>
-            <Champ label="Son adresse e-mail" aide="La clé ne servira qu’à cette adresse (conseillé).">
+            <Champ label="Son adresse e-mail">
               <input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" placeholder="awa@exemple.ci" maxLength={120} />
             </Champ>
           </>
@@ -197,7 +198,13 @@ export function ClesAcces({ org, membres }: { org: string | null; membres: Membr
             <option value={30}>30 jours</option>
           </select>
         </Champ>
-        <button className="bouton bouton-principal" disabled={!pour && !nom.trim() && !email.trim()}>Créer une clé</button>
+        </div>
+        <div className="pied-cle">
+          <span className="secondaire petit">
+            {pour ? 'La clé ouvrira un nouvel appareil de cette personne, sans attendre votre approbation.' : 'Avec une adresse e-mail, la clé ne servira qu’à cette adresse (conseillé).'}
+          </span>
+          <button className="bouton bouton-principal" disabled={!pour && !nom.trim() && !email.trim()}>🔑 Créer la clé</button>
+        </div>
       </form>
       {cles && cles.length > 0 && (
         <div className="tableau-defilant">
@@ -491,7 +498,9 @@ export function CodeTelegram() {
     if (code.length === 6 && !enCours) void valider(code);
   }
 
-  const attendre = Math.max(0, 30 - Math.round((maintenant - dernierEnvoi) / 1000));
+  // Un nouveau code ne peut être demandé qu'au bout de 2 minutes (sa durée de validité).
+  const attendre = Math.max(0, 120 - Math.round((maintenant - dernierEnvoi) / 1000));
+  const decompte = `${Math.floor(attendre / 60)}:${String(attendre % 60).padStart(2, '0')}`;
   return (
     <main className="page-acces">
       <section className="carte carte-acces carte-otp">
@@ -522,7 +531,7 @@ export function CodeTelegram() {
         {(erreur || echec) && <p className="erreur-otp">{erreur || 'Le code n’a pas pu être envoyé : renvoyez-le ou prévenez votre gérante.'}</p>}
         {enCours && <p className="secondaire">Vérification…</p>}
         <button type="button" className="bouton-lien renvoyer-otp" disabled={attendre > 0} onClick={() => void envoyer()}>
-          {attendre > 0 ? `Renvoyer le code dans ${attendre} s` : '↻ Renvoyer le code'}
+          {attendre > 0 ? `Renvoyer le code dans ${decompte}` : '↻ Renvoyer le code'}
         </button>
         <button type="button" className="bouton-lien secondaire petit" onClick={() => void deconnecter()}>Se déconnecter</button>
       </section>

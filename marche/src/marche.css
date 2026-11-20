@@ -1493,3 +1493,41 @@ label .facultatif { align-self: flex-start; margin: -2px 0 0; }
   background: #dc2626; color: #fff; font-size: 0.66rem; font-weight: 800; display: grid; place-items: center; border: 2px solid #fff; font-style: normal; animation: stepper-entree 0.4s var(--ressort); }
 .raccourcis .avec-pastille .pastille-bons { top: -4px; right: calc(50% - 30px); }
 .entete-actions .avec-pastille .pastille-bons { top: 0; right: 4px; }
+
+/* v3.20 — Choix simples : réception, créneau, montant en espèces. */
+.options-simples { display: grid; gap: 10px; }
+.options-simples button {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; cursor: pointer;
+  padding: 12px 14px; border-radius: 16px; border: 1.5px solid var(--trait); background: #fff; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.options-simples button:hover { border-color: #dccfc4; }
+.options-simples button.actif { border-color: var(--vert); background: #f2fbf6; box-shadow: 0 0 0 3px rgba(24, 160, 88, 0.12); }
+.option-icone { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 1.35rem; background: var(--fond); }
+.options-simples button.actif .option-icone { background: #fff; }
+.option-texte { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.option-texte strong { font-size: 0.98rem; }
+.option-texte small { color: var(--encre-douce); font-size: 0.82rem; }
+.option-prix { flex: 0 0 auto; font-weight: 700; font-size: 0.88rem; color: var(--encre); }
+.option-prix.gratuit { color: var(--vert); }
+.options-simples button::after {
+  content: ''; flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #d6ccc3; background: #fff; transition: all 0.2s;
+}
+.options-simples button.actif::after { border: 6px solid var(--vert); }
+
+.segment { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: var(--fond); border: 1px solid var(--trait); margin-bottom: 12px; }
+.segment button {
+  font: inherit; font-weight: 600; font-size: 0.92rem; border: 0; border-radius: 10px; padding: 10px 8px; background: transparent; cursor: pointer;
+  color: var(--encre-douce); transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.segment button small { font-weight: 500; opacity: 0.75; margin-left: 4px; }
+.segment button.actif { background: #fff; color: var(--encre); box-shadow: 0 1px 2px rgba(64, 33, 12, 0.08), 0 4px 12px rgba(64, 33, 12, 0.06); }
+
+.puces-montant { display: flex; flex-wrap: wrap; gap: 8px; }
+.puces-montant button {
+  font: inherit; font-weight: 600; font-size: 0.9rem; padding: 9px 14px; border-radius: 999px; border: 1.5px solid var(--trait); background: #fff; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+.puces-montant button.actif { border-color: var(--vert); background: var(--vert); color: #fff; }
+.montant-autre { width: 100%; padding: 11px 12px; border-radius: 12px; border: 1.5px solid var(--trait); font: inherit; }
+.monnaie-ligne { margin: 0; font-weight: 500 !important; font-size: 0.9rem; color: var(--encre-douce); }
+.monnaie-ligne b { color: var(--vert); }

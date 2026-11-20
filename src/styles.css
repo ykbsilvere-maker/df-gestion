@@ -2618,7 +2618,11 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .actions-appareil { display: flex; gap: 8px; }
 .cle-nouvelle { display: grid; gap: 6px; justify-items: start; margin: 8px 0 12px; padding: 12px; border-radius: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; }
 .cle-code { font-family: ui-monospace, monospace; font-size: 1.6rem; font-weight: 800; letter-spacing: .12em; color: #14532d; background: #fff; padding: 6px 12px; border-radius: 8px; }
-.grille-cle { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end; }
+.formulaire-cle { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--trait); border-radius: 14px; background: var(--surface-2); }
+.grille-cle { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items: start; }
+.grille-cle .champ { margin: 0; }
+.pied-cle { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pied-cle .bouton { min-width: 180px; }
 .lucarne-appareil .lucarne-actions .lucarne-voir { color: #15803d; }
 
 /* v3.14 — fil des activités de la gérante (bas de l'écran) */
@@ -2651,3 +2655,19 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .lien-activation { display: block; word-break: break-all; font-size: .85rem; background: #fff; padding: 8px 10px; border-radius: 8px; }
 .logo-robot { display: flex; align-items: center; gap: 10px; }
 .logo-robot img { border-radius: 50%; border: 1px solid #e2e8f0; object-fit: cover; }
+
+/* Mes notifications (v3.20) */
+.notif-etat { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--trait); }
+.notif-etat > div { display: grid; gap: 2px; }
+.notif-etat strong { font-size: 0.98rem; }
+.notif-etat span:not(.notif-pastille) { color: var(--encre-douce); font-size: 0.88rem; }
+.notif-pastille { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; }
+.notif-ok { background: var(--vert-clair); border-color: #b9e0cf; }
+.notif-ok .notif-pastille { background: var(--vert); }
+.notif-attente { background: var(--or-clair); border-color: #ecd9a8; }
+.notif-attente .notif-pastille { background: var(--or); }
+.notif-non { background: var(--surface-2); }
+.notif-non .notif-pastille { background: #9a9a96; }
+.notif-liste { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.notif-liste li { display: flex; gap: 8px; align-items: center; font-size: 0.9rem; }
+.notif-liste li::before { content: '🔔'; font-size: 0.85rem; }

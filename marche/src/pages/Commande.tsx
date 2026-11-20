@@ -189,6 +189,7 @@ export function Commander() {
       }));
   }, [compte]);
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [autre, setAutre] = useState(false);
   const [fichier, setFichier] = useState<File | null>(null);
   const [erreur, setErreur] = useState('');
   const [enCours, setEnCours] = useState(false);
@@ -336,19 +337,19 @@ export function Commander() {
               <label>E-mail (facultatif)<input type="email" value={f.email} onChange={(e) => maj({ email: e.target.value })} autoComplete="email" /></label>
 
               <p className="etiquette">Mode de réception *</p>
-              <div className="cartes-mode">
+              <div className="options-simples" role="radiogroup" aria-label="Mode de réception">
                 {v.retrait && (
-                  <button type="button" className={f.mode === 'retrait' ? 'actif' : ''} onClick={() => maj({ mode: 'retrait' })}>
-                    <span className="mode-tete"><span aria-hidden>🏪</span><strong>Retrait en boutique</strong><em>Retrait</em></span>
-                    <small>Prêt en {v.delai_preparation} h · {v.commune ?? v.ville ?? ''}</small>
-                    <b>Gratuit</b>
+                  <button type="button" role="radio" aria-checked={f.mode === 'retrait'} className={f.mode === 'retrait' ? 'actif' : ''} onClick={() => maj({ mode: 'retrait' })}>
+                    <span className="option-icone" aria-hidden>🏪</span>
+                    <span className="option-texte"><strong>Retrait en boutique</strong><small>Prêt en {v.delai_preparation} h · {v.commune ?? v.ville ?? ''}</small></span>
+                    <span className="option-prix gratuit">Gratuit</span>
                   </button>
                 )}
                 {v.livraison && (
-                  <button type="button" className={f.mode === 'livraison' ? 'actif' : ''} onClick={() => maj({ mode: 'livraison' })}>
-                    <span className="mode-tete"><span aria-hidden>🛵</span><strong>Livraison</strong><em>{v.ville ?? 'Abidjan'}</em></span>
-                    <small>Le livreur vous appelle avant de passer</small>
-                    <b>{v.zones?.length ? `Dès ${fcfa(Math.min(...v.zones.map((z) => Number(z.frais))))}` : 'À confirmer'}</b>
+                  <button type="button" role="radio" aria-checked={f.mode === 'livraison'} className={f.mode === 'livraison' ? 'actif' : ''} onClick={() => maj({ mode: 'livraison' })}>
+                    <span className="option-icone" aria-hidden>🛵</span>
+                    <span className="option-texte"><strong>Livraison</strong><small>Le livreur vous appelle avant de passer</small></span>
+                    <span className="option-prix">{v.zones?.length ? `dès ${fcfa(Math.min(...v.zones.map((z) => Number(z.frais))))}` : 'à confirmer'}</span>
                   </button>
                 )}
               </div>
@@ -369,9 +370,13 @@ export function Commander() {
               {f.mode === 'retrait' && <p className="info-retrait">🏪 À récupérer : {[v.adresse, v.commune, v.ville].filter(Boolean).join(', ')}{v.horaires ? ` · ${v.horaires}` : ''}</p>}
 
               <p className="etiquette">Quand ?</p>
-              <div className="choix-cartes petites">
-                <button type="button" className={f.quand === 'vite' ? 'actif' : ''} onClick={() => maj({ quand: 'vite' })}>Dès que possible <small>prêt en {v.delai_preparation} h environ</small></button>
-                <button type="button" className={f.quand === 'choisir' ? 'actif' : ''} onClick={() => maj({ quand: 'choisir', souhaite: f.souhaite || versSaisie(minimum) })}>Choisir le jour et l’heure</button>
+              <div className="segment" role="radiogroup" aria-label="Quand ?">
+                <button type="button" role="radio" aria-checked={f.quand === 'vite'} className={f.quand === 'vite' ? 'actif' : ''} onClick={() => maj({ quand: 'vite' })}>
+                  ⚡ Dès que possible <small>≈ {v.delai_preparation} h</small>
+                </button>
+                <button type="button" role="radio" aria-checked={f.quand === 'choisir'} className={f.quand === 'choisir' ? 'actif' : ''} onClick={() => maj({ quand: 'choisir', souhaite: f.souhaite || versSaisie(minimum) })}>
+                  📅 Choisir un créneau
+                </button>
               </div>
               {f.quand === 'choisir' && (
                 <label>{f.mode === 'livraison' ? 'Livraison souhaitée le' : 'Retrait prévu le'}
@@ -455,15 +460,28 @@ export function Commander() {
             )}
             {f.choix === 'livraison' && (
               <div className="bloc-especes">
-                <p>💵 Avec quel montant paierez-vous ? <small>La boutique prépare votre monnaie.</small></p>
-                <div className="choix-cartes petites">
-                  <button type="button" className={f.especes === 'exact' ? 'actif' : ''} onClick={() => maj({ especes: 'exact' })}>Montant exact<small>{fcfa(total)}</small></button>
+                <p>💵 Vous payez avec… <small>La boutique prépare votre monnaie.</small></p>
+                <div className="puces-montant" role="radiogroup" aria-label="Montant remis">
+                  <button type="button" role="radio" aria-checked={f.especes === 'exact'} className={f.especes === 'exact' ? 'actif' : ''} onClick={() => { setAutre(false); maj({ especes: 'exact' }); }}>
+                    Le compte exact
+                  </button>
                   {billets.map((x) => (
-                    <button type="button" key={x} className={f.especes === String(x) ? 'actif' : ''} onClick={() => maj({ especes: String(x) })}>{fcfa(x)}<small>monnaie {fcfa(x - total)}</small></button>
+                    <button type="button" role="radio" aria-checked={f.especes === String(x)} key={x} className={f.especes === String(x) ? 'actif' : ''} onClick={() => { setAutre(false); maj({ especes: String(x) }); }}>
+                      {fcfa(x)}
+                    </button>
                   ))}
+                  <button type="button" role="radio" aria-checked={autre} className={autre ? 'actif' : ''} onClick={() => { setAutre(true); maj({ especes: '' }); }}>
+                    Autre
+                  </button>
                 </div>
-                <label>Autre montant<input value={f.especes === 'exact' || billets.map(String).includes(f.especes) ? '' : f.especes} onChange={(e) => maj({ especes: e.target.value.replace(/\D/g, '') })} inputMode="numeric" placeholder="Ex. 25000" /></label>
-                {especes > total && <p className="code-ok">La boutique vous rendra <b>{fcfa(especes - total)}</b>.</p>}
+                {autre && (
+                  <input className="montant-autre" value={f.especes} onChange={(e) => maj({ especes: e.target.value.replace(/\D/g, '') })} inputMode="numeric" placeholder="Montant du billet, ex. 25000" aria-label="Autre montant" autoFocus />
+                )}
+                {f.especes && (
+                  <p className="monnaie-ligne">
+                    {especes > total ? <>Monnaie à vous rendre : <b>{fcfa(especes - total)}</b></> : especes === total ? <>Pas de monnaie à rendre.</> : <>Le billet doit couvrir <b>{fcfa(total)}</b>.</>}
+                  </p>
+                )}
               </div>
             )}
             {choisi && choisi.code !== 'livraison' && (numero || choisi.autre?.lien) && (

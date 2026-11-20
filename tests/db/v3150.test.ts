@@ -39,7 +39,7 @@ describe('Code de connexion Telegram', () => {
     await enSession(alice, S(9), (q) => q(`select public.otp_configurer($1, $2, '@carine_k')`, [org, carine]));
     expect(await enSession(carine, S(1), visibles)).toBe(0);
     expect((await enSession(carine, S(1), (q) => rpc<{ statut: string }>(q, 'public.otp_envoyer($1)', [org]))).statut).toBe('envoye');
-    await expect(enSession(carine, S(1), (q) => q(`select public.otp_envoyer($1)`, [org]))).rejects.toThrow(/30 secondes/);
+    await expect(enSession(carine, S(1), (q) => q(`select public.otp_envoyer($1)`, [org]))).rejects.toThrow(/2 minutes/);
     // Le code n'est gardé qu'en empreinte : on en impose un connu pour le test.
     await pool.query(`update prive.otp_codes set code_hash = prive.hash_jeton($1 || ':123456') where session_id = $1`, [S(1)]);
     expect((await enSession(carine, S(1), (q) => rpc<{ statut: string }>(q, 'public.otp_verifier($1, $2)', [org, '111111']))).statut).toBe('faux');
@@ -49,7 +49,7 @@ describe('Code de connexion Telegram', () => {
   });
 
   it('secours : la gérante autorise une connexion en attente ; tout est au journal', async () => {
-    await pool.query(`update prive.otp_codes set envoye_le = envoye_le - interval '1 minute'`);
+    await pool.query(`update prive.otp_codes set envoye_le = envoye_le - interval '3 minutes'`);
     await enSession(carine, S(2), (q) => q(`select public.otp_envoyer($1)`, [org]));
     const liste = await enSession(alice, S(9), (q) => rpc<{ connexions_en_attente: { id: string }[] }>(q, 'public.commandes_caisse_attente($1)', [org]));
     expect(liste.connexions_en_attente).toHaveLength(1);
