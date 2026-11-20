@@ -31,6 +31,7 @@ export function dateHeure(iso: string | null | undefined): string {
 /** Libellés des actions du journal d'audit. */
 const LIBELLES_ACTIONS: Record<string, string> = {
   'session.connexion': 'Connexion',
+  'boutique.zone_supprimee': 'Zone de livraison supprimée',
   'commande_web.recue': 'Commande en ligne reçue',
   'commande_web.affectee': 'Commande en ligne affectée',
   'commande_web.reaffectee': 'Commande en ligne réaffectée',

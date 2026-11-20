@@ -1007,6 +1007,7 @@ export function MaVitrine() {
   const [zones, setZones] = useState<Zone[]>([]);
   const [stats, setStats] = useState<{ publies: number; actifs: number; sans_photo: number } | null>(null);
   const [nouvelle, setNouvelle] = useState<Zone>({ nom: '', frais: 1000, delai: '', actif: true });
+  const [edition, setEdition] = useState<Zone | null>(null);
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
   const [enCours, setEnCours] = useState(false);
@@ -1136,6 +1137,13 @@ export function MaVitrine() {
     const { error } = await supabase.rpc('zone_livraison_enregistrer', { p_org: org, p: z });
     if (error) return setErreur(messageErreur(error));
     if (!z.id) setNouvelle({ nom: '', frais: 1000, delai: '', actif: true });
+    if (edition && edition.id === z.id) setEdition(null);
+    await charger();
+  }
+  async function supprimerZone(z: Zone) {
+    if (!z.id || !window.confirm(`Supprimer la zone « ${z.nom} » ? Les commandes déjà passées ne changent pas.`)) return;
+    const { error } = await supabase.rpc('zone_livraison_supprimer', { p_org: org, p_id: z.id });
+    if (error) return setErreur(messageErreur(error));
     await charger();
   }
 
@@ -1369,25 +1377,65 @@ export function MaVitrine() {
                   </div>
                 )}
                 <h3>Zones et frais de livraison</h3>
-                <table className="tableau tableau-compact">
-                  <thead><tr><th>Commune / zone</th><th className="nombre">Frais</th><th>Délai</th><th>Active</th></tr></thead>
-                  <tbody>
-                    {zones.map((z) => (
-                      <tr key={z.id}>
-                        <td>{z.nom}</td>
-                        <td className="nombre">{montant(z.frais)}</td>
-                        <td>{z.delai ?? '—'}</td>
-                        <td><input type="checkbox" checked={z.actif} onChange={(e) => void enregistrerZone({ ...z, actif: e.target.checked })} aria-label={`Zone ${z.nom} active`} /></td>
-                      </tr>
-                    ))}
-                    <tr>
-                      <td><input value={nouvelle.nom} onChange={(e) => setNouvelle({ ...nouvelle, nom: e.target.value })} placeholder="Yopougon" aria-label="Nouvelle zone" /></td>
-                      <td><input className="nombre" value={nouvelle.frais} inputMode="numeric" onChange={(e) => setNouvelle({ ...nouvelle, frais: Number(e.target.value.replace(/\D/g, '')) })} aria-label="Frais" /></td>
-                      <td><input value={nouvelle.delai ?? ''} onChange={(e) => setNouvelle({ ...nouvelle, delai: e.target.value })} placeholder="2 h" aria-label="Délai" /></td>
-                      <td><button type="button" className="bouton bouton-discret" disabled={nouvelle.nom.trim().length < 2} onClick={() => void enregistrerZone(nouvelle)}>Ajouter</button></td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div className="zones-liste">
+                  {zones.map((z) =>
+                    edition && edition.id === z.id ? (
+                      <form
+                        key={z.id}
+                        className="zone-ligne zone-edition"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void enregistrerZone(edition);
+                        }}
+                      >
+                        <input value={edition.nom} onChange={(e) => setEdition({ ...edition, nom: e.target.value })} aria-label="Commune / zone" autoFocus required minLength={2} />
+                        <span className="zone-frais-saisie">
+                          <input value={edition.frais} inputMode="numeric" onChange={(e) => setEdition({ ...edition, frais: Number(e.target.value.replace(/\D/g, '')) })} aria-label="Frais" />
+                          <small>FCFA</small>
+                        </span>
+                        <input value={edition.delai ?? ''} onChange={(e) => setEdition({ ...edition, delai: e.target.value })} placeholder="Délai (ex. 2 h)" aria-label="Délai" />
+                        <span className="zone-actions">
+                          <button className="bouton bouton-principal">Enregistrer</button>
+                          <button type="button" className="bouton bouton-discret" onClick={() => setEdition(null)}>Annuler</button>
+                        </span>
+                      </form>
+                    ) : (
+                      <div key={z.id} className={`zone-ligne${z.actif ? '' : ' zone-inactive'}`}>
+                        <span className="zone-nom">
+                          <strong>{z.nom}</strong>
+                          {z.delai && <small>⏱ {z.delai}</small>}
+                        </span>
+                        <span className="zone-prix">{montant(z.frais)}</span>
+                        <label className="interrupteur-zone" title={z.actif ? 'Proposée aux clients' : 'Masquée aux clients'}>
+                          <input type="checkbox" checked={z.actif} onChange={(e) => void enregistrerZone({ ...z, actif: e.target.checked })} aria-label={`Zone ${z.nom} active`} />
+                          <span>{z.actif ? 'Active' : 'Masquée'}</span>
+                        </label>
+                        <span className="zone-actions">
+                          <button type="button" className="zone-bouton" onClick={() => setEdition({ ...z })} aria-label={`Modifier ${z.nom}`} title="Modifier">✏️</button>
+                          <button type="button" className="zone-bouton danger" onClick={() => void supprimerZone(z)} aria-label={`Supprimer ${z.nom}`} title="Supprimer">🗑️</button>
+                        </span>
+                      </div>
+                    ),
+                  )}
+                  {!zones.length && <p className="secondaire">Aucune zone pour l’instant.</p>}
+                  <form
+                    className="zone-ligne zone-ajout"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void enregistrerZone(nouvelle);
+                    }}
+                  >
+                    <input value={nouvelle.nom} onChange={(e) => setNouvelle({ ...nouvelle, nom: e.target.value })} placeholder="Nouvelle zone (ex. Yopougon)" aria-label="Nouvelle zone" />
+                    <span className="zone-frais-saisie">
+                      <input value={nouvelle.frais} inputMode="numeric" onChange={(e) => setNouvelle({ ...nouvelle, frais: Number(e.target.value.replace(/\D/g, '')) })} aria-label="Frais" />
+                      <small>FCFA</small>
+                    </span>
+                    <input value={nouvelle.delai ?? ''} onChange={(e) => setNouvelle({ ...nouvelle, delai: e.target.value })} placeholder="Délai (ex. 2 h)" aria-label="Délai" />
+                    <span className="zone-actions">
+                      <button className="bouton bouton-principal" disabled={nouvelle.nom.trim().length < 2}>+ Ajouter</button>
+                    </span>
+                  </form>
+                </div>
                 <p className="secondaire">Le client choisit sa zone : les frais s’ajoutent au panier. Ils sont payés avec la commande, ou au livreur.</p>
               </>
             )}

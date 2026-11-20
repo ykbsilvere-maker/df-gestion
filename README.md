@@ -3,6 +3,9 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.21.** Zones de livraison : chaque zone se modifie (nom, frais, délai) ou se supprime, dans une liste plus
+lisible (migration 048, suppression journalisée). DF Marché : le choix du mode de réception se coche par la pastille seule.
+
 **Version 3.20.** **Notifications et code OTP, suite ; choix plus simples sur DF Marché** (migration 047).
 La page *Mes notifications* montre l'état du Telegram de chacun (relié par l'administrateur pour le gérant principal, par la
 gérante pour les employés) ; plus de réglage CallMeBot à faire soi-même. Les caissiers sont prévenus de chaque nouvelle

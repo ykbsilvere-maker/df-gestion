@@ -1501,18 +1501,19 @@ label .facultatif { align-self: flex-start; margin: -2px 0 0; }
   padding: 12px 14px; border-radius: 16px; border: 1.5px solid var(--trait); background: #fff; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .options-simples button:hover { border-color: #dccfc4; }
-.options-simples button.actif { border-color: var(--vert); background: #f2fbf6; box-shadow: 0 0 0 3px rgba(24, 160, 88, 0.12); }
+/* Choix : le contour reste neutre, seule la pastille à droite se coche. */
 .option-icone { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 1.35rem; background: var(--fond); }
-.options-simples button.actif .option-icone { background: #fff; }
 .option-texte { flex: 1; display: grid; gap: 2px; min-width: 0; }
 .option-texte strong { font-size: 0.98rem; }
 .option-texte small { color: var(--encre-douce); font-size: 0.82rem; }
 .option-prix { flex: 0 0 auto; font-weight: 700; font-size: 0.88rem; color: var(--encre); }
 .option-prix.gratuit { color: var(--vert); }
 .options-simples button::after {
-  content: ''; flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #d6ccc3; background: #fff; transition: all 0.2s;
+  content: ''; flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #d6ccc3; box-sizing: border-box; background: #fff; transition: all 0.2s;
 }
-.options-simples button.actif::after { border: 6px solid var(--vert); }
+.options-simples button.actif::after {
+  content: '✓'; border-color: var(--vert); background: var(--vert); color: #fff; font-size: 0.75rem; font-weight: 900; display: grid; place-items: center;
+}
 
 .segment { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: var(--fond); border: 1px solid var(--trait); margin-bottom: 12px; }
 .segment button {
