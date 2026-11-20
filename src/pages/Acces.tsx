@@ -556,7 +556,8 @@ export function ReglageTelegram({
   otpParDefaut?: boolean;
   onFait: (texte: string) => void;
 }) {
-  const [avecOtp, setAvecOtp] = useState(otpParDefaut);
+  // Relier un autre Telegram garde le choix actuel (on ne retire jamais un code OTP sans le dire).
+  const [avecOtp, setAvecOtp] = useState(relie ? otp : otpParDefaut);
   const [robot, setRobot] = useState<{ configure: boolean; robot?: string } | null>(null);
   const [tg, setTg] = useState(actuel ?? '');
   const [lien, setLien] = useState<string | null>(null);
