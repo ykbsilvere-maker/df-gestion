@@ -44,7 +44,7 @@ export function Utilisateurs() {
   const { organisation, peut, session, adminGeneral } = useSession();
   // Code de connexion Telegram : la gérante principale (ou l'administrateur général) le règle.
   const peutTelegram = peut('utilisateurs.administrer') || adminGeneral;
-  const [otp, setOtp] = useState<Record<string, { telegram: string | null; actif: boolean; en_attente_liaison?: boolean }>>({});
+  const [otp, setOtp] = useState<Record<string, { telegram: string | null; actif: boolean; relie?: boolean; otp?: boolean; notifications?: boolean; en_attente_liaison?: boolean }>>({});
   const chargerOtp = useCallback(async () => {
     if (!organisation?.organisation_id || !(peut('utilisateurs.administrer') || adminGeneral)) return;
     const { data } = await supabase.rpc('otp_liste', { p_org: organisation.organisation_id });
@@ -247,8 +247,10 @@ export function Utilisateurs() {
                       <div className="secondaire">{identifiantAffiche(p?.email)}</div>
                       {otp[m.user_id]?.actif ? (
                         <div className="secondaire petit">🔐 code OTP {otp[m.user_id]!.telegram ?? ''}</div>
+                      ) : otp[m.user_id]?.notifications ? (
+                        <div className="secondaire petit">📲 notifications Telegram {otp[m.user_id]!.telegram ?? ''}</div>
                       ) : otp[m.user_id]?.en_attente_liaison ? (
-                        <div className="secondaire petit">🔗 code OTP : lien envoyé, en attente de « Démarrer »</div>
+                        <div className="secondaire petit">🔗 Telegram : lien envoyé, en attente de « Démarrer »</div>
                       ) : null}
                     </td>
                     <td>
@@ -279,7 +281,7 @@ export function Utilisateurs() {
                       <td className="cellule-actions">
                         {peutTelegram && m.actif && !protege && (m.role_code !== 'proprietaire' || adminGeneral) && (
                           <button className="bouton-lien" onClick={() => setFenetre({ type: 'telegram', membre: m })}>
-                            {otp[m.user_id]?.actif ? '🔐 Code OTP' : '🔐 Activer le code OTP'}
+                            {otp[m.user_id]?.actif || otp[m.user_id]?.notifications ? '📲 Telegram / OTP' : '📲 Relier Telegram'}
                           </button>
                         )}
                         {!soiMeme && !protege && (
@@ -385,7 +387,7 @@ export function Utilisateurs() {
                   : fenetre?.type === 'code'
                     ? 'Modifier le code d’entrée'
                   : fenetre?.type === 'telegram'
-                    ? 'Code OTP de connexion'
+                    ? 'Telegram : notifications et code OTP'
                   : fenetre?.type === 'identifiants'
                     ? 'Identifiants à transmettre'
                     : 'Droits individuels'
@@ -522,6 +524,9 @@ export function Utilisateurs() {
             userId={fenetre.membre.user_id}
             nom={d.profils[fenetre.membre.user_id]?.nom_complet || identifiantAffiche(d.profils[fenetre.membre.user_id]?.email) || 'cette personne'}
             actuel={otp[fenetre.membre.user_id]?.telegram}
+            relie={!!otp[fenetre.membre.user_id]?.notifications}
+            otp={otp[fenetre.membre.user_id]?.otp !== false}
+            otpParDefaut={!['caissier', 'responsable_caisse', 'vendeur'].includes(fenetre.membre.role_code)}
             onFait={(t) => {
               setInfo(t);
               setFenetre(null);

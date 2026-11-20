@@ -233,7 +233,7 @@ export function Administration() {
                   )}
                   {(e.gerants.length > 0 || e.gerants_en_attente.length > 0) && (
                     <button type="button" className="bouton-lien" onClick={() => setFenetre({ type: 'otp', e })}>
-                      🔐 Code OTP du gérant
+                      📲 Telegram / OTP du gérant
                     </button>
                   )}
                   {e.actif ? (
@@ -302,7 +302,7 @@ export function Administration() {
               : fenetre?.type === 'motdepasse'
                 ? `Accès du gérant — ${fenetre.e.nom}`
                 : fenetre?.type === 'otp'
-                  ? `Code OTP du gérant — ${fenetre.e.nom}`
+                  ? `Telegram et code OTP du gérant — ${fenetre.e.nom}`
                 : fenetre?.type === 'suspendre'
                   ? `Suspendre ${fenetre.e.nom}`
                   : fenetre?.type === 'modules'
@@ -667,11 +667,15 @@ function OtpGerant({ entreprise, onFait }: { entreprise: LigneEntreprise; onFait
     ...entreprise.gerants_en_attente.map((m) => ({ email: m, nom: identifiantAffiche(m) })),
   ];
   const [email, setEmail] = useState(personnes[0]?.email ?? '');
-  const [liste, setListe] = useState<Record<string, { email: string; telegram: string | null; relie: boolean; en_attente_liaison: boolean }> | null>(null);
+  const [liste, setListe] = useState<Record<
+    string,
+    { email: string; telegram: string | null; relie: boolean; otp?: boolean; notifications?: boolean; en_attente_liaison: boolean }
+  > | null>(null);
   useEffect(() => {
     void supabase.rpc('otp_liste', { p_org: entreprise.organisation_id }).then(({ data }) => setListe((data as typeof liste) ?? {}));
   }, [entreprise.organisation_id]);
-  const etat = liste && Object.values(liste).find((o) => o.email === email.toLowerCase());
+  const trouve = liste ? Object.entries(liste).find(([, o]) => o.email === email.toLowerCase()) : undefined;
+  const etat = trouve?.[1];
   const p = personnes.find((x) => x.email === email);
   return (
     <div className="formulaire">
@@ -692,13 +696,20 @@ function OtpGerant({ entreprise, onFait }: { entreprise: LigneEntreprise; onFait
         <>
           <p className="secondaire">
             État :{' '}
-            {etat?.relie ? `🔐 code OTP actif (${etat.telegram ?? 'Telegram relié'})` : etat?.en_attente_liaison ? '🔗 lien envoyé, en attente de « Démarrer »' : 'pas de code OTP'}
+            {etat?.relie
+              ? `${etat.otp === false ? '📲 notifications seulement' : '🔐 code OTP actif + notifications'} (${etat.telegram ?? 'Telegram relié'})`
+              : etat?.en_attente_liaison
+                ? '🔗 lien envoyé, en attente de « Démarrer »'
+                : 'Telegram non relié'}
           </p>
           <ReglageTelegram
             key={email}
             org={entreprise.organisation_id}
             email={email}
+            userId={trouve?.[0]}
             nom={p?.nom ?? email}
+            relie={!!etat?.notifications}
+            otp={etat?.otp !== false}
             actuel={etat?.relie || etat?.en_attente_liaison ? (etat.telegram ?? 'lien en attente') : null}
             onFait={(t) => void onFait(t)}
           />

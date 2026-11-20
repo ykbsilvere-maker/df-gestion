@@ -152,6 +152,11 @@ export function MesAlertes() {
           message sur votre téléphone (numéro de commande, total, retrait ou livraison). Le service gratuit CallMeBot l’envoie ; il ne voit
           ni vos clients ni vos codes.
         </p>
+        <Alerte type="info">
+          Si votre Telegram est relié au robot <b>DF Gestion</b> (celui qui envoie les codes OTP), toutes les notifications des commandes en
+          ligne arrivent directement là : nouvelle commande, affectation, acceptée, prête, livrée, annulée. Le réglage ci-dessous ne sert
+          alors plus. Pour relier un Telegram : <i>Utilisateurs › 📲 Relier Telegram</i>.
+        </Alerte>
         <p className="note-alerte">
           ⚠️ Le robot <b>WhatsApp</b> gratuit de CallMeBot est <b>complet</b> : il n’accepte plus de nouvelles inscriptions pour le moment,
           c’est pourquoi aucune clé n’arrive. Utilisez <b>Telegram</b> (gratuit, 1 minute). Une clé WhatsApp déjà obtenue continue de fonctionner.

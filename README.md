@@ -3,6 +3,13 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.19.** **Tout passe par le robot Telegram DF Gestion** (migration 046).
+Les notifications des commandes en ligne arrivent sur le même Telegram que les codes OTP : nouvelle commande (gérante et
+personnes désignées pour affecter), commande affectée (caissière), puis acceptée, prête, en livraison, livrée/encaissée,
+annulée (gérante et personne qui a affecté). Un Telegram peut être relié « notifications seulement », sans code OTP
+(caissières). Les commandes ne s'affectent qu'aux caissiers (la gérante principale n'apparaît plus dans la liste), et une
+caisse ouverte par la gérante pour une caissière la montre bien « en caisse ».
+
 **Version 3.18.** **Identifiant sans e-mail, OTP après 4 h d'inactivité, changement mensuel** (migration 045).
 L'administrateur crée le gérant principal avec un identifiant généré d'après son nom (ex. awa.kone27) et un mot de passe
 provisoire ; l'adresse e-mail reste possible. Après 4 heures sans activité, la session se referme : la personne ressaisit

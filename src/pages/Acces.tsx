@@ -531,7 +531,7 @@ export function CodeTelegram() {
 }
 
 /* --------------------------------------------------------------------------------------------
- * Fenêtre de la gérante : Telegram d'une personne (code de connexion).
+ * Fenêtre de la gérante : Telegram d'une personne (notifications et, au choix, code OTP).
  * ------------------------------------------------------------------------------------------ */
 export function ReglageTelegram({
   org,
@@ -539,6 +539,9 @@ export function ReglageTelegram({
   email,
   nom,
   actuel,
+  relie = false,
+  otp = true,
+  otpParDefaut = true,
   onFait,
 }: {
   org: string;
@@ -546,8 +549,14 @@ export function ReglageTelegram({
   email?: string;
   nom: string;
   actuel?: string | null;
+  /** Telegram déjà relié au robot. */
+  relie?: boolean;
+  /** Code OTP demandé à chaque connexion (sinon : notifications seulement). */
+  otp?: boolean;
+  otpParDefaut?: boolean;
   onFait: (texte: string) => void;
 }) {
+  const [avecOtp, setAvecOtp] = useState(otpParDefaut);
   const [robot, setRobot] = useState<{ configure: boolean; robot?: string } | null>(null);
   const [tg, setTg] = useState(actuel ?? '');
   const [lien, setLien] = useState<string | null>(null);
@@ -559,7 +568,7 @@ export function ReglageTelegram({
 
   async function creerLien() {
     setErreur('');
-    const { data, error } = await supabase.rpc('otp_lien', { p_org: org, p_user: userId ?? null, p_email: email ?? null });
+    const { data, error } = await supabase.rpc('otp_lien', { p_org: org, p_user: userId ?? null, p_email: email ?? null, p_otp: avecOtp });
     if (error) return setErreur(messageErreur(error));
     setLien((data as { lien: string }).lien);
   }
@@ -570,25 +579,48 @@ export function ReglageTelegram({
       p_org: org, p_user: userId ?? null, p_telegram: retirer ? null : tg.trim(), p_actif: !retirer, p_email: email ?? null,
     });
     if (error) return setErreur(messageErreur(error));
-    onFait(retirer ? `Code OTP retiré pour ${nom}.` : `Code OTP activé pour ${nom} : il lui sera demandé à chaque connexion.`);
+    onFait(retirer ? `Telegram délié pour ${nom} : plus de notifications ni de code OTP.` : `Code OTP activé pour ${nom} : il lui sera demandé à chaque connexion.`);
+  }
+  async function basculer(v: boolean) {
+    setErreur('');
+    const { error } = await supabase.rpc('otp_basculer', { p_org: org, p_user: userId ?? null, p_otp: v });
+    if (error) return setErreur(messageErreur(error));
+    onFait(v ? `Code OTP activé pour ${nom} : il lui sera demandé à chaque connexion.` : `Code OTP retiré pour ${nom} : son Telegram reçoit toujours les notifications.`);
   }
   const message = lien
-    ? `Bonjour ${nom}, pour recevoir vos codes de connexion DF Gestion, ouvrez ce lien sur votre téléphone puis touchez « Démarrer » : ${lien}`
+    ? `Bonjour ${nom}, pour recevoir sur Telegram vos notifications DF Gestion${avecOtp ? ' et vos codes de connexion' : ''}, ouvrez ce lien sur votre téléphone puis touchez « Démarrer » : ${lien}`
     : '';
 
   if (!robot) return <p className="secondaire">Chargement…</p>;
   return (
     <div className="formulaire">
       <p>
-        À chaque connexion de <b>{nom}</b>, après son mot de passe ou son code d’entrée, un <b>code OTP</b> à 6 chiffres lui est envoyé par
-        le robot {robot.robot ?? 'Telegram'}. Sans ce code, rien ne s’ouvre ; après 4 heures sans activité, il faut se reconnecter puis saisir un nouveau code.
+        Le robot {robot.robot ?? 'Telegram'} envoie à <b>{nom}</b> les <b>notifications</b> des commandes en ligne (nouvelle commande, affectation,
+        acceptée, prête, livrée…). Avec le <b>code OTP</b>, il lui envoie aussi un code à 6 chiffres à chaque connexion ; après 4 heures sans
+        activité, il faut se reconnecter puis saisir un nouveau code.
       </p>
       {robot.configure ? (
         <>
+          {relie && !lien && userId && (
+            <p className="secondaire">
+              {otp ? '🔐 Code OTP demandé à chaque connexion.' : '📲 Notifications seulement (pas de code OTP).'}{' '}
+              <button type="button" className="bouton-lien" onClick={() => void basculer(!otp)}>
+                {otp ? 'Garder les notifications sans code OTP' : 'Activer aussi le code OTP'}
+              </button>
+            </p>
+          )}
           {!lien ? (
-            <button type="button" className="bouton bouton-principal" onClick={() => void creerLien()}>
-              {actuel ? '🔁 Relier un autre Telegram' : '🔗 Créer le lien d’activation'}
-            </button>
+            <>
+              {!relie && (
+                <label className="case">
+                  <input type="checkbox" checked={avecOtp} onChange={(e) => setAvecOtp(e.target.checked)} />
+                  <span>🔐 Demander aussi un code OTP à chaque connexion</span>
+                </label>
+              )}
+              <button type="button" className="bouton bouton-principal" onClick={() => void creerLien()}>
+                {relie || actuel ? '🔁 Relier un autre Telegram' : '🔗 Créer le lien d’activation'}
+              </button>
+            </>
           ) : (
             <div className="cle-nouvelle">
               <span>Envoyez ce lien à <b>{nom}</b> : elle l’ouvre sur son téléphone et touche « Démarrer ». Valable 7 jours.</span>
@@ -598,7 +630,7 @@ export function ReglageTelegram({
                   {copie ? '✅ Copié' : '📋 Copier'}
                 </button>
                 <a className="bouton bouton-discret" href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer">💬 Envoyer par WhatsApp</a>
-                <button type="button" className="bouton bouton-principal" onClick={() => onFait(`Lien d’activation créé pour ${nom} : le code OTP sera demandé dès qu’elle aura touché « Démarrer ».`)}>Terminé</button>
+                <button type="button" className="bouton bouton-principal" onClick={() => onFait(`Lien d’activation créé pour ${nom} : dès qu’elle aura touché « Démarrer », elle recevra les notifications${avecOtp ? ' et le code OTP sera demandé' : ''}.`)}>Terminé</button>
               </div>
             </div>
           )}
@@ -618,9 +650,9 @@ export function ReglageTelegram({
         </form>
       )}
       <Alerte>{erreur}</Alerte>
-      {actuel && (
+      {(actuel || relie) && (
         <button type="button" className="bouton-lien lien-danger" onClick={(e) => void enregistrer(e as unknown as FormEvent, true)}>
-          Retirer le code OTP
+          {relie ? 'Délier ce Telegram (plus de notifications ni de code OTP)' : 'Retirer le code OTP'}
         </button>
       )}
     </div>
