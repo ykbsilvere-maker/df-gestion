@@ -2686,7 +2686,7 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
 .zone-nom small { color: var(--encre-douce); font-size: 0.8rem; }
 .zone-prix { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .zone-frais-saisie { position: relative; display: block; }
-.zone-frais-saisie input { padding-right: 52px; text-align: right; }
+.zone-ligne .zone-frais-saisie input { padding-right: 56px !important; text-align: right; }
 .zone-frais-saisie small { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--encre-douce); font-size: 0.78rem; pointer-events: none; }
 .zone-actions { display: flex; gap: 6px; justify-content: flex-end; }
 .interrupteur-zone { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--encre-douce); cursor: pointer; }
