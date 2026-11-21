@@ -3,6 +3,10 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.22.** Notifications Telegram fiables (migration 049) : chaque message est gardé et renvoyé chaque minute
+s'il n'est pas parti (jusqu'à 5 essais), même si personne n'est connecté. DF Marché : la partie paiement reprend les
+formes et polices de la réception (liste à pastille, case des conditions de vente).
+
 **Version 3.21.** Zones de livraison : chaque zone se modifie (nom, frais, délai) ou se supprime, dans une liste plus
 lisible (migration 048, suppression journalisée). DF Marché : le choix du mode de réception se coche par la pastille seule.
 

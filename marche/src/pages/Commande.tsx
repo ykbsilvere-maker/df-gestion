@@ -433,17 +433,20 @@ export function Commander() {
               : <p className="alerte">Ce code demande au moins {fcfa(bon.minimum)} d’achats.</p>)}
             {erreurCode && <p className="alerte">⚠️ {erreurCode}{/connectez-vous/i.test(erreurCode) && <> — <Link to={`/compte/connexion?retour=/commander/${v.slug}`}>se connecter</Link></>}</p>}
 
-            <h2 className="titre-bloc"><span aria-hidden>💳</span>Mode de paiement</h2>
-            <div className="familles-paiement" role="radiogroup" aria-label="Mode de paiement">
+            <h2 className="titre-bloc titre-paiement"><span aria-hidden>💳</span>Paiement</h2>
+            <p className="etiquette">Mode de paiement *</p>
+            <div className="options-simples" role="radiogroup" aria-label="Mode de paiement">
               {enLigne.length > 0 && (
                 <button type="button" role="radio" aria-checked={f.choix !== 'livraison'} className={f.choix !== 'livraison' ? 'actif' : ''}
                   onClick={() => maj({ choix: f.choix !== 'livraison' ? f.choix : enLigne[0]!.cle })}>
-                  <span aria-hidden>📲</span><strong>Mobile Money</strong><small>Payer maintenant</small>
+                  <span className="option-icone" aria-hidden>📲</span>
+                  <span className="option-texte"><strong>Mobile Money</strong><small>Payer maintenant ({enLigne.map((m) => m.libelle).join(', ')})</small></span>
                 </button>
               )}
               {v.paiement_livraison && (
                 <button type="button" role="radio" aria-checked={f.choix === 'livraison'} className={f.choix === 'livraison' ? 'actif' : ''} onClick={() => maj({ choix: 'livraison' })}>
-                  <span aria-hidden>💵</span><strong>Espèces</strong><small>{f.mode === 'retrait' ? 'À la caisse, au retrait' : 'Au livreur, à la livraison'}</small>
+                  <span className="option-icone" aria-hidden>💵</span>
+                  <span className="option-texte"><strong>Espèces</strong><small>{f.mode === 'retrait' ? 'À la caisse, au retrait' : 'Au livreur, à la livraison'}</small></span>
                 </button>
               )}
             </div>
@@ -460,7 +463,7 @@ export function Commander() {
             )}
             {f.choix === 'livraison' && (
               <div className="bloc-especes">
-                <p>💵 Vous payez avec… <small>La boutique prépare votre monnaie.</small></p>
+                <p className="etiquette">Vous payez avec</p>
                 <div className="puces-montant" role="radiogroup" aria-label="Montant remis">
                   <button type="button" role="radio" aria-checked={f.especes === 'exact'} className={f.especes === 'exact' ? 'actif' : ''} onClick={() => { setAutre(false); maj({ especes: 'exact' }); }}>
                     Le compte exact
@@ -477,6 +480,7 @@ export function Commander() {
                 {autre && (
                   <input className="montant-autre" value={f.especes} onChange={(e) => maj({ especes: e.target.value.replace(/\D/g, '') })} inputMode="numeric" placeholder="Montant du billet, ex. 25000" aria-label="Autre montant" autoFocus />
                 )}
+                {!f.especes && <p className="monnaie-ligne">La boutique prépare votre monnaie.</p>}
                 {f.especes && (
                   <p className="monnaie-ligne">
                     {especes > total ? <>Monnaie à vous rendre : <b>{fcfa(especes - total)}</b></> : especes === total ? <>Pas de monnaie à rendre.</> : <>Le billet doit couvrir <b>{fcfa(total)}</b>.</>}
@@ -505,8 +509,9 @@ export function Commander() {
                 </details>
               </div>
             )}
-            <label className="case-cgv">
+            <label className={`case-cgv${f.accepte ? ' coche' : ''}`}>
               <input type="checkbox" checked={f.accepte} onChange={(e) => maj({ accepte: e.target.checked })} />
+              <span className="pastille-cgv" aria-hidden>{f.accepte ? '✓' : ''}</span>
               <span>J’ai lu et j’accepte les <Link to={`/conditions?boutique=${v.slug}`} target="_blank">conditions de vente</Link>.</span>
             </label>
             {erreur && <p className="alerte" role="alert">⚠️ {erreur}</p>}

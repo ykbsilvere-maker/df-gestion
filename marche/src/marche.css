@@ -1532,3 +1532,21 @@ label .facultatif { align-self: flex-start; margin: -2px 0 0; }
 .montant-autre { width: 100%; padding: 11px 12px; border-radius: 12px; border: 1.5px solid var(--trait); font: inherit; }
 .monnaie-ligne { margin: 0; font-weight: 500 !important; font-size: 0.9rem; color: var(--encre-douce); }
 .monnaie-ligne b { color: var(--vert); }
+
+/* v3.22 — Paiement aux mêmes formes que la réception : liste à pastille, mêmes polices. */
+.bloc .titre-bloc.titre-paiement { margin-top: 26px; }
+.bloc .code-promo-saisie input::placeholder { text-transform: none; letter-spacing: normal; font-weight: 500; }
+.bloc .code-promo-saisie { margin-bottom: 4px; }
+.bloc-especes { background: transparent; padding: 0; gap: 8px; }
+.bloc-especes .etiquette { margin: 14px 0 0; }
+.bloc .case-cgv {
+  display: flex; flex-direction: row; align-items: center; gap: 12px; margin-top: 18px; padding: 12px 14px;
+  border: 1.5px solid var(--trait); border-radius: 16px; background: #fff; font-size: 0.92rem; font-weight: 500; cursor: pointer;
+}
+.bloc .case-cgv input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.pastille-cgv {
+  flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #d6ccc3; box-sizing: border-box; background: #fff;
+  display: grid; place-items: center; color: #fff; font-size: 0.75rem; font-weight: 900; transition: all 0.2s;
+}
+.case-cgv.coche .pastille-cgv { border-color: var(--vert); background: var(--vert); }
+.bloc .case-cgv:focus-within { box-shadow: 0 0 0 3px rgba(24, 160, 88, 0.15); }
