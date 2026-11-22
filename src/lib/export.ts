@@ -1,7 +1,8 @@
 import { classeurXlsx, telechargerFichier, TYPE_XLSX, type Feuille } from './excel';
 import { classeurPdf, TYPE_PDF } from './pdf';
+import { documentWord, TYPE_DOCX } from './word';
 
-export type FormatExport = 'xlsx' | 'pdf';
+export type FormatExport = 'xlsx' | 'pdf' | 'docx';
 
 let entreprise = '';
 /** Nom de l'entreprise rappelé en tête des PDF. */
@@ -9,12 +10,12 @@ export function definirEntrepriseExport(nom: string | undefined) {
   entreprise = nom ?? '';
 }
 
-/** Même contenu en Excel (.xlsx) ou en PDF, selon le bouton choisi. */
+/** Même contenu en Excel (.xlsx), PDF ou Word (.docx), selon le bouton choisi. */
 export function exporterClasseur(nom: string, feuilles: Feuille[], format: FormatExport = 'xlsx'): boolean {
-  const base = nom.replace(/\.(xlsx|csv|pdf)$/i, '');
-  return format === 'pdf'
-    ? telechargerFichier(`${base}.pdf`, TYPE_PDF, classeurPdf(feuilles, { entreprise }))
-    : telechargerFichier(`${base}.xlsx`, TYPE_XLSX, classeurXlsx(feuilles));
+  const base = nom.replace(/\.(xlsx|csv|pdf|docx)$/i, '');
+  if (format === 'pdf') return telechargerFichier(`${base}.pdf`, TYPE_PDF, classeurPdf(feuilles, { entreprise }));
+  if (format === 'docx') return telechargerFichier(`${base}.docx`, TYPE_DOCX, documentWord(feuilles, { entreprise }));
+  return telechargerFichier(`${base}.xlsx`, TYPE_XLSX, classeurXlsx(feuilles));
 }
 
 /** Charge toutes les lignes d'une liste, par tranches de 1 000 (limite du serveur par requête). */

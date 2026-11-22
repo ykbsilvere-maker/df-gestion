@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import type { Magasin } from './types';
 import { pontAndroid } from './android';
 import { useMagasinGlobal } from './magasinGlobal';
-import { exporterClasseur } from './export';
+import { exporterClasseur, type FormatExport } from './export';
 
 export const LIBELLES_MOUVEMENTS: Record<string, string> = {
   reception: 'Réception',
@@ -86,7 +86,7 @@ export function useMagasinCourant(org: string | undefined, magasins: Magasin[]):
 }
 
 /** Export Excel (.xlsx) d'un tableau simple. Le nom historique est gardé pour les appels existants. */
-export function telechargerCsv(nom: string, entetes: string[], lignes: (string | number | null | undefined)[][], format: 'xlsx' | 'pdf' = 'xlsx') {
+export function telechargerCsv(nom: string, entetes: string[], lignes: (string | number | null | undefined)[][], format: FormatExport = 'xlsx') {
   const echapper = (v: string | number | null | undefined) => {
     const s = v === null || v === undefined ? '' : String(v);
     return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;

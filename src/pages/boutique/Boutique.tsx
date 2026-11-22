@@ -11,7 +11,7 @@ import { useIdentite } from '../../lib/identite';
 import { useImpression } from '../../impression/impression';
 import { BonCommandeWeb } from './BonCommande';
 import { MettreEnSolde } from './Promotions';
-import { deposerImage, reduireImage, supprimerImage } from '../../lib/images';
+import { deposerImage, reduireImage, supprimerImage, tailleLisible } from '../../lib/images';
 import {
   PAIEMENTS,
   STATUTS,
@@ -1082,7 +1082,7 @@ export function MaVitrine() {
       if (error) throw error;
       if (ancien) await supprimerImage('logos', ancien);
       await rechargerIdentite();
-      setInfo('Logo mis à jour : il s’affiche sur DF Marché, vos reçus et vos documents.');
+      setInfo(`Logo mis à jour (recadré et allégé : ${tailleLisible(f.size)} → ${tailleLisible(blob.size)}) : il s’affiche sur DF Marché, vos reçus et vos documents.`);
     } catch (e) {
       setErreur(messageErreur(e));
     }

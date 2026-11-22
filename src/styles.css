@@ -2700,3 +2700,10 @@ input[type='checkbox']:active, input[type='radio']:active { transform: scale(.82
   .zone-ligne.zone-edition > input:first-child, .zone-ligne.zone-ajout > input:first-child { grid-column: 1 / -1; }
   .zone-ligne.zone-edition .zone-actions, .zone-ligne.zone-ajout .zone-actions { grid-column: 1 / -1; }
 }
+
+/* Relevé de compte de trésorerie (v3.23) */
+.releve-reglages { display: grid; gap: 10px; margin-bottom: 12px; padding: 12px 14px; border: 1px solid var(--trait); border-radius: 14px; background: var(--surface-2); }
+.releve-reglages .champ { margin: 0; }
+.releve-periodes { display: flex; flex-wrap: wrap; gap: 6px; }
+.releve-exports { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.releve-exports .secondaire { margin-right: 4px; }

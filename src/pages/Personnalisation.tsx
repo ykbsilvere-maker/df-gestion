@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/session';
 import { appliquerCouleur, COULEURS, urlPublique, useIdentite, type Identite } from '../lib/identite';
-import { deposerImage, reduireImage, supprimerImage } from '../lib/images';
+import { deposerImage, reduireImage, supprimerImage, tailleLisible } from '../lib/images';
 import { messageErreur } from '../lib/format';
 import { REGIMES, type FormatRecu, type Organisation, type ParametresImpression } from '../lib/types';
 import { Alerte, Champ, EnTetePage } from '../components/ui';
@@ -121,7 +121,7 @@ export function Personnalisation() {
       await supprimerImage('logos', o.logo_path);
       setO({ ...o, logo_path: chemin });
       await recharger();
-      setInfo('Logo mis à jour.');
+      setInfo(`Logo mis à jour : recadré et allégé automatiquement (${tailleLisible(fichier.size)} → ${tailleLisible(blob.size)}).`);
     } catch (e) {
       setErreur(messageErreur(e));
     } finally {
@@ -183,7 +183,7 @@ export function Personnalisation() {
                   <input
                     ref={fichierRef}
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept="image/*"
                     onChange={(e) => void changerLogo(e.target.files?.[0])}
                     hidden
                     id="fichier-logo"
@@ -196,7 +196,7 @@ export function Personnalisation() {
                       Retirer
                     </button>
                   )}
-                  <span className="champ-aide">PNG, JPEG ou WebP. Fond transparent conseillé. Réduit automatiquement.</span>
+                  <span className="champ-aide">Toute image, quelle que soit sa taille : DF Gestion la recadre et la compresse pour qu’elle s’insère bien. Fond transparent conseillé.</span>
                 </div>
               </div>
             </section>

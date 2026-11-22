@@ -8,6 +8,8 @@ import { messageErreur } from '../../lib/format';
 import { clavierMontant, lireMontant, montant } from '../../lib/argent';
 import { aujourdhui, dateFr, TYPES_COMPTE, type CompteTresorerie, type TypeCompte } from '../../lib/tresorerie';
 import { Alerte, Champ, EnTetePage, Fenetre, MontantFort, Pastille, Vide } from '../../components/ui';
+import { exporterClasseur, type FormatExport } from '../../lib/export';
+import type { Cellule } from '../../lib/excel';
 
 interface CompteSolde extends CompteTresorerie {
   solde: number;
@@ -43,6 +45,36 @@ interface Virement {
 
 const debutMois = () => `${aujourdhui().slice(0, 7)}-01`;
 
+/** Périodes toutes prêtes pour le relevé. */
+function periodeType(cle: 'mois' | 'mois_dernier' | 'trimestre' | 'annee' | 'annee_derniere'): { du: string; au: string } {
+  const d = new Date(`${aujourdhui()}T12:00:00`);
+  const iso = (x: Date) => x.toISOString().slice(0, 10);
+  const a = d.getFullYear();
+  const m = d.getMonth();
+  if (cle === 'mois') return { du: iso(new Date(Date.UTC(a, m, 1))), au: aujourdhui() };
+  if (cle === 'mois_dernier') return { du: iso(new Date(Date.UTC(a, m - 1, 1))), au: iso(new Date(Date.UTC(a, m, 0))) };
+  if (cle === 'trimestre') return { du: iso(new Date(Date.UTC(a, m - (m % 3), 1))), au: aujourdhui() };
+  if (cle === 'annee') return { du: `${a}-01-01`, au: aujourdhui() };
+  return { du: `${a - 1}-01-01`, au: `${a - 1}-12-31` };
+}
+const PERIODES = [
+  { cle: 'mois', libelle: 'Ce mois' },
+  { cle: 'mois_dernier', libelle: 'Mois dernier' },
+  { cle: 'trimestre', libelle: 'Ce trimestre' },
+  { cle: 'annee', libelle: 'Cette année' },
+  { cle: 'annee_derniere', libelle: 'Année dernière' },
+] as const;
+
+/** Titre du relevé, propre à chaque compte (gardé sur cet appareil). */
+const cleTitre = (id: string) => `dfg_titre_releve_${id}`;
+function lireTitre(c: CompteTresorerie): string {
+  try {
+    return localStorage.getItem(cleTitre(c.id)) || `Relevé de compte — ${c.nom}`;
+  } catch {
+    return `Relevé de compte — ${c.nom}`;
+  }
+}
+
 export function Tresorerie() {
   const { organisation, peut } = useSession();
   const org = organisation!.organisation_id;
@@ -52,7 +84,11 @@ export function Tresorerie() {
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
   const [compteOuvert, setCompteOuvert] = useState<CompteSolde | null>(null);
+  const [titreReleve, setTitreReleve] = useState('');
   const [periode, setPeriode] = useState({ du: debutMois(), au: aujourdhui() });
+  useEffect(() => {
+    if (compteOuvert) setTitreReleve(lireTitre(compteOuvert));
+  }, [compteOuvert]);
   const [mouvements, setMouvements] = useState<{ solde_debut: number; solde_fin: number; mouvements: Mouvement[] } | null>(null);
   const [virement, setVirement] = useState<Record<string, string> | null>(null);
   const [rapprochement, setRapprochement] = useState<{ compte: CompteSolde; date: string; solde: string; justification: string } | null>(null);
@@ -141,6 +177,56 @@ export function Tresorerie() {
     setRapprochement(null);
     setInfo(ecart === 0 ? 'Rapprochement enregistré : aucun écart.' : `Rapprochement enregistré : écart de ${montant(ecart)} ajusté.`);
     await charger();
+  }
+
+  function changerTitre(t: string) {
+    setTitreReleve(t);
+    if (!compteOuvert) return;
+    try {
+      if (t.trim() && t.trim() !== `Relevé de compte — ${compteOuvert.nom}`) localStorage.setItem(cleTitre(compteOuvert.id), t);
+      else localStorage.removeItem(cleTitre(compteOuvert.id));
+    } catch {
+      /* stockage indisponible : le titre vaut pour cette fois */
+    }
+  }
+
+  /** Relevé du compte sur la période : même contenu en PDF, Word ou Excel. */
+  function exporterReleve(format: FormatExport) {
+    if (!compteOuvert || !mouvements) return;
+    const c = compteOuvert;
+    const titre = titreReleve.trim() || `Relevé de compte — ${c.nom}`;
+    let solde = Number(mouvements.solde_debut);
+    let entrees = 0;
+    let sorties = 0;
+    const lignes: Cellule[][] = [[dateFr(periode.du), `Solde au ${dateFr(periode.du)}`, null, null, solde]];
+    for (const m of mouvements.mouvements) {
+      const v = Number(m.montant);
+      solde += v;
+      if (v > 0) entrees += v;
+      else sorties -= v;
+      lignes.push([dateFr(m.date_flux), m.operations > 1 ? `${m.libelle} · ${m.operations} opérations` : m.libelle, v > 0 ? v : null, v < 0 ? -v : null, solde]);
+    }
+    const ok = exporterClasseur(
+      `${titre} ${periode.du} au ${periode.au}`.replace(/[\\/:*?"<>|]+/g, '-'),
+      [
+        {
+          nom: c.nom.slice(0, 31),
+          titre: [
+            titre,
+            `Compte : ${c.nom} · ${TYPES_COMPTE[c.type]?.libelle ?? c.type}${c.numero ? ` · n° ${c.numero}` : ''}`,
+            `Période : du ${dateFr(periode.du)} au ${dateFr(periode.au)}`,
+            `Solde initial : ${montant(mouvements.solde_debut)} · Entrées : ${montant(entrees)} · Sorties : ${montant(sorties)} · Solde final : ${montant(mouvements.solde_fin)}`,
+          ],
+          entetes: ['Date', 'Opération', 'Entrée (FCFA)', 'Sortie (FCFA)', 'Solde (FCFA)'],
+          lignes,
+          totaux: ['', 'Totaux de la période', entrees, sorties, Number(mouvements.solde_fin)],
+          largeurs: [12, 48, 16, 16, 16],
+        },
+      ],
+      format,
+    );
+    if (!ok) setErreur('Téléchargement impossible sur cet appareil.');
+    else setInfo(`Relevé exporté en ${format === 'pdf' ? 'PDF' : format === 'docx' ? 'Word' : 'Excel'}.`);
   }
 
   async function enregistrerCompte(e: FormEvent) {
@@ -263,13 +349,34 @@ export function Tresorerie() {
               )}
             </div>
           </div>
-          <div className="filtres-ligne">
-            <Champ label="Du">
-              <input type="date" value={periode.du} max={periode.au} onChange={(e) => setPeriode({ ...periode, du: e.target.value })} />
+          <div className="releve-reglages">
+            <Champ label="Titre du relevé">
+              <input value={titreReleve} onChange={(e) => changerTitre(e.target.value)} maxLength={120} placeholder={`Relevé de compte — ${compteOuvert.nom}`} />
             </Champ>
-            <Champ label="Au">
-              <input type="date" value={periode.au} min={periode.du} onChange={(e) => setPeriode({ ...periode, au: e.target.value })} />
-            </Champ>
+            <div className="releve-periodes" role="group" aria-label="Période">
+              {PERIODES.map((p) => {
+                const v = periodeType(p.cle);
+                return (
+                  <button key={p.cle} type="button" className={`puce${v.du === periode.du && v.au === periode.au ? ' puce-active' : ''}`} onClick={() => setPeriode(v)}>
+                    {p.libelle}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="filtres-ligne">
+              <Champ label="Du">
+                <input type="date" value={periode.du} max={periode.au} onChange={(e) => setPeriode({ ...periode, du: e.target.value })} />
+              </Champ>
+              <Champ label="Au">
+                <input type="date" value={periode.au} min={periode.du} onChange={(e) => setPeriode({ ...periode, au: e.target.value })} />
+              </Champ>
+            </div>
+            <div className="releve-exports">
+              <span className="secondaire petit">Exporter le relevé :</span>
+              <button type="button" className="bouton bouton-discret" disabled={!mouvements} onClick={() => exporterReleve('pdf')}>📄 PDF</button>
+              <button type="button" className="bouton bouton-discret" disabled={!mouvements} onClick={() => exporterReleve('docx')}>📝 Word</button>
+              <button type="button" className="bouton bouton-discret" disabled={!mouvements} onClick={() => exporterReleve('xlsx')}>📊 Excel</button>
+            </div>
           </div>
           {!mouvements ? (
             <Vide>Chargement…</Vide>

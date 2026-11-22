@@ -165,9 +165,8 @@ export function DemandeEntreprise() {
     if (!fichier) return;
     setErreur('');
     try {
-      let url = await versDataUrl(await reduireImage(fichier, 400, 'image/png'));
-      if (url.length > 380000) url = await versDataUrl(await reduireImage(fichier, 300, 'image/jpeg'));
-      if (url.length > 380000) throw new Error('Logo trop lourd : choisissez une image plus petite.');
+      // Compressé jusqu'à tenir dans la demande (≈ 270 Ko), quelle que soit l'image de départ.
+      const url = await versDataUrl(await reduireImage(fichier, 400, 'image/png', 270 * 1024));
       setF((x) => ({ ...x, logo: url }));
     } catch (e) {
       setErreur(messageErreur(e));
@@ -294,8 +293,8 @@ export function DemandeEntreprise() {
             <div className="logo-apercu">{f.logo ? <img src={f.logo} alt="Logo" /> : <span>Pas de logo</span>}</div>
             <div>
               <strong>Logo</strong>
-              <p className="secondaire petit-texte">Facultatif : PNG ou JPEG. Il apparaîtra sur vos reçus.</p>
-              <input ref={fichierRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => void choisirLogo(e.target.files?.[0])} />
+              <p className="secondaire petit-texte">Facultatif : toute image, elle est recadrée et compressée automatiquement. Il apparaîtra sur vos reçus.</p>
+              <input ref={fichierRef} type="file" accept="image/*" hidden onChange={(e) => void choisirLogo(e.target.files?.[0])} />
               <div className="actions-demande">
                 <button type="button" className="bouton bouton-discret" onClick={() => fichierRef.current?.click()}>
                   {f.logo ? 'Changer' : 'Ajouter un logo'}

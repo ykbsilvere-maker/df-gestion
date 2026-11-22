@@ -3,6 +3,10 @@
 Application web installable (PWA) de caisse, stock et pilotage pour boutiques et supérettes.
 React + TypeScript côté interface, Supabase (PostgreSQL) côté serveur.
 
+**Version 3.23.** Relevés de compte (Trésorerie) : titre propre à chaque compte, périodes toutes prêtes (ce mois, mois
+dernier, trimestre, année) et export PDF, Word (.docx) ou Excel avec la période, les soldes et les totaux. Logos : toute
+image est acceptée, quelle que soit sa taille ; elle est recadrée (marges vides retirées) et compressée automatiquement.
+
 **Version 3.22.** Notifications Telegram fiables (migration 049) : chaque message est gardé et renvoyé chaque minute
 s'il n'est pas parti (jusqu'à 5 essais), même si personne n'est connecté. DF Marché : la partie paiement reprend les
 formes et polices de la réception (liste à pastille, case des conditions de vente).
